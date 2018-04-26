@@ -1224,9 +1224,15 @@ simplCast env body co0 cont0
 
         addCoerce :: OutCoercion -> SimplCont -> SimplM SimplCont
 
+        addCoerce co cont
+          | isReflCo co = return cont
+
         addCoerce co1 (CastIt co2 cont)
-          = {-#SCC "addCoerce-simple-recursion" #-}
-            addCoerce (mkTransCo co1 co2) cont
+          | isReflexiveCo co' = return cont
+          | otherwise = {-#SCC "addCoerce-simple-recursion" #-}
+                        addCoerce co' cont
+          where
+            co' = mkTransCo co1 co2
 
         addCoerce co cont@(ApplyToTy { sc_arg_ty = arg_ty, sc_cont = tail })
           | Just (arg_ty', m_co') <- pushCoTyArg co arg_ty

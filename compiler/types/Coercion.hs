@@ -61,6 +61,7 @@ module Coercion (
 
         isReflCo, isReflCo_maybe, isReflexiveCo, isReflexiveCo_maybe,
         isReflCoVar_maybe,
+        isEqTypeCo,
 
         -- ** Coercion variables
         mkCoVar, isCoVar, coVarName, setCoVarName, setCoVarUnique,
@@ -433,6 +434,14 @@ isReflCoVar_maybe cv
 isReflCo :: Coercion -> Bool
 isReflCo (Refl {}) = True
 isReflCo _         = False
+
+-- | Test if this coercion amounts to a trivial type equality. This covers more
+-- cases than 'isReflCo', but is still a lot faster than the full kind and role
+-- extraction that 'isReflexiveCo' or 'eqType' perform.
+isEqTypeCo :: Coercion -> Bool
+isEqTypeCo (SymCo co) = isEqTypeCo co
+isEqTypeCo (NthCo _ _ _) = True -- isEqTypeCo co
+isEqTypeCo co = isReflCo co
 
 -- | Returns the type coerced if this coercion is reflexive. Guaranteed
 -- to work very quickly. Sometimes a coercion can be reflexive, but not

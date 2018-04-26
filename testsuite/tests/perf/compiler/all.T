@@ -595,7 +595,7 @@ test('T5321FD',
             #  (due to better optCoercion, 5e7406d9, #9233)
             # 2016-04-06: 250757460 (x86/Linux)
 
-           (wordsize(64), 415136648, 10)])
+           (wordsize(64), 367569448, 10)])
             # prev:       418306336
             # 29/08/2012: 492905640
             #  (increase due to new codegen)
@@ -617,6 +617,8 @@ test('T5321FD',
             # 2016-07-16: 477840432
             #  Optimize handling of built-in OccNames
             # 2017-05-14: 415136648 (amd64/Linux) Two-pass CmmLayoutStack
+            # 2018-04-26: 367569448 
+            #  improve simplCast (#15019, #14737)
       ],
       compile,[''])
 
@@ -747,7 +749,7 @@ test('T9020',
            # 2014-07-31:  343005716 (Windows) (general round of updates)
            # 2017-03-24:  249904136 (x86/Linux, 64-bit machine)
 
-           (wordsize(64), 562206104, 10)])
+           (wordsize(64), 429226072, 10)])
            # prev:        795469104
            # 2014-07-17:  728263536 (general round of updates)
            # 2014-09-10:  785871680 post-AMP-cleanup
@@ -1040,7 +1042,7 @@ test('T12227',
 test('T12425',
      [ only_ways(['optasm']),
        compiler_stats_num_field('bytes allocated',
-          [(wordsize(64), 141952368, 5),
+          [(wordsize(64), 130647536, 5),
           # initial:      125831400
           # 2017-01-18:   133380960  Allow top-level string literals in Core
           # 2017-02-17:   153611448  Type-indexed Typeable
@@ -1049,6 +1051,7 @@ test('T12425',
           # 2017-04-28:   127500136  Remove exponential behaviour in simplifier
           # 2017-05-23:   134780272  Addition of llvm-targets in dynflags (D3352)
           # 2018-04-15:   141952368  Collateral of #14737
+          # 2018-04-26:   130647536  Fixed #14737 (via #15019)
           ]),
      ],
      compile,
@@ -1118,7 +1121,7 @@ test('T13056',
 
 test('T12707',
      [ compiler_stats_num_field('bytes allocated',
-          [(wordsize(64), 1237898376, 5),
+          [(wordsize(64), 1141557680, 5),
           # initial:    1271577192
           # 2017-01-22: 1348865648  Allow top-level strings in Core
           # 2017-01-31: 1280336112  Join points (#12988)
@@ -1127,6 +1130,7 @@ test('T12707',
           # 2017-03-02: 1231809592  Drift from recent simplifier improvements
           # 2017-05-14: 1163821528  (amd64/Linux) Two-pass CmmLayoutStack
           # 2018-04-09: 1237898376  Inexplicable, collateral of #14737
+          # 2018-04-26: 1141557680  Fixed #14737 regression (via #15019)
           ]),
      ],
      compile,
