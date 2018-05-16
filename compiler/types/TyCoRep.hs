@@ -34,7 +34,7 @@ module TyCoRep (
         UnivCoProvenance(..),
         CoercionHole(..), coHoleCoVar, setCoHoleCoVar,
         CoercionN, CoercionR, CoercionP, KindCoercion,
-        MCoercion,
+        MCoercion(..), MCoercionR,
 
         -- * Functions over types
         mkTyConTy, mkTyVarTy, mkTyVarTys,
@@ -946,6 +946,7 @@ type KindCoercion = CoercionN   -- always nominal
 -- | A semantically more meaningful type to represent what may or may not be a
 -- useful 'Coercion'.
 data MCoercion = MRefl | MCo Coercion
+type MCoercionR = MCoercion
 
 {-
 Note [Refl invariant]

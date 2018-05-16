@@ -1250,9 +1250,9 @@ simplCast env body co0 cont0
   where
         -- If the first parameter is Nothing, then simplifying revealed a
         -- reflexive coercion. Omit.
-        addCoerceM :: Maybe OutCoercion -> SimplCont -> SimplM SimplCont
-        addCoerceM Nothing   cont = return cont
-        addCoerceM (Just co) cont = addCoerce co cont
+        addCoerceM :: MOutCoercion -> SimplCont -> SimplM SimplCont
+        addCoerceM MRefl   cont = return cont
+        addCoerceM (MCo co) cont = addCoerce co cont
 
         addCoerce :: OutCoercion -> SimplCont -> SimplM SimplCont
         addCoerce co1 (CastIt co2 cont)  -- See Note [Optimising reflexivity]
