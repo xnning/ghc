@@ -945,7 +945,11 @@ type KindCoercion = CoercionN   -- always nominal
 
 -- | A semantically more meaningful type to represent what may or may not be a
 -- useful 'Coercion'.
-data MCoercion = MRefl | MCo Coercion
+data MCoercion
+  = MRefl
+    -- A trivial Reflexivity coercion
+  | MCo Coercion
+    -- Other coercions
 type MCoercionR = MCoercion
 
 {-

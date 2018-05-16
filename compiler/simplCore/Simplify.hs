@@ -1248,7 +1248,7 @@ simplCast env body co0 cont0
                    else addCoerce co1 cont0
         ; {-#SCC "simplCast-simplExprF" #-} simplExprF env body cont1 }
   where
-        -- If the first parameter is Nothing, then simplifying revealed a
+        -- If the first parameter is MRefl, then simplifying revealed a
         -- reflexive coercion. Omit.
         addCoerceM :: MOutCoercion -> SimplCont -> SimplM SimplCont
         addCoerceM MRefl   cont = return cont
