@@ -28,7 +28,7 @@ mkTransCo :: Coercion -> Coercion -> Coercion
 mkNthCo :: HasDebugCallStack => Role -> Int -> Coercion -> Coercion
 mkLRCo :: LeftOrRight -> Coercion -> Coercion
 mkInstCo :: Coercion -> Coercion -> Coercion
-mkCoherenceCo :: Coercion -> Coercion -> Coercion
+mkEraseEqCo :: Role -> Type -> Type -> Coercion -> Coercion
 mkKindCo :: Coercion -> Coercion
 mkSubCo :: Coercion -> Coercion
 mkProofIrrelCo :: Role -> Coercion -> Coercion -> Coercion -> Coercion

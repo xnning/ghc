@@ -1617,7 +1617,7 @@ lintCoercion :: OutCoercion -> LintM (LintedKind, LintedKind, LintedType, Linted
 --
 -- If   lintCoercion co = (k1, k2, s1, s2, r)
 -- then co :: s1 ~r s2
---      s1 :: k2
+--      s1 :: k1
 --      s2 :: k2
 
 -- If you edit this function, you may need to update the GHC formalism
@@ -1884,11 +1884,9 @@ lintCoercion co@(AxiomInstCo con ind cos)
            ; return (extendTCvSubst subst_l ktv s',
                      extendTCvSubst subst_r ktv t') }
 
-lintCoercion (CoherenceCo co1 co2)
-  = do { (_, k2, t1, t2, r) <- lintCoercion co1
-       ; let lhsty = mkCastTy t1 co2
-       ; k1' <- lintType lhsty
-       ; return (k1', k2, lhsty, t2, r) }
+lintCoercion (EraseEqCo r t1 t2 co)
+  = do { (_, _, t1', t2', _) <- lintCoercion co
+       ; return (t1', t2', t1, t2, r) }
 
 lintCoercion (KindCo co)
   = do { (k1, k2, _, _, _) <- lintCoercion co

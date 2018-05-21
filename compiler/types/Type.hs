@@ -431,8 +431,8 @@ expandTypeSynonyms ty
       = mkLRCo lr (go_co subst co)
     go_co subst (InstCo co arg)
       = mkInstCo (go_co subst co) (go_co subst arg)
-    go_co subst (CoherenceCo co1 co2)
-      = mkCoherenceCo (go_co subst co1) (go_co subst co2)
+    go_co subst (EraseEqCo r t1 t2 co)
+      = mkEraseEqCo r (go subst t1) (go subst t2) (go_co subst co)
     go_co subst (KindCo co)
       = mkKindCo (go_co subst co)
     go_co subst (SubCo co)
@@ -565,7 +565,7 @@ mapCoercion mapper@(TyCoMapper { tcm_smart = smart, tcm_covar = covar
     go (NthCo r i co)      = mknthco r i <$> go co
     go (LRCo lr co)        = mklrco lr <$> go co
     go (InstCo co arg)     = mkinstco <$> go co <*> go arg
-    go (CoherenceCo c1 c2) = mkcoherenceco <$> go c1 <*> go c2
+    go (EraseEqCo r t1 t2 c) = mkeraseeqco r <$> mapType mapper env t1 <*> mapType mapper env t2 <*> go c
     go (KindCo co)         = mkkindco <$> go co
     go (SubCo co)          = mksubco <$> go co
 
@@ -575,15 +575,15 @@ mapCoercion mapper@(TyCoMapper { tcm_smart = smart, tcm_covar = covar
     go_prov p@(PluginProv _)    = return p
 
     ( mktyconappco, mkappco, mkaxiominstco, mkunivco
-      , mksymco, mktransco, mknthco, mklrco, mkinstco, mkcoherenceco
+      , mksymco, mktransco, mknthco, mklrco, mkinstco, mkeraseeqco
       , mkkindco, mksubco, mkforallco)
       | smart
       = ( mkTyConAppCo, mkAppCo, mkAxiomInstCo, mkUnivCo
-        , mkSymCo, mkTransCo, mkNthCo, mkLRCo, mkInstCo, mkCoherenceCo
+        , mkSymCo, mkTransCo, mkNthCo, mkLRCo, mkInstCo, mkEraseEqCo
         , mkKindCo, mkSubCo, mkForAllCo )
       | otherwise
       = ( TyConAppCo, AppCo, AxiomInstCo, UnivCo
-        , SymCo, TransCo, NthCo, LRCo, InstCo, CoherenceCo
+        , SymCo, TransCo, NthCo, LRCo, InstCo, EraseEqCo
         , KindCo, SubCo, ForAllCo )
 
 {-
@@ -2561,7 +2561,7 @@ tyConsOfType ty
      go_co (NthCo _ _ co)          = go_co co
      go_co (LRCo _ co)             = go_co co
      go_co (InstCo co arg)         = go_co co `unionUniqSets` go_co arg
-     go_co (CoherenceCo co1 co2)   = go_co co1 `unionUniqSets` go_co co2
+     go_co (EraseEqCo _ t1 t2 co)  = go t1 `unionUniqSets` go t2 `unionUniqSets` go_co co
      go_co (KindCo co)             = go_co co
      go_co (SubCo co)              = go_co co
      go_co (AxiomRuleCo _ cs)      = go_cos cs

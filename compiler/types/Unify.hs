@@ -1319,7 +1319,7 @@ data MatchEnv = ME { me_tmpls :: TyVarSet
                    , me_env   :: RnEnv2 }
 
 -- | 'liftCoMatch' is sort of inverse to 'liftCoSubst'.  In particular, if
---   @liftCoMatch vars ty co == Just s@, then @listCoSubst s ty == co@,
+--   @liftCoMatch vars ty co == Just s@, then @liftCoSubst s ty == co@,
 --   where @==@ there means that the result of 'liftCoSubst' has the same
 --   type as the original co; but may be different under the hood.
 --   That is, it matches a type against a coercion of the same
@@ -1391,9 +1391,6 @@ ty_co_match menv subst ty co lkco rkco
     in
     ty_co_match menv subst ty' co (substed_co_l `mkTransCo` lkco)
                                   (substed_co_r `mkTransCo` rkco)
-
-  | CoherenceCo co1 co2 <- co
-  = ty_co_match menv subst ty co1 (lkco `mkTransCo` mkSymCo co2) rkco
 
   | SymCo co' <- co
   = swapLiftCoEnv <$> ty_co_match menv (swapLiftCoEnv subst) ty co' rkco lkco
