@@ -2289,9 +2289,10 @@ occCheckExpand tv ty
     go_co env (InstCo co arg)           = do { co' <- go_co env co
                                              ; arg' <- go_co env arg
                                              ; return (mkInstCo co' arg') }
-    go_co env (CoherenceCo co1 co2)     = do { co1' <- go_co env co1
-                                             ; co2' <- go_co env co2
-                                             ; return (mkCoherenceCo co1' co2') }
+    go_co env (EraseEqCo r ty1 ty2 co)  = do { ty1' <- go env ty1
+                                             ; ty2' <- go env ty2
+                                             ; co'  <- go_co env co
+                                             ; return (mkEraseEqCo r ty1' ty2' co') }
     go_co env (KindCo co)               = do { co' <- go_co env co
                                              ; return (mkKindCo co') }
     go_co env (SubCo co)                = do { co' <- go_co env co

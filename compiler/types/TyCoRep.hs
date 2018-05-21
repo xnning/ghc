@@ -920,10 +920,8 @@ data Coercion
     -- :: e -> N -> e
     -- See Note [InstCo roles]
 
-  -- Coherence applies a coercion to the left-hand type of another coercion
-  -- See Note [Coherence]
-  | CoherenceCo Coercion KindCoercion
-     -- :: e -> N -> e
+  | EraseEqCo Role Type Type KindCoercion
+     -- "e" -> _ -> _ -> N -> e
 
   -- Extract a kind coercion from a (heterogeneous) type coercion
   -- NB: all kind coercions are Nominal
@@ -1599,7 +1597,9 @@ tyCoFVsOfCo (TransCo co1 co2)   fv_cand in_scope acc = (tyCoFVsOfCo co1 `unionFV
 tyCoFVsOfCo (NthCo _ _ co)      fv_cand in_scope acc = tyCoFVsOfCo co fv_cand in_scope acc
 tyCoFVsOfCo (LRCo _ co)         fv_cand in_scope acc = tyCoFVsOfCo co fv_cand in_scope acc
 tyCoFVsOfCo (InstCo co arg)     fv_cand in_scope acc = (tyCoFVsOfCo co `unionFV` tyCoFVsOfCo arg) fv_cand in_scope acc
-tyCoFVsOfCo (CoherenceCo c1 c2) fv_cand in_scope acc = (tyCoFVsOfCo c1 `unionFV` tyCoFVsOfCo c2) fv_cand in_scope acc
+tyCoFVsOfCo (EraseEqCo _ t1 t2 co) fv_cand in_scope acc
+  = (tyCoFVsOfType t1 `unionFV` tyCoFVsOfType t2
+                      `unionFV` tyCoFVsOfCo co) fv_cand in_scope acc
 tyCoFVsOfCo (KindCo co)         fv_cand in_scope acc = tyCoFVsOfCo co fv_cand in_scope acc
 tyCoFVsOfCo (SubCo co)          fv_cand in_scope acc = tyCoFVsOfCo co fv_cand in_scope acc
 tyCoFVsOfCo (AxiomRuleCo _ cs)  fv_cand in_scope acc = tyCoFVsOfCos cs fv_cand in_scope acc
@@ -1662,7 +1662,7 @@ coVarsOfCo (TransCo co1 co2)    = coVarsOfCo co1 `unionVarSet` coVarsOfCo co2
 coVarsOfCo (NthCo _ _ co)       = coVarsOfCo co
 coVarsOfCo (LRCo _ co)          = coVarsOfCo co
 coVarsOfCo (InstCo co arg)      = coVarsOfCo co `unionVarSet` coVarsOfCo arg
-coVarsOfCo (CoherenceCo c1 c2)  = coVarsOfCos [c1, c2]
+coVarsOfCo (EraseEqCo _ t1 t2 co) = coVarsOfTypes [t1, t2] `unionVarSet` coVarsOfCo co
 coVarsOfCo (KindCo co)          = coVarsOfCo co
 coVarsOfCo (SubCo co)           = coVarsOfCo co
 coVarsOfCo (AxiomRuleCo _ cs)   = coVarsOfCos cs
@@ -1769,7 +1769,9 @@ noFreeVarsOfCo (TransCo co1 co2)      = noFreeVarsOfCo co1 && noFreeVarsOfCo co2
 noFreeVarsOfCo (NthCo _ _ co)         = noFreeVarsOfCo co
 noFreeVarsOfCo (LRCo _ co)            = noFreeVarsOfCo co
 noFreeVarsOfCo (InstCo co1 co2)       = noFreeVarsOfCo co1 && noFreeVarsOfCo co2
-noFreeVarsOfCo (CoherenceCo co1 co2)  = noFreeVarsOfCo co1 && noFreeVarsOfCo co2
+noFreeVarsOfCo (EraseEqCo _ t1 t2 co) = noFreeVarsOfType t1 &&
+                                        noFreeVarsOfType t2 &&
+                                        noFreeVarsOfCo co
 noFreeVarsOfCo (KindCo co)            = noFreeVarsOfCo co
 noFreeVarsOfCo (SubCo co)             = noFreeVarsOfCo co
 noFreeVarsOfCo (AxiomRuleCo _ cs)     = all noFreeVarsOfCo cs
@@ -2450,7 +2452,7 @@ subst_co subst co
     go (NthCo r d co)        = mkNthCo r d $! (go co)
     go (LRCo lr co)          = mkLRCo lr $! (go co)
     go (InstCo co arg)       = (mkInstCo $! (go co)) $! go arg
-    go (CoherenceCo co1 co2) = (mkCoherenceCo $! (go co1)) $! (go co2)
+    go (EraseEqCo r t1 t2 co) = ((mkEraseEqCo r $! (go_ty t1)) $! (go_ty t2)) $! (go co)
     go (KindCo co)           = mkKindCo $! (go co)
     go (SubCo co)            = mkSubCo $! (go co)
     go (AxiomRuleCo c cs)    = let cs1 = map go cs
@@ -3050,7 +3052,7 @@ tidyCo env@(_, subst) co
     go (NthCo r d co)        = NthCo r d $! go co
     go (LRCo lr co)          = LRCo lr $! go co
     go (InstCo co ty)        = (InstCo $! go co) $! go ty
-    go (CoherenceCo co1 co2) = (CoherenceCo $! go co1) $! go co2
+    go (EraseEqCo r t1 t2 co) = ((EraseEqCo r $! tidyType env t1) $! tidyType env t2) $! go co
     go (KindCo co)           = KindCo $! go co
     go (SubCo co)            = SubCo $! go co
     go (AxiomRuleCo ax cos)  = let cos1 = tidyCos env cos
@@ -3109,7 +3111,7 @@ coercionSize (TransCo co1 co2)   = 1 + coercionSize co1 + coercionSize co2
 coercionSize (NthCo _ _ co)      = 1 + coercionSize co
 coercionSize (LRCo  _ co)        = 1 + coercionSize co
 coercionSize (InstCo co arg)     = 1 + coercionSize co + coercionSize arg
-coercionSize (CoherenceCo c1 c2) = 1 + coercionSize c1 + coercionSize c2
+coercionSize (EraseEqCo _ t1 t2 c) = 1 + typeSize t1 + typeSize t2 + coercionSize c
 coercionSize (KindCo co)         = 1 + coercionSize co
 coercionSize (SubCo co)          = 1 + coercionSize co
 coercionSize (AxiomRuleCo _ cs)  = 1 + sum (map coercionSize cs)
