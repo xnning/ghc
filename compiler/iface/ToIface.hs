@@ -234,7 +234,7 @@ toIfaceCoercionX fr co
     go (NthCo _r d co)      = IfaceNthCo d (go co)
     go (LRCo lr co)         = IfaceLRCo lr (go co)
     go (InstCo co arg)      = IfaceInstCo (go co) (go arg)
-    go (CoherenceCo c1 c2)  = IfaceCoherenceCo (go c1) (go c2)
+    go (EraseEqCo r t1 t2 c) = IfaceEraseEqCo r (toIfaceTypeX fr t1) (toIfaceTypeX fr t2) (go c)
     go (KindCo c)           = IfaceKindCo (go c)
     go (SubCo co)           = IfaceSubCo (go co)
     go (AxiomRuleCo co cs)  = IfaceAxiomRuleCo (coaxrName co) (map go cs)

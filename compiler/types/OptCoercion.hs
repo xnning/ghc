@@ -344,21 +344,8 @@ opt_co4 env sym rep r (InstCo co1 arg)
     r'   = chooseRole rep r
     arg' = opt_co4_wrap env sym False Nominal arg
 
-opt_co4 env sym rep r (CoherenceCo co1 co2)
-  | TransCo col1 cor1 <- co1
-  = opt_co4_wrap env sym rep r (mkTransCo (mkCoherenceCo col1 co2) cor1)
-
-  | TransCo col1' cor1' <- co1'
-  = if sym then opt_trans in_scope col1'
-                  (optCoercion (zapTCvSubst (lcTCvSubst env))
-                               (mkCoherenceRightCo cor1' co2'))
-           else opt_trans in_scope (mkCoherenceCo col1' co2') cor1'
-
-  | otherwise
-  = wrapSym sym $ mkCoherenceCo (opt_co4_wrap env False rep r co1) co2'
-  where co1' = opt_co4_wrap env sym   rep   r       co1
-        co2' = opt_co4_wrap env False False Nominal co2
-        in_scope = lcInScopeSet env
+-- NINGNING: TODO
+opt_co4 env sym rep r co@(EraseEqCo _ _ _ _) = co
 
 opt_co4 env sym _rep r (KindCo co)
   = ASSERT( r == Nominal )
@@ -655,11 +642,7 @@ opt_trans_rule is co1 co2
     co2_is_axiom_maybe = isAxiom_maybe co2
     role = coercionRole co1 -- should be the same as coercionRole co2!
 
-opt_trans_rule is co1 co2
-  | Just (lco, lh) <- isCohRight_maybe co1
-  , Just (rco, rh) <- isCohLeft_maybe co2
-  , (coercionType lh) `eqType` (coercionType rh)
-  = opt_trans_rule is lco rco
+-- NINGNING: TODO?
 
 opt_trans_rule _ co1 co2        -- Identity rule
   | (Pair ty1 _, r) <- coercionKindRole co1
@@ -904,18 +887,6 @@ matchAxiom sym ax@(CoAxiom { co_ax_tc = tc }) ind co
 
   | otherwise
   = Nothing
-
--------------
--- destruct a CoherenceCo
-isCohLeft_maybe :: Coercion -> Maybe (Coercion, Coercion)
-isCohLeft_maybe (CoherenceCo co1 co2) = Just (co1, co2)
-isCohLeft_maybe _                     = Nothing
-
--- destruct a (sym (co1 |> co2)).
--- if isCohRight_maybe co = Just (co1, co2), then (sym co1) `mkCohRightCo` co2 = co
-isCohRight_maybe :: Coercion -> Maybe (Coercion, Coercion)
-isCohRight_maybe (SymCo (CoherenceCo co1 co2)) = Just (mkSymCo co1, co2)
-isCohRight_maybe _                             = Nothing
 
 -------------
 compatible_co :: Coercion -> Coercion -> Bool

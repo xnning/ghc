@@ -298,7 +298,7 @@ data IfaceCoercion
   | IfaceNthCo        Int IfaceCoercion
   | IfaceLRCo         LeftOrRight IfaceCoercion
   | IfaceInstCo       IfaceCoercion IfaceCoercion
-  | IfaceCoherenceCo  IfaceCoercion IfaceCoercion
+  | IfaceEraseEqCo    Role IfaceType IfaceType IfaceCoercion
   | IfaceKindCo       IfaceCoercion
   | IfaceSubCo        IfaceCoercion
   | IfaceFreeCoVar    CoVar    -- See Note [Free tyvars in IfaceType]
@@ -457,7 +457,7 @@ substIfaceType env ty
     go_co (IfaceNthCo n co)          = IfaceNthCo n (go_co co)
     go_co (IfaceLRCo lr co)          = IfaceLRCo lr (go_co co)
     go_co (IfaceInstCo c1 c2)        = IfaceInstCo (go_co c1) (go_co c2)
-    go_co (IfaceCoherenceCo c1 c2)   = IfaceCoherenceCo (go_co c1) (go_co c2)
+    go_co (IfaceEraseEqCo r t1 t2 c) = IfaceEraseEqCo r (go t1) (go t2) (go_co c)
     go_co (IfaceKindCo co)           = IfaceKindCo (go_co co)
     go_co (IfaceSubCo co)            = IfaceSubCo (go_co co)
     go_co (IfaceAxiomRuleCo n cos)   = IfaceAxiomRuleCo n (go_cos cos)
@@ -1220,8 +1220,10 @@ ppr_co ctxt_prec (IfaceLRCo lr co)
   = ppr_special_co ctxt_prec (ppr lr) [co]
 ppr_co ctxt_prec (IfaceSubCo co)
   = ppr_special_co ctxt_prec (text "Sub") [co]
-ppr_co ctxt_prec (IfaceCoherenceCo co1 co2)
-  = ppr_special_co ctxt_prec (text "Coh") [co1,co2]
+ppr_co ctxt_prec (IfaceEraseEqCo role ty1 ty2 co)
+  = ppr_special_co ctxt_prec
+      (text "EraseEq" <> (parens $ ppr role <> comma <+> ppr ty1 <> comma <+> ppr ty2 <> comma))
+      [co]
 ppr_co ctxt_prec (IfaceKindCo co)
   = ppr_special_co ctxt_prec (text "Kind") [co]
 
@@ -1509,10 +1511,12 @@ instance Binary IfaceCoercion where
           putByte bh 13
           put_ bh a
           put_ bh b
-  put_ bh (IfaceCoherenceCo a b) = do
+  put_ bh (IfaceEraseEqCo a b c d) = do
           putByte bh 14
           put_ bh a
           put_ bh b
+          put_ bh c
+          put_ bh d
   put_ bh (IfaceKindCo a) = do
           putByte bh 15
           put_ bh a
@@ -1577,7 +1581,9 @@ instance Binary IfaceCoercion where
                    return $ IfaceInstCo a b
            14-> do a <- get bh
                    b <- get bh
-                   return $ IfaceCoherenceCo a b
+                   c <- get bh
+                   d <- get bh
+                   return $ IfaceEraseEqCo a b c d
            15-> do a <- get bh
                    return $ IfaceKindCo a
            16-> do a <- get bh

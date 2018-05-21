@@ -37,7 +37,7 @@ module Coercion (
         mkUnsafeCo, mkHoleCo, mkUnivCo, mkSubCo,
         mkAxiomInstCo, mkProofIrrelCo,
         downgradeRole, maybeSubCo, mkAxiomRuleCo,
-        mkCoherenceCo, mkCoherenceRightCo, mkCoherenceLeftCo,
+        mkEraseEqCo, mkCoherenceRightCo, mkCoherenceLeftCo,
         mkKindCo, castCoercionKind,
 
         mkHeteroCoercionType,
@@ -987,30 +987,30 @@ mkInstCo (ForAllCo tv _kind_co body_co) (Refl _ arg)
   = substCoWithUnchecked [tv] [arg] body_co
 mkInstCo co arg = InstCo co arg
 
--- This could work harder to produce Refl coercions, but that would be
--- quite inefficient. Seems better not to try.
-mkCoherenceCo :: Coercion -> Coercion -> Coercion
-mkCoherenceCo co1 (Refl {}) = co1
-mkCoherenceCo (CoherenceCo co1 co2) co3
-  = CoherenceCo co1 (co2 `mkTransCo` co3)
-mkCoherenceCo co1 co2     = CoherenceCo co1 co2
-
 -- | A CoherenceCo c1 c2 applies the coercion c2 to the left-hand type
 -- in the kind of c1. This function uses sym to get the coercion on the
 -- right-hand type of c1. Thus, if c1 :: s ~ t, then mkCoherenceRightCo c1 c2
 -- has the kind (s ~ (t |> c2)) down through type constructors.
 -- The second coercion must be representational.
 mkCoherenceRightCo :: Coercion -> Coercion -> Coercion
-mkCoherenceRightCo c1 c2 = mkSymCo (mkCoherenceCo (mkSymCo c1) c2)
+mkCoherenceRightCo c1 c2 =
+  let (Pair _ ty2, r) = coercionKindRole c1
+      co = EraseEqCo r ty2 (CastTy ty2 c2) c2
+  in c1 `mkTransCo` co
 
 -- | An explicitly directed synonym of mkCoherenceCo. The second
 -- coercion must be representational.
 mkCoherenceLeftCo :: Coercion -> Coercion -> Coercion
-mkCoherenceLeftCo = mkCoherenceCo
+mkCoherenceLeftCo c1 c2 =
+  let (Pair ty1 _, r) = coercionKindRole c1
+      co = EraseEqCo r (CastTy ty1 c2) ty1 (mkSymCo c2)
+  in co `mkTransCo` c1
 
-infixl 5 `mkCoherenceCo`
 infixl 5 `mkCoherenceRightCo`
 infixl 5 `mkCoherenceLeftCo`
+
+mkEraseEqCo :: Role -> Type -> Type -> Coercion -> Coercion
+mkEraseEqCo = EraseEqCo
 
 -- | Given @co :: (a :: k) ~ (b :: k')@ produce @co' :: k ~ k'@.
 mkKindCo :: Coercion -> Coercion
@@ -1132,8 +1132,6 @@ setNominalRole_maybe r co
       = NthCo Nominal n <$> setNominalRole_maybe (coercionRole co) co
     setNominalRole_maybe_helper (InstCo co arg)
       = InstCo <$> setNominalRole_maybe_helper co <*> pure arg
-    setNominalRole_maybe_helper (CoherenceCo co1 co2)
-      = CoherenceCo <$> setNominalRole_maybe_helper co1 <*> pure co2
     setNominalRole_maybe_helper (UnivCo prov _ co1 co2)
       | case prov of UnsafeCoerceProv -> True   -- it's always unsafe
                      PhantomProv _    -> False  -- should always be phantom
@@ -1262,8 +1260,8 @@ promoteCoercion co = case co of
     InstCo g _
       -> promoteCoercion g
 
-    CoherenceCo g h
-      -> mkSymCo h `mkTransCo` promoteCoercion g
+    EraseEqCo _ _ _ h
+      -> h
 
     KindCo _
       -> ASSERT( False )
@@ -1611,8 +1609,7 @@ extendLiftingContextEx lc@(LC subst env) ((v,ty):rest)
 -- works with existentially bound variables, which are considered to have
 -- nominal roles.
   = let lc' = LC (subst `extendTCvInScopeSet` tyCoVarsOfType ty)
-                 (extendVarEnv env v (mkSymCo $ mkCoherenceCo
-                                         (mkNomReflCo ty)
+                 (extendVarEnv env v (mkEraseEqCo Nominal ty (CastTy ty (ty_co_subst lc Nominal (tyVarKind v)))
                                          (ty_co_subst lc Nominal (tyVarKind v))))
     in extendLiftingContextEx lc' rest
 
@@ -1793,7 +1790,7 @@ seqCo (TransCo co1 co2)         = seqCo co1 `seq` seqCo co2
 seqCo (NthCo r n co)            = r `seq` n `seq` seqCo co
 seqCo (LRCo lr co)              = lr `seq` seqCo co
 seqCo (InstCo co arg)           = seqCo co `seq` seqCo arg
-seqCo (CoherenceCo co1 co2)     = seqCo co1 `seq` seqCo co2
+seqCo (EraseEqCo r t1 t2 co)    = r `seq` seqType t1 `seq` seqType t2 `seq` seqCo co
 seqCo (KindCo co)               = seqCo co
 seqCo (SubCo co)                = seqCo co
 seqCo (AxiomRuleCo _ cs)        = seqCos cs
@@ -1889,9 +1886,7 @@ coercionKind co =
         tys = go co
     go (LRCo lr co)         = (pickLR lr . splitAppTy) <$> go co
     go (InstCo aco arg)     = go_app aco [arg]
-    go (CoherenceCo g h)
-      = let Pair ty1 ty2 = go g in
-        Pair (mkCastTy ty1 h) ty2
+    go (EraseEqCo _ t1 t2 _) = Pair t1 t2
     go (KindCo co)          = typeKind <$> go co
     go (SubCo co)           = go co
     go (AxiomRuleCo ax cos) = expectJust "coercionKind" $
@@ -1959,7 +1954,7 @@ coercionRole = go
     go (NthCo r _d _co) = r
     go (LRCo {}) = Nominal
     go (InstCo co _) = go co
-    go (CoherenceCo co1 _) = go co1
+    go (EraseEqCo r _ _ _) = r
     go (KindCo {}) = Nominal
     go (SubCo _) = Representational
     go (AxiomRuleCo ax _) = coaxrRole ax

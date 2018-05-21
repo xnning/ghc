@@ -125,7 +125,7 @@ synonymTyConsOfType ty
      go_co (NthCo _ _ co)         = go_co co
      go_co (LRCo _ co)            = go_co co
      go_co (InstCo co co')        = go_co co `plusNameEnv` go_co co'
-     go_co (CoherenceCo co co')   = go_co co `plusNameEnv` go_co co'
+     go_co (EraseEqCo _ t1 t2 co) = go t1 `plusNameEnv` go t2 `plusNameEnv` go_co co
      go_co (KindCo co)            = go_co co
      go_co (SubCo co)             = go_co co
      go_co (AxiomRuleCo _ cs)     = go_co_s cs
