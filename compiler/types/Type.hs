@@ -143,6 +143,7 @@ module Type (
         eqType, eqTypeX, eqTypes, nonDetCmpType, nonDetCmpTypes, nonDetCmpTypeX,
         nonDetCmpTypesX, nonDetCmpTc,
         eqVarBndrs,
+        eqTypeK,
 
         -- * Forcing evaluation of types
         seqType, seqTypes,
@@ -2139,7 +2140,7 @@ eqType t1 t2 = isEqual $ nonDetCmpType t1 t2
 
 -- | Compare types with respect to a (presumably) non-empty 'RnEnv2'.
 eqTypeX :: RnEnv2 -> Type -> Type -> Bool
-eqTypeX env t1 t2 = isEqual $ nonDetCmpTypeX env t1 t2
+eqTypeX env t1 t2 = isEqual $ nonDetCmpTypeX True env t1 t2
   -- It's OK to use nonDetCmpType here and eqTypeX is deterministic,
   -- nonDetCmpTypeX does equality deterministically
 
@@ -2149,6 +2150,15 @@ eqTypes :: [Type] -> [Type] -> Bool
 eqTypes tys1 tys2 = isEqual $ nonDetCmpTypes tys1 tys2
   -- It's OK to use nonDetCmpType here and eqTypes is deterministic,
   -- nonDetCmpTypes does equality deterministically
+
+eqTypeK :: Type -> Type -> Bool
+-- ^ Type equality on source types. Does not look through @newtypes@ or
+-- 'PredType's, but it does look through type synonyms.
+-- We don't care about their kinds.
+-- If we do, use @eqType@ instead.
+eqTypeK t1 t2 = isEqual $ nonDetCmpTypeK t1 t2
+  -- It's OK to use nonDetCmpType here and eqType is deterministic,
+  -- nonDetCmpType does equality deterministically
 
 eqVarBndrs :: RnEnv2 -> [Var] -> [Var] -> Maybe RnEnv2
 -- Check that the var lists are the same length
@@ -2174,15 +2184,25 @@ nonDetCmpTypeX.
 See Note [Unique Determinism] for more details.
 -}
 
+-- | Do we want to test the equality of the kinds?
+type EqKindFlag = Bool
+
 nonDetCmpType :: Type -> Type -> Ordering
 nonDetCmpType t1 t2
   -- we know k1 and k2 have the same kind, because they both have kind *.
-  = nonDetCmpTypeX rn_env t1 t2
+  = nonDetCmpTypeX True rn_env t1 t2
+  where
+    rn_env = mkRnEnv2 (mkInScopeSet (tyCoVarsOfTypes [t1, t2]))
+
+nonDetCmpTypeK :: Type -> Type -> Ordering
+-- we do not care about their kinds
+nonDetCmpTypeK t1 t2
+  = nonDetCmpTypeX False rn_env t1 t2
   where
     rn_env = mkRnEnv2 (mkInScopeSet (tyCoVarsOfTypes [t1, t2]))
 
 nonDetCmpTypes :: [Type] -> [Type] -> Ordering
-nonDetCmpTypes ts1 ts2 = nonDetCmpTypesX rn_env ts1 ts2
+nonDetCmpTypes ts1 ts2 = nonDetCmpTypesX True rn_env ts1 ts2
   where
     rn_env = mkRnEnv2 (mkInScopeSet (tyCoVarsOfTypes (ts1 ++ ts2)))
 
@@ -2196,13 +2216,13 @@ data TypeOrdering = TLT  -- ^ @t1 < t2@
                   | TGT  -- ^ @t1 > t2@
                   deriving (Eq, Ord, Enum, Bounded)
 
-nonDetCmpTypeX :: RnEnv2 -> Type -> Type -> Ordering  -- Main workhorse
+nonDetCmpTypeX :: EqKindFlag -> RnEnv2 -> Type -> Type -> Ordering  -- Main workhorse
     -- See Note [Non-trivial definitional equality] in TyCoRep
-nonDetCmpTypeX env orig_t1 orig_t2 =
+nonDetCmpTypeX keq env orig_t1 orig_t2 =
     case go env orig_t1 orig_t2 of
       -- If there are casts then we also need to do a comparison of the kinds of
       -- the types being compared
-      TEQX          -> toOrdering $ go env k1 k2
+      TEQX | keq    -> toOrdering $ go env k1 k2
       ty_ordering   -> toOrdering ty_ordering
   where
     k1 = typeKind orig_t1
@@ -2278,12 +2298,12 @@ nonDetCmpTypeX env orig_t1 orig_t2 =
     gos env (ty1:tys1) (ty2:tys2) = go env ty1 ty2 `thenCmpTy` gos env tys1 tys2
 
 -------------
-nonDetCmpTypesX :: RnEnv2 -> [Type] -> [Type] -> Ordering
-nonDetCmpTypesX _   []        []        = EQ
-nonDetCmpTypesX env (t1:tys1) (t2:tys2) = nonDetCmpTypeX env t1 t2
-                                      `thenCmp` nonDetCmpTypesX env tys1 tys2
-nonDetCmpTypesX _   []        _         = LT
-nonDetCmpTypesX _   _         []        = GT
+nonDetCmpTypesX :: EqKindFlag -> RnEnv2 -> [Type] -> [Type] -> Ordering
+nonDetCmpTypesX _ _   []        []        = EQ
+nonDetCmpTypesX keq env (t1:tys1) (t2:tys2) = nonDetCmpTypeX keq env t1 t2
+                                              `thenCmp` nonDetCmpTypesX keq env tys1 tys2
+nonDetCmpTypesX _ _   []        _         = LT
+nonDetCmpTypesX _ _   _         []        = GT
 
 -------------
 -- | Compare two 'TyCon's. NB: This should /never/ see the "star synonyms",

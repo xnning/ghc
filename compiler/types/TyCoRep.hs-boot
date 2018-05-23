@@ -16,6 +16,7 @@ data TyBinder
 type PredType = Type
 type Kind = Type
 type ThetaType = [PredType]
+type CoercionN = Coercion
 
 pprKind :: Kind -> SDoc
 pprType :: Type -> SDoc

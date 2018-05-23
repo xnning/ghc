@@ -37,7 +37,7 @@ module Coercion (
         mkUnsafeCo, mkHoleCo, mkUnivCo, mkSubCo,
         mkAxiomInstCo, mkProofIrrelCo,
         downgradeRole, maybeSubCo, mkAxiomRuleCo,
-        mkEraseEqCo, mkCoherenceRightCo, mkCoherenceLeftCo,
+        mkEraseEqCo, mkEraseCastRightCo, mkEraseCastLeftCo,
         mkKindCo, castCoercionKind,
 
         mkHeteroCoercionType,
@@ -295,13 +295,13 @@ decomposePiCos orig_kind orig_args orig_co = go [] orig_subst orig_kind orig_arg
        -> ([CoercionN], Coercion)
     go acc_arg_cos subst  ki  (ty:tys) co
       | Just (kv, inner_ki) <- splitForAllTy_maybe ki
-        -- know     co :: (forall a:s1.t1) ~ (forall b:s2.t2)
-        --    function :: forall a:s1.t1   (the function is not passed to decomposePiCos)
-        --          ty :: s2
-        -- need arg_co :: s2 ~ s1
-        --      res_co :: t1[ty |> arg_co / a] ~ t2[ty / b]
+        -- know       co :: (forall a:s1.t1) ~ (forall b:s2.t2)
+        --      function :: forall a:s1.t1   (the function is not passed to decomposePiCos)
+        --            ty :: s2
+        -- need   arg_co :: s2 ~ s1
+        --        res_co :: t1[ty |> arg_co / a] ~ t2[ty / b]
       = let arg_co = mkNthCo Nominal 0 (mkSymCo co)
-            res_co = mkInstCo co (mkNomReflCo ty `mkCoherenceLeftCo` arg_co)
+            res_co = mkInstCo co (mkEraseCastLeftCo Nominal ty arg_co)
             subst' = extendTCvSubst subst kv ty
         in
         go (arg_co : acc_arg_cos) subst' inner_ki tys res_co
@@ -987,30 +987,18 @@ mkInstCo (ForAllCo tv _kind_co body_co) (Refl _ arg)
   = substCoWithUnchecked [tv] [arg] body_co
 mkInstCo co arg = InstCo co arg
 
--- | A CoherenceCo c1 c2 applies the coercion c2 to the left-hand type
--- in the kind of c1. This function uses sym to get the coercion on the
--- right-hand type of c1. Thus, if c1 :: s ~ t, then mkCoherenceRightCo c1 c2
--- has the kind (s ~ (t |> c2)) down through type constructors.
--- The second coercion must be representational.
-mkCoherenceRightCo :: Coercion -> Coercion -> Coercion
-mkCoherenceRightCo c1 c2 =
-  let (Pair _ ty2, r) = coercionKindRole c1
-      co = EraseEqCo r ty2 (CastTy ty2 c2) c2
-  in c1 `mkTransCo` co
-
--- | An explicitly directed synonym of mkCoherenceCo. The second
--- coercion must be representational.
-mkCoherenceLeftCo :: Coercion -> Coercion -> Coercion
-mkCoherenceLeftCo c1 c2 =
-  let (Pair ty1 _, r) = coercionKindRole c1
-      co = EraseEqCo r (CastTy ty1 c2) ty1 (mkSymCo c2)
-  in co `mkTransCo` c1
-
-infixl 5 `mkCoherenceRightCo`
-infixl 5 `mkCoherenceLeftCo`
-
-mkEraseEqCo :: Role -> Type -> Type -> Coercion -> Coercion
+mkEraseEqCo :: Role -> Type -> Type -> CoercionN -> Coercion
 mkEraseEqCo = EraseEqCo
+
+-- | Given @ty :: k1@, @co :: k1 ~ k2@,
+-- produces @co' :: ty ~r (ty |> co)@
+mkEraseCastRightCo :: Role -> Type -> CoercionN -> Coercion
+mkEraseCastRightCo r ty co = mkEraseEqCo r ty (ty `mkCastTy` co) co
+
+-- | Given @ty :: k1@, @co :: k1 ~ k2@,
+-- produces @co' :: (ty |> co) ~r ty@
+mkEraseCastLeftCo :: Role -> Type -> CoercionN -> Coercion
+mkEraseCastLeftCo r ty co = mkEraseEqCo r (ty `mkCastTy` co) ty (mkSymCo co)
 
 -- | Given @co :: (a :: k) ~ (b :: k')@ produce @co' :: k ~ k'@.
 mkKindCo :: Coercion -> Coercion
@@ -1138,6 +1126,7 @@ setNominalRole_maybe r co
                      ProofIrrelProv _ -> True   -- it's always safe
                      PluginProv _     -> False  -- who knows? This choice is conservative.
       = Just $ UnivCo prov Nominal co1 co2
+    setNominalRole_maybe_helper (EraseEqCo _ t1 t2 h) = pure (EraseEqCo Nominal t1 t2 h)
     setNominalRole_maybe_helper _ = Nothing
 
 -- | Make a phantom coercion between two types. The coercion passed
@@ -1306,11 +1295,17 @@ instCoercions g ws
            ; return (piResultTy <$> g_tys <*> w_tys, g') }
 
 -- | Creates a new coercion with both of its types casted by different casts
--- castCoercionKind g h1 h2, where g :: t1 ~ t2, has type (t1 |> h1) ~ (t2 |> h2)
+-- @castCoercionKind g h1 h2@, where @g :: t1 ~r t2@,
+-- produces @co' :: (t1 |> h1) ~r (t2 |> h2)@
 -- The second and third coercions must be nominal.
-castCoercionKind :: Coercion -> Coercion -> Coercion -> Coercion
-castCoercionKind g h1 h2
-  = g `mkCoherenceLeftCo` h1 `mkCoherenceRightCo` h2
+-- @coercionKindRole@ is inefficient: call it only when @t1@ and @t2@ are
+-- unknown from the caller
+castCoercionKind ::  Coercion -> CoercionN -> CoercionN -> Coercion
+castCoercionKind g h1 h2 =
+  let (Pair t1 t2, r)   = coercionKindRole g
+      co1 = mkEraseCastLeftCo r t1 h1  -- :: t1 |> h1 ~r t1
+      co2 = mkEraseCastRightCo r t2 h2 -- :: t2 ~r t2 |> h2
+  in  co1 `mkTransCo` g `mkTransCo` co2
 
 -- See note [Newtype coercions] in TyCon
 
@@ -1609,8 +1604,7 @@ extendLiftingContextEx lc@(LC subst env) ((v,ty):rest)
 -- works with existentially bound variables, which are considered to have
 -- nominal roles.
   = let lc' = LC (subst `extendTCvInScopeSet` tyCoVarsOfType ty)
-                 (extendVarEnv env v (mkEraseEqCo Nominal ty (CastTy ty (ty_co_subst lc Nominal (tyVarKind v)))
-                                         (ty_co_subst lc Nominal (tyVarKind v))))
+                 (extendVarEnv env v (mkEraseCastRightCo Nominal ty (ty_co_subst lc Nominal (tyVarKind v))))
     in extendLiftingContextEx lc' rest
 
 -- | Erase the environments in a lifting context
@@ -1649,8 +1643,8 @@ ty_co_subst lc role ty
                              mkForAllCo v' h $! ty_co_subst lc' r ty
     go r ty@(LitTy {})     = ASSERT( r == Nominal )
                              mkReflCo r ty
-    go r (CastTy ty co)    = castCoercionKind (go r ty) (substLeftCo lc co)
-                                                        (substRightCo lc co)
+    go r (CastTy ty co)    = castCoercionKind  (go r ty) (substLeftCo lc co)
+                                                         (substRightCo lc co)
     go r (CoercionTy co)   = mkProofIrrelCo r kco (substLeftCo lc co)
                                                   (substRightCo lc co)
       where kco = go Nominal (coercionType co)
@@ -1987,10 +1981,14 @@ buildCoercion orig_ty1 orig_ty2 = go orig_ty1 orig_ty2
                | Just ty2' <- coreView ty2 = go ty1 ty2'
 
     go (CastTy ty1 co) ty2
-      = go ty1 ty2 `mkCoherenceLeftCo` co
+      = let co' = go ty1 ty2
+            r = coercionRole co'
+        in  mkEraseCastLeftCo r ty1 co `mkTransCo` co'
 
     go ty1 (CastTy ty2 co)
-      = go ty1 ty2 `mkCoherenceRightCo` co
+      = let co' = go ty1 ty2
+            r = coercionRole co'
+        in  co' `mkTransCo` mkEraseCastLeftCo r ty2 co
 
     go ty1@(TyVarTy tv1) _tyvarty
       = ASSERT( case _tyvarty of

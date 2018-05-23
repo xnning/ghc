@@ -1874,9 +1874,25 @@ lintCoercion co@(AxiomInstCo con ind cos)
            ; return (extendTCvSubst subst_l ktv s',
                      extendTCvSubst subst_r ktv t') }
 
-lintCoercion (EraseEqCo r t1 t2 co)
-  = do { (_, _, t1', t2', _) <- lintCoercion co
-       ; return (t1', t2', t1, t2, r) }
+lintCoercion co@(EraseEqCo r1 t1 t2 co1)
+  = do { (_, _, k1, k2, r2) <- lintCoercion co1
+       -- types are equivalent, ignoring casts and coercions.
+       ; lintL (t1 `eqTypeK` t2)
+               (hang (text "EraseEq coercion type mis-match after erasure:" <+> ppr co)
+                   2 (vcat [ppr t1, ppr t2]))
+       -- the kind of t1 == L of co1
+       ; tk1 <- lintType t1
+       ; ensureEqTys k1 tk1
+               (hang (text "EraseEq coercion kind mis-match:" <+> ppr co)
+                   2 (vcat [ppr t1, ppr k1, ppr tk1]))
+       -- the kind of t2 == R of co1
+       ; tk2 <- lintType t2
+       ; ensureEqTys k2 tk2
+               (hang (text "EraseEq coercion kind mis-match:" <+> ppr co)
+                   2 (vcat [ppr t2, ppr k2, ppr tk2]))
+       -- kind coercion has Nonimal role
+       ; lintRole co1 Nominal r2
+       ; return (k1, k2, t1, t2, r1) }
 
 lintCoercion (KindCo co)
   = do { (k1, k2, _, _, _) <- lintCoercion co
