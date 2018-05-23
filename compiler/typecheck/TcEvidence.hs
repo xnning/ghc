@@ -35,7 +35,7 @@ module TcEvidence (
   mkTcAxInstCo, mkTcUnbranchedAxInstCo, mkTcForAllCo, mkTcForAllCos,
   mkTcSymCo, mkTcTransCo, mkTcNthCo, mkTcLRCo, mkTcSubCo, maybeTcSubCo,
   tcDowngradeRole,
-  mkTcAxiomRuleCo, mkTcCoherenceLeftCo, mkTcCoherenceRightCo, mkTcPhantomCo,
+  mkTcAxiomRuleCo, mkTcEraseCastLeftCo, mkTcEraseCastRightCo, mkTcPhantomCo,
   mkTcKindCo,
   tcCoercionKind, coVarsOfTcCo,
   mkTcCoVarCo,
@@ -115,8 +115,8 @@ mkTcSubCo              :: TcCoercionN -> TcCoercionR
 maybeTcSubCo           :: EqRel -> TcCoercion -> TcCoercion
 tcDowngradeRole        :: Role -> Role -> TcCoercion -> TcCoercion
 mkTcAxiomRuleCo        :: CoAxiomRule -> [TcCoercion] -> TcCoercionR
-mkTcCoherenceLeftCo    :: TcCoercion -> TcCoercionN -> TcCoercion
-mkTcCoherenceRightCo   :: TcCoercion -> TcCoercionN -> TcCoercion
+mkTcEraseCastRightCo   :: Role -> TcType -> TcCoercionN -> TcCoercion
+mkTcEraseCastLeftCo    :: Role -> TcType -> TcCoercionN -> TcCoercion
 mkTcPhantomCo          :: TcCoercionN -> TcType -> TcType -> TcCoercionP
 mkTcKindCo             :: TcCoercion -> TcCoercionN
 mkTcCoVarCo            :: CoVar -> TcCoercion
@@ -148,8 +148,8 @@ mkTcSubCo              = mkSubCo
 maybeTcSubCo           = maybeSubCo
 tcDowngradeRole        = downgradeRole
 mkTcAxiomRuleCo        = mkAxiomRuleCo
-mkTcCoherenceLeftCo    = mkCoherenceLeftCo
-mkTcCoherenceRightCo   = mkCoherenceRightCo
+mkTcEraseCastRightCo   = mkEraseCastRightCo
+mkTcEraseCastLeftCo    = mkEraseCastLeftCo
 mkTcPhantomCo          = mkPhantomCo
 mkTcKindCo             = mkKindCo
 mkTcCoVarCo            = mkCoVarCo

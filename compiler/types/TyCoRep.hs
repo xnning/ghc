@@ -933,6 +933,8 @@ data Coercion
     -- :: e -> N -> e
     -- See Note [InstCo roles]
 
+  -- A coercion relates two types that are equivalent, ignoring casts and coercions.
+  -- Their kinds are related through KindCoercion.
   | EraseEqCo Role Type Type KindCoercion
      -- "e" -> _ -> _ -> N -> e
 
