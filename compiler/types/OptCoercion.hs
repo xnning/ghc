@@ -74,7 +74,7 @@ We thus want some coercion proving this:
   (t1[tv |-> s1]) ~ (t2[tv |-> s2 |> sym h])
 
 If we substitute the *type* tv for the *coercion*
-(g2 `mkCoherenceRightCo` sym h) in g, we'll get this result exactly.
+(g2 ; t2 ~ t2 |> sym h) in g, we'll get this result exactly.
 This is bizarre,
 though, because we're substituting a type variable with a coercion. However,
 this operation already exists: it's called *lifting*, and defined in Coercion.
@@ -325,8 +325,8 @@ opt_co4 env sym rep r (LRCo lr co)
 opt_co4 env sym rep r (InstCo co1 arg)
     -- forall over type...
   | Just (tv, kind_co, co_body) <- splitForAllCo_maybe co1
-  = opt_co4_wrap (extendLiftingContext env tv
-                    (arg' `mkCoherenceRightCo` mkSymCo kind_co))
+  = opt_co4_wrap (extendLiftingContext env tv 
+                    (arg' `mkTransCo` mkEraseCastRightCo Nominal t2 (mkSymCo kind_co)))
                  sym rep r co_body
 
     -- See if it is a forall after optimization
@@ -334,8 +334,8 @@ opt_co4 env sym rep r (InstCo co1 arg)
 
     -- forall over type...
   | Just (tv', kind_co', co_body') <- splitForAllCo_maybe co1'
-  = opt_co4_wrap (extendLiftingContext (zapLiftingContext env) tv'
-                    (arg' `mkCoherenceRightCo` mkSymCo kind_co'))
+  = opt_co4_wrap (extendLiftingContext (zapLiftingContext env) tv' 
+                    (arg' `mkTransCo` mkEraseCastRightCo Nominal t2 (mkSymCo kind_co')))
             False False r' co_body'
 
   | otherwise = InstCo co1' arg'
@@ -343,9 +343,19 @@ opt_co4 env sym rep r (InstCo co1 arg)
     co1' = opt_co4_wrap env sym rep r co1
     r'   = chooseRole rep r
     arg' = opt_co4_wrap env sym False Nominal arg
+    Pair _ t2 = coercionKind arg'
 
--- NINGNING: TODO
-opt_co4 env sym rep r co@(EraseEqCo _ _ _ _) = co
+opt_co4 env sym rep r (EraseEqCo _r t1 t2 h)
+  | sym
+  = ASSERT(r == _r)
+    EraseEqCo (chooseRole rep r) t2' t1' h'
+  | otherwise
+  = ASSERT(r == _r)
+    EraseEqCo (chooseRole rep r) t1' t2' h'
+  where
+    h' = opt_co4 env sym False Nominal h
+    t1' = substTy (lcSubstLeft env) t1
+    t2' = substTy (lcSubstRight env) t2
 
 opt_co4 env sym _rep r (KindCo co)
   = ASSERT( r == Nominal )
@@ -489,6 +499,12 @@ opt_trans2 _ co1 co2
 ------
 -- Optimize coercions with a top-level use of transitivity.
 opt_trans_rule :: InScopeSet -> NormalNonIdCo -> NormalNonIdCo -> Maybe NormalCo
+
+opt_trans_rule is in_co1@(EraseEqCo r1 t11 t12 co1) in_co2@(EraseEqCo r2 t21 t22 co2)
+  | t12 `eqType` t21
+  = ASSERT( r1 == r2 )
+    fireTransRule "EraseEqCo" in_co1 in_co2 $
+    mkEraseEqCo r1 t11 t22 (opt_trans is co1 co2)
 
 -- Push transitivity through matching destructors
 opt_trans_rule is in_co1@(NthCo r1 d1 co1) in_co2@(NthCo r2 d2 co2)
@@ -642,8 +658,6 @@ opt_trans_rule is co1 co2
     co2_is_axiom_maybe = isAxiom_maybe co2
     role = coercionRole co1 -- should be the same as coercionRole co2!
 
--- NINGNING: TODO?
-
 opt_trans_rule _ co1 co2        -- Identity rule
   | (Pair ty1 _, r) <- coercionKindRole co1
   , Pair _ ty2 <- coercionKind co2
@@ -675,19 +689,21 @@ opt_trans_rule_app is orig_co1 orig_co2 co1a co1bs co2a co2bs
   = ASSERT( co1bs `equalLength` co2bs )
     fireTransRule ("EtaApps:" ++ show (length co1bs)) orig_co1 orig_co2 $
     let Pair _ rt1a = coercionKind co1a
-        Pair lt2a _ = coercionKind co2a
+        (Pair lt2a _, rt2a) = coercionKindRole co2a
 
         Pair _ rt1bs = traverse coercionKind co1bs
         Pair lt2bs _ = traverse coercionKind co2bs
+        rt2bs = map coercionRole co2bs
 
         kcoa = mkKindCo $ buildCoercion lt2a rt1a
         kcobs = map mkKindCo $ zipWith buildCoercion lt2bs rt1bs
 
-        co2a' = mkCoherenceLeftCo co2a kcoa
-        co2bs' = zipWith mkCoherenceLeftCo co2bs kcobs
+        co2a'   = mkEraseCastLeftCo rt2a lt2a kcoa `mkTransCo` co2a
+        co2bs'  = zipWith3 mkEraseCastLeftCo rt2bs lt2bs kcobs
+        co2bs'' = zipWith mkTransCo co2bs' co2bs
     in
     mkAppCos (opt_trans is co1a co2a')
-             (zipWith (opt_trans is) co1bs co2bs')
+             (zipWith (opt_trans is) co1bs co2bs'')
 
 fireTransRule :: String -> Coercion -> Coercion -> Coercion -> Maybe Coercion
 fireTransRule _rule _co1 _co2 res
@@ -799,8 +815,7 @@ This can be done with mkKindCo and buildCoercion. The latter assumes two
 types are identical modulo casts and builds a coercion between them.
 
 Then, we build (co1a ; co2a |> sym ak) and (co1b ; co2b |> sym bk) as the
-output coercions. These are well-kinded. (We cast the right-hand coercion
-because mkCoherenceLeftCo is smaller than mkCoherenceRightCo.)
+output coercions. These are well-kinded.
 
 Also, note that all of this is done after accumulated any nested AppCo
 parameters. This step is to avoid quadratic behavior in calling coercionKind.
@@ -907,7 +922,7 @@ Suppose we have
 
 but g is *not* a ForAllCo. We want to eta-expand it. So, we do this:
 
-  g' = all a1:(ForAllKindCo g).(InstCo g (a1 `mkCoherenceRightCo` ForAllKindCo g))
+  g' = all a1:(ForAllKindCo g).(InstCo g (a1 ~ a2 |> ForAllKindCo g))
 
 Call the kind coercion h1 and the body coercion h2. We can see that
 
@@ -934,7 +949,7 @@ etaForAllCo_maybe co
   , isForAllTy ty2
   , let kind_co = mkNthCo Nominal 0 co
   = Just ( tv1, kind_co
-         , mkInstCo co (mkNomReflCo (TyVarTy tv1) `mkCoherenceRightCo` kind_co) )
+         , mkInstCo co (mkEraseCastRightCo Nominal (TyVarTy tv1) kind_co))
 
   | otherwise
   = Nothing
