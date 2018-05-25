@@ -993,12 +993,16 @@ mkEraseEqCo = EraseEqCo
 -- | Given @ty :: k1@, @co :: k1 ~ k2@,
 -- produces @co' :: ty ~r (ty |> co)@
 mkEraseCastRightCo :: Role -> Type -> CoercionN -> Coercion
-mkEraseCastRightCo r ty co = mkEraseEqCo r ty (ty `mkCastTy` co) co
+mkEraseCastRightCo r ty co
+  | isReflCo co = mkReflCo r ty
+  | otherwise   = mkEraseEqCo r ty (ty `mkCastTy` co) co
 
 -- | Given @ty :: k1@, @co :: k1 ~ k2@,
 -- produces @co' :: (ty |> co) ~r ty@
 mkEraseCastLeftCo :: Role -> Type -> CoercionN -> Coercion
-mkEraseCastLeftCo r ty co = mkEraseEqCo r (ty `mkCastTy` co) ty (mkSymCo co)
+mkEraseCastLeftCo r ty co
+  | isReflCo co = mkReflCo r ty
+  | otherwise   = mkEraseEqCo r (ty `mkCastTy` co) ty (mkSymCo co)
 
 -- | Given @co :: (a :: k) ~ (b :: k')@ produce @co' :: k ~ k'@.
 mkKindCo :: Coercion -> Coercion
