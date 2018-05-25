@@ -1647,8 +1647,8 @@ ty_co_subst lc role ty
                              mkForAllCo v' h $! ty_co_subst lc' r ty
     go r ty@(LitTy {})     = ASSERT( r == Nominal )
                              mkReflCo r ty
-    go r (CastTy ty co)    = castCoercionKind  (go r ty) (substLeftCo lc co)
-                                                         (substRightCo lc co)
+    go r (CastTy ty co)    = castCoercionKind (go r ty) (substLeftCo lc co)
+                                                        (substRightCo lc co)
     go r (CoercionTy co)   = mkProofIrrelCo r kco (substLeftCo lc co)
                                                   (substRightCo lc co)
       where kco = go Nominal (coercionType co)
@@ -1992,7 +1992,7 @@ buildCoercion orig_ty1 orig_ty2 = go orig_ty1 orig_ty2
     go ty1 (CastTy ty2 co)
       = let co' = go ty1 ty2
             r = coercionRole co'
-        in  co' `mkTransCo` mkEraseCastLeftCo r ty2 co
+        in  co' `mkTransCo` mkEraseCastRightCo r ty2 co
 
     go ty1@(TyVarTy tv1) _tyvarty
       = ASSERT( case _tyvarty of
