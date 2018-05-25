@@ -325,7 +325,7 @@ opt_co4 env sym rep r (LRCo lr co)
 opt_co4 env sym rep r (InstCo co1 arg)
     -- forall over type...
   | Just (tv, kind_co, co_body) <- splitForAllCo_maybe co1
-  = opt_co4_wrap (extendLiftingContext env tv 
+  = opt_co4_wrap (extendLiftingContext env tv
                     (arg' `mkTransCo` mkEraseCastRightCo Nominal t2 (mkSymCo kind_co)))
                  sym rep r co_body
 
@@ -334,7 +334,7 @@ opt_co4 env sym rep r (InstCo co1 arg)
 
     -- forall over type...
   | Just (tv', kind_co', co_body') <- splitForAllCo_maybe co1'
-  = opt_co4_wrap (extendLiftingContext (zapLiftingContext env) tv' 
+  = opt_co4_wrap (extendLiftingContext (zapLiftingContext env) tv'
                     (arg' `mkTransCo` mkEraseCastRightCo Nominal t2 (mkSymCo kind_co')))
             False False r' co_body'
 
