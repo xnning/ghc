@@ -38,7 +38,7 @@ module Coercion (
         mkAxiomInstCo, mkProofIrrelCo,
         downgradeRole, maybeSubCo, mkAxiomRuleCo,
         mkEraseEqCo, mkEraseCastRightCo, mkEraseCastLeftCo,
-        mkKindCo, castCoercionKind,
+        mkKindCo,
 
         mkHeteroCoercionType,
 
@@ -1298,19 +1298,6 @@ instCoercions g ws
       = do { g' <- instCoercion g_tys g w
            ; return (piResultTy <$> g_tys <*> w_tys, g') }
 
--- | Creates a new coercion with both of its types casted by different casts
--- @castCoercionKind g h1 h2@, where @g :: t1 ~r t2@,
--- produces @co' :: (t1 |> h1) ~r (t2 |> h2)@
--- The second and third coercions must be nominal.
--- @coercionKindRole@ is inefficient: call it only when @t1@ and @t2@ are
--- unknown from the caller
-castCoercionKind ::  Coercion -> CoercionN -> CoercionN -> Coercion
-castCoercionKind g h1 h2 =
-  let (Pair t1 t2, r)   = coercionKindRole g
-      co1 = mkEraseCastLeftCo r t1 h1  -- :: t1 |> h1 ~r t1
-      co2 = mkEraseCastRightCo r t2 h2 -- :: t2 ~r t2 |> h2
-  in  co1 `mkTransCo` g `mkTransCo` co2
-
 -- See note [Newtype coercions] in TyCon
 
 mkPiCos :: Role -> [Var] -> Coercion -> Coercion
@@ -1647,8 +1634,11 @@ ty_co_subst lc role ty
                              mkForAllCo v' h $! ty_co_subst lc' r ty
     go r ty@(LitTy {})     = ASSERT( r == Nominal )
                              mkReflCo r ty
-    go r (CastTy ty co)    = castCoercionKind (go r ty) (substLeftCo lc co)
-                                                        (substRightCo lc co)
+    go r (CastTy ty co)    = let co' = go r ty
+                                 (Pair t1 t2, _) = coercionKindRole co'
+                             in mkEraseCastLeftCo r t1 (substLeftCo lc co)
+                                `mkTransCo` co'
+                                `mkTransCo` mkEraseCastRightCo r t2 (substRightCo lc co)
     go r (CoercionTy co)   = mkProofIrrelCo r kco (substLeftCo lc co)
                                                   (substRightCo lc co)
       where kco = go Nominal (coercionType co)

@@ -1341,15 +1341,15 @@ normaliseType env role ty
   = initNormM env role (tyCoVarsOfType ty) $ normalise_type ty
 
 normalise_type :: Type                     -- old type
-               -> NormM (Coercion, Type)   -- (coercion,new type), where
-                                         -- co :: old-type ~ new_type
+               -> NormM (Coercion, Type)   -- (coercion, new type), where
+                                           -- co :: old-type ~ new_type
 -- Normalise the input type, by eliminating *all* type-function redexes
 -- but *not* newtypes (which are visible to the programmer)
 -- Returns with Refl if nothing happens
 -- Does nothing to newtypes
 -- The returned coercion *must* be *homogeneous*
 -- See Note [Normalising types]
--- Try to not to disturb type synonyms if possible
+-- Try not to disturb type synonyms if possible
 
 normalise_type ty
   = go ty
@@ -1376,7 +1376,10 @@ normalise_type ty
       = do { (nco, nty) <- go ty
            ; lc <- getLC
            ; let co' = substRightCo lc co
-           ; return (castCoercionKind nco co co', mkCastTy nty co') }
+           ; return (mkEraseCastLeftCo Nominal ty co
+                     `mkTransCo` nco
+                     `mkTransCo` mkEraseCastRightCo Nominal nty co'
+                    , mkCastTy nty co') }
     go (CoercionTy co)
       = do { lc <- getLC
            ; r <- getRole

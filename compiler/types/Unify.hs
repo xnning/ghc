@@ -1405,8 +1405,11 @@ ty_co_match menv subst (TyVarTy tv1) co lkco rkco
   | tv1' `elemVarSet` me_tmpls menv           -- tv1' is a template var
   = if any (inRnEnvR rn_env) (tyCoVarsOfCoList co)
     then Nothing      -- occurs check failed
-    else Just $ extendVarEnv subst tv1' $
-                castCoercionKind co (mkSymCo lkco) (mkSymCo rkco)
+    else let (Pair t1 t2, r) = coercionKindRole co
+         in Just $ extendVarEnv subst tv1' $
+                   mkEraseCastLeftCo r t1 (mkSymCo lkco)
+                   `mkTransCo` co
+                   `mkTransCo` mkEraseCastRightCo r t2 (mkSymCo rkco)
 
   -- TODO: EraseEqCo
   | otherwise
@@ -1454,6 +1457,12 @@ ty_co_match menv subst (ForAllTy (TvBndr tv1 _) ty1)
 
 ty_co_match _ subst (CoercionTy {}) _ _ _
   = Just subst -- don't inspect coercions
+
+ty_co_match menv subst ty (Refl r (CastTy t co)) lkco rkco
+  -- @Refl r (CastTy ty co)@ cannot be dealt with in @pushRefl@
+  = let kco' = mkSymCo co
+    in ty_co_match menv subst ty (Refl r t) (lkco `mkTransCo` kco')
+                                            (rkco `mkTransCo` kco')
 
 ty_co_match menv subst ty co lkco rkco
   | Just co' <- pushRefl co = ty_co_match menv subst ty co' lkco rkco
@@ -1511,5 +1520,4 @@ pushRefl (Refl r (TyConApp tc tys))
 pushRefl (Refl r (ForAllTy (TvBndr tv _) ty))
   = Just (mkHomoForAllCos_NoRefl [tv] (Refl r ty))
     -- NB: NoRefl variant. Otherwise, we get a loop!
-pushRefl (Refl r (CastTy ty co))  = Just (castCoercionKind (Refl r ty) co co)
 pushRefl _                        = Nothing
