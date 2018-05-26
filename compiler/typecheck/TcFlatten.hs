@@ -1409,7 +1409,11 @@ flatten_one (CastTy ty g)
   = do { (xi, co) <- flatten_one ty
        ; (g', _)   <- flatten_co g
 
-       ; return (mkCastTy xi g', castCoercionKind co g' g) }
+       ; role <- getRole
+       ; let co' = mkEraseCastLeftCo role xi g'
+                   `mkTransCo` co
+                   `mkTransCo` mkEraseCastRightCo role ty g
+       ; return (mkCastTy xi g', co') }
 
 flatten_one (CoercionTy co) = first mkCoercionTy <$> flatten_co co
 
