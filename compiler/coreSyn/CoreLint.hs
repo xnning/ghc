@@ -1905,12 +1905,12 @@ lintCoercion co@(EraseEqCo r1 t1 t2 co1)
        -- the kind of t1 == L of co1
        ; tk1 <- lintType t1
        ; ensureEqTys k1 tk1
-               (hang (text "EraseEq coercion kind mis-match:" <+> ppr co)
+               (hang (text "EraseEq coercion left kind mis-match:" <+> ppr co)
                    2 (vcat [ppr t1, ppr k1, ppr tk1]))
        -- the kind of t2 == R of co1
        ; tk2 <- lintType t2
        ; ensureEqTys k2 tk2
-               (hang (text "EraseEq coercion kind mis-match:" <+> ppr co)
+               (hang (text "EraseEq coercion right kind mis-match:" <+> ppr co)
                    2 (vcat [ppr t2, ppr k2, ppr tk2]))
        -- kind coercion has Nonimal role
        ; lintRole co1 Nominal r2

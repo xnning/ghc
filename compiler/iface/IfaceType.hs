@@ -1222,7 +1222,7 @@ ppr_co ctxt_prec (IfaceSubCo co)
   = ppr_special_co ctxt_prec (text "Sub") [co]
 ppr_co ctxt_prec (IfaceEraseEqCo role ty1 ty2 co)
   = ppr_special_co ctxt_prec
-      (text "EraseEq" <> (parens $ ppr role <> comma <+> ppr ty1 <> comma <+> ppr ty2 <> comma))
+      (text "EraseEq" <> (parens $ ppr role <> comma <+> ppr ty1 <> comma <+> ppr ty2))
       [co]
 ppr_co ctxt_prec (IfaceKindCo co)
   = ppr_special_co ctxt_prec (text "Kind") [co]
