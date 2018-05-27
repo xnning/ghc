@@ -1630,12 +1630,10 @@ flatten_exact_fam_app_fully tc tys
                                   -- flatten it
                                   -- fsk_co :: fsk_xi ~ fsk
                            ; let xi  = fsk_xi `mkCastTy` kind_co
-                                 co' = (mkTcEraseCastLeftCo role fsk_xi kind_co)
-                                        `mkTransCo`
-                                        fsk_co
-                                        `mkTransCo`
-                                        maybeSubCo eq_rel (mkSymCo co)
-                                        `mkTransCo` ret_co
+                                 co' = mkTcEraseCastLeftCo role fsk_xi kind_co
+                                       `mkTransCo` fsk_co
+                                       `mkTransCo` maybeSubCo eq_rel (mkSymCo co)
+                                       `mkTransCo` ret_co
                            ; return (xi, co')
                            }
                                             -- :: fsk_xi ~ F xis
@@ -1669,8 +1667,7 @@ flatten_exact_fam_app_fully tc tys
                                  --     the xis are flattened
                                  ; let xi = mkTyVarTy fsk `mkCastTy` kind_co
                                        co' = mkTcEraseCastLeftCo role (mkTyVarTy fsk) kind_co
-                                             `mkTransCo`
-                                             maybeSubCo eq_rel (mkSymCo co)
+                                             `mkTransCo` maybeSubCo eq_rel (mkSymCo co)
                                              `mkTransCo` ret_co
                                  ; return (xi, co')
                                  }
@@ -1742,9 +1739,9 @@ flatten_exact_fam_app_fully tc tys
                Just (norm_co, norm_ty)
                  -> do { (xi, final_co) <- bumpDepth $ flatten_one norm_ty
                        ; eq_rel <- getEqRel
-                       ; let role = eqRelRole eq_rel
-                             co  = maybeSubCo eq_rel norm_co
+                       ; let co  = maybeSubCo eq_rel norm_co
                                     `mkTransCo` mkSymCo final_co
+                             role = eqRelRole eq_rel
                              xi' = xi `mkCastTy` kind_co
                              co' = update_co $ mkTcEraseCastLeftCo role xi kind_co
                                                `mkTransCo` mkSymCo co
