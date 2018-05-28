@@ -1738,7 +1738,9 @@ canCFunEqCan ev fn tys fsk
                                -- co         :: F tys ~ (new_fsk |> kind_co)
                             co = mkTcSymCo lhs_co `mkTcTransCo`
                                  new_co `mkTcTransCo`
-                                 mkTcEraseCastRightCo Nominal (mkTyVarTy new_fsk) kind_co
+                                 mkTcEraseCastRightCo Nominal
+                                                      (mkTyVarTy new_fsk)
+                                                      kind_co
 
                       ; traceTcS "Discharging fmv/fsk due to hetero flattening" (ppr ev)
                       ; dischargeFunEq ev fsk co xi

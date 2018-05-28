@@ -1283,7 +1283,8 @@ flatten_args_slow orig_binders orig_inner_ki orig_fvs orig_roles orig_tys
            ; let kind_co = mkTcSymCo $
                    liftCoSubst Nominal lc (tyBinderType binder)
                  !casted_xi = xi `mkCastTy` kind_co
-                 casted_co = mkTcEraseCastLeftCo role xi kind_co `mkTcTransCo` co
+                 casted_co = mkTcEraseCastLeftCo role xi kind_co
+                             `mkTcTransCo` co
 
              -- now, extend the lifting context with the new binding
                  !new_lc | Just tv <- tyBinderVar_maybe binder
@@ -1632,7 +1633,8 @@ flatten_exact_fam_app_fully tc tys
                            ; let xi  = fsk_xi `mkCastTy` kind_co
                                  co' = mkTcEraseCastLeftCo role fsk_xi kind_co
                                        `mkTransCo` fsk_co
-                                       `mkTransCo` maybeSubCo eq_rel (mkSymCo co)
+                                       `mkTransCo`
+                                       maybeSubCo eq_rel (mkSymCo co)
                                        `mkTransCo` ret_co
                            ; return (xi, co')
                            }
@@ -1666,8 +1668,11 @@ flatten_exact_fam_app_fully tc tys
                                  -- NB: fsk's kind is already flattened because
                                  --     the xis are flattened
                                  ; let xi = mkTyVarTy fsk `mkCastTy` kind_co
-                                       co' = mkTcEraseCastLeftCo role (mkTyVarTy fsk) kind_co
-                                             `mkTransCo` maybeSubCo eq_rel (mkSymCo co)
+                                       co' = mkTcEraseCastLeftCo role
+                                                                 (mkTyVarTy fsk)
+                                                                 kind_co
+                                             `mkTransCo`
+                                             maybeSubCo eq_rel (mkSymCo co)
                                              `mkTransCo` ret_co
                                  ; return (xi, co')
                                  }
@@ -1714,8 +1719,9 @@ flatten_exact_fam_app_fully tc tys
                          extendFlatCache tc tys ( co, xi, flavour )
                        ; let role = eqRelRole eq_rel
                              xi' = xi `mkCastTy` kind_co
-                             co' = update_co $ mkTcEraseCastLeftCo role xi kind_co
-                                               `mkTransCo` mkSymCo co
+                             co' = update_co $
+                                   mkTcEraseCastLeftCo role xi kind_co
+                                   `mkTransCo` mkSymCo co
                        ; return $ Just (xi', co') }
                Nothing -> pure Nothing }
 
@@ -1743,8 +1749,9 @@ flatten_exact_fam_app_fully tc tys
                                     `mkTransCo` mkSymCo final_co
                              role = eqRelRole eq_rel
                              xi' = xi `mkCastTy` kind_co
-                             co' = update_co $ mkTcEraseCastLeftCo role xi kind_co
-                                               `mkTransCo` mkSymCo co
+                             co' = update_co $
+                                   mkTcEraseCastLeftCo role xi kind_co
+                                   `mkTransCo` mkSymCo co
                        ; return $ Just (xi', co') }
                Nothing -> pure Nothing }
 
