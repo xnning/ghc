@@ -566,7 +566,9 @@ mapCoercion mapper@(TyCoMapper { tcm_smart = smart, tcm_covar = covar
     go (NthCo r i co)      = mknthco r i <$> go co
     go (LRCo lr co)        = mklrco lr <$> go co
     go (InstCo co arg)     = mkinstco <$> go co <*> go arg
-    go (EraseEqCo r t1 t2 c) = mkeraseeqco r <$> mapType mapper env t1 <*> mapType mapper env t2 <*> go c
+    go (EraseEqCo r t1 t2 c)
+      = mkeraseeqco r <$> mapType mapper env t1
+                      <*> mapType mapper env t2 <*> go c
     go (KindCo co)         = mkkindco <$> go co
     go (SubCo co)          = mksubco <$> go co
 
@@ -2313,7 +2315,8 @@ nonDetCmpTypeX keq env orig_t1 orig_t2 =
 nonDetCmpTypesX :: EqKindFlag -> RnEnv2 -> [Type] -> [Type] -> Ordering
 nonDetCmpTypesX _ _   []        []        = EQ
 nonDetCmpTypesX keq env (t1:tys1) (t2:tys2) = nonDetCmpTypeX keq env t1 t2
-                                              `thenCmp` nonDetCmpTypesX keq env tys1 tys2
+                                              `thenCmp`
+                                              nonDetCmpTypesX keq env tys1 tys2
 nonDetCmpTypesX _ _   []        _         = LT
 nonDetCmpTypesX _ _   _         []        = GT
 

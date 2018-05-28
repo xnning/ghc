@@ -326,7 +326,8 @@ opt_co4 env sym rep r (InstCo co1 arg)
     -- forall over type...
   | Just (tv, kind_co, co_body) <- splitForAllCo_maybe co1
   = opt_co4_wrap (extendLiftingContext env tv
-                    (arg' `mkTransCo` mkEraseCastRightCo Nominal t2 (mkSymCo kind_co)))
+                    (arg' `mkTransCo`
+                     mkEraseCastRightCo Nominal t2 (mkSymCo kind_co)))
                  sym rep r co_body
 
     -- See if it is a forall after optimization
@@ -335,7 +336,8 @@ opt_co4 env sym rep r (InstCo co1 arg)
     -- forall over type...
   | Just (tv', kind_co', co_body') <- splitForAllCo_maybe co1'
   = opt_co4_wrap (extendLiftingContext (zapLiftingContext env) tv'
-                    (arg' `mkTransCo` mkEraseCastRightCo Nominal t2 (mkSymCo kind_co')))
+                    (arg' `mkTransCo`
+                     mkEraseCastRightCo Nominal t2 (mkSymCo kind_co')))
             False False r' co_body'
 
   | otherwise = InstCo co1' arg'
@@ -500,7 +502,8 @@ opt_trans2 _ co1 co2
 -- Optimize coercions with a top-level use of transitivity.
 opt_trans_rule :: InScopeSet -> NormalNonIdCo -> NormalNonIdCo -> Maybe NormalCo
 
-opt_trans_rule is in_co1@(EraseEqCo r1 t11 t12 co1) in_co2@(EraseEqCo r2 t21 t22 co2)
+opt_trans_rule is in_co1@(EraseEqCo r1 t11 t12 co1)
+                  in_co2@(EraseEqCo r2 t21 t22 co2)
   | t12 `eqType` t21
   = ASSERT( r1 == r2 )
     fireTransRule "EraseEqCo" in_co1 in_co2 $

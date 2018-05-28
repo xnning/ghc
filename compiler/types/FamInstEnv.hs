@@ -1641,7 +1641,9 @@ allTyVarsInTy = go
     go_co (NthCo _ _ co)        = go_co co
     go_co (LRCo _ co)           = go_co co
     go_co (InstCo co arg)       = go_co co `unionVarSet` go_co arg
-    go_co (EraseEqCo _ t1 t2 co) = go t1 `unionVarSet` go t2 `unionVarSet` go_co co
+    go_co (EraseEqCo _ t1 t2 c) = go t1 `unionVarSet`
+                                  go t2 `unionVarSet`
+                                  go_co c
     go_co (KindCo co)           = go_co co
     go_co (SubCo co)            = go_co co
     go_co (AxiomRuleCo _ cs)    = go_cos cs
