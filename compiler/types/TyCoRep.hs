@@ -935,6 +935,7 @@ data Coercion
 
   -- A coercion relates two types that are equivalent, ignoring casts and coercions.
   -- Their kinds are related through KindCoercion.
+  -- See Note [Coercion after erasure]
   | EraseEqCo Role Type Type KindCoercion
      -- "e" -> _ -> _ -> N -> e
 
@@ -1076,16 +1077,23 @@ add Names to, e.g., VarSets, and there generally is just an impedance mismatch
 in a bunch of places. So we use tv1. When we need tv2, we can use
 setTyVarKind.
 
-Note [Coherence]
-~~~~~~~~~~~~~~~~
-The Coherence typing rule is thus:
+Note [Coercion after erasure]
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+The typing rule for coercion after erasure is:
+
+  t1 : k1   t2 : k2   |t1| = |t2|   g : k1 ~ k2
+  ------------------------------------
+  EraseEqCo r t1 t2 g : t1 ~r t2
+
+where |t| will erase all casts and coercions. This rule is isomorphic to the
+Coherence rule:
 
   g1 : s ~ t    s : k1    g2 : k1 ~ k2
   ------------------------------------
   CoherenceCo g1 g2 : (s |> g2) ~ t
 
-While this looks (and is) unsymmetric, a combination of other coercion
-combinators can make the symmetric version.
+But it is useful in many places. For example, now it is easier to express
+the coercion t |> g ~ t.
 
 For role information, see Note [Roles and kind coercions].
 
