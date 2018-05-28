@@ -1356,7 +1356,8 @@ tcIfaceCo = go
     go (IfaceNthCo d c)          = do { c' <- go c
                                       ; return $ mkNthCo (nthCoRole d c') d c' }
     go (IfaceLRCo lr c)          = LRCo lr  <$> go c
-    go (IfaceEraseEqCo r t1 t2 c) = EraseEqCo r <$> tcIfaceType t1 <*> tcIfaceType t2
+    go (IfaceEraseEqCo r t1 t2 c) = EraseEqCo r <$> tcIfaceType t1
+                                                <*> tcIfaceType t2
                                                 <*> go c
     go (IfaceKindCo c)           = KindCo   <$> go c
     go (IfaceSubCo c)            = SubCo    <$> go c

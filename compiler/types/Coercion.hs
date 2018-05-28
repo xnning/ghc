@@ -296,7 +296,8 @@ decomposePiCos orig_kind orig_args orig_co = go [] orig_subst orig_kind orig_arg
     go acc_arg_cos subst  ki  (ty:tys) co
       | Just (kv, inner_ki) <- splitForAllTy_maybe ki
         -- know       co :: (forall a:s1.t1) ~ (forall b:s2.t2)
-        --      function :: forall a:s1.t1   (the function is not passed to decomposePiCos)
+        --      function :: forall a:s1.t1
+        --                  (the function is not passed to decomposePiCos)
         --            ty :: s2
         -- need   arg_co :: s2 ~ s1
         --        res_co :: t1[ty |> arg_co / a] ~ t2[ty / b]
@@ -1130,7 +1131,8 @@ setNominalRole_maybe r co
                      ProofIrrelProv _ -> True   -- it's always safe
                      PluginProv _     -> False  -- who knows? This choice is conservative.
       = Just $ UnivCo prov Nominal co1 co2
-    setNominalRole_maybe_helper (EraseEqCo _ t1 t2 h) = pure (EraseEqCo Nominal t1 t2 h)
+    setNominalRole_maybe_helper (EraseEqCo _ t1 t2 h)
+      = pure (EraseEqCo Nominal t1 t2 h)
     setNominalRole_maybe_helper _ = Nothing
 
 -- | Make a phantom coercion between two types. The coercion passed
@@ -1595,7 +1597,10 @@ extendLiftingContextEx lc@(LC subst env) ((v,ty):rest)
 -- works with existentially bound variables, which are considered to have
 -- nominal roles.
   = let lc' = LC (subst `extendTCvInScopeSet` tyCoVarsOfType ty)
-                 (extendVarEnv env v (mkEraseCastRightCo Nominal ty (ty_co_subst lc Nominal (tyVarKind v))))
+                 (extendVarEnv env v $
+                  mkEraseCastRightCo Nominal
+                                     ty
+                                     (ty_co_subst lc Nominal (tyVarKind v)))
     in extendLiftingContextEx lc' rest
 
 -- | Erase the environments in a lifting context
@@ -1638,7 +1643,8 @@ ty_co_subst lc role ty
                                  (Pair t1 t2, _) = coercionKindRole co'
                              in mkEraseCastLeftCo r t1 (substLeftCo lc co)
                                 `mkTransCo` co'
-                                `mkTransCo` mkEraseCastRightCo r t2 (substRightCo lc co)
+                                `mkTransCo`
+                                mkEraseCastRightCo r t2 (substRightCo lc co)
     go r (CoercionTy co)   = mkProofIrrelCo r kco (substLeftCo lc co)
                                                   (substRightCo lc co)
       where kco = go Nominal (coercionType co)
@@ -1778,7 +1784,9 @@ seqCo (TransCo co1 co2)         = seqCo co1 `seq` seqCo co2
 seqCo (NthCo r n co)            = r `seq` n `seq` seqCo co
 seqCo (LRCo lr co)              = lr `seq` seqCo co
 seqCo (InstCo co arg)           = seqCo co `seq` seqCo arg
-seqCo (EraseEqCo r t1 t2 co)    = r `seq` seqType t1 `seq` seqType t2 `seq` seqCo co
+seqCo (EraseEqCo r t1 t2 co)    = r `seq` seqType t1
+                                    `seq` seqType t2
+                                    `seq` seqCo co
 seqCo (KindCo co)               = seqCo co
 seqCo (SubCo co)                = seqCo co
 seqCo (AxiomRuleCo _ cs)        = seqCos cs

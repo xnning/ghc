@@ -1878,7 +1878,8 @@ lintCoercion co@(EraseEqCo r1 t1 t2 co1)
   = do { (_, _, k1, k2, r2) <- lintCoercion co1
        -- types are equivalent, ignoring casts and coercions.
        ; lintL (t1 `eqTypeK` t2)
-               (hang (text "EraseEq coercion type mis-match after erasure:" <+> ppr co)
+               (hang (text "EraseEq coercion type mis-match after erasure:"
+                      <+> ppr co)
                    2 (vcat [ppr t1, ppr t2]))
        -- the kind of t1 == L of co1
        ; tk1 <- lintType t1

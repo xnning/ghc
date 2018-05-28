@@ -382,7 +382,8 @@ orphNamesOfCo (TransCo co1 co2)     = orphNamesOfCo co1 `unionNameSet` orphNames
 orphNamesOfCo (NthCo _ _ co)        = orphNamesOfCo co
 orphNamesOfCo (LRCo  _ co)          = orphNamesOfCo co
 orphNamesOfCo (InstCo co arg)       = orphNamesOfCo co `unionNameSet` orphNamesOfCo arg
-orphNamesOfCo (EraseEqCo _ t1 t2 co) = orphNamesOfType t1 `unionNameSet` orphNamesOfType t2 `unionNameSet` orphNamesOfCo co
+orphNamesOfCo (EraseEqCo _ t1 t2 co)
+  = orphNamesOfType t1 `unionNameSet` orphNamesOfType t2 `unionNameSet` orphNamesOfCo co
 orphNamesOfCo (KindCo co)           = orphNamesOfCo co
 orphNamesOfCo (SubCo co)            = orphNamesOfCo co
 orphNamesOfCo (AxiomRuleCo _ cs)    = orphNamesOfCos cs

@@ -457,7 +457,8 @@ substIfaceType env ty
     go_co (IfaceNthCo n co)          = IfaceNthCo n (go_co co)
     go_co (IfaceLRCo lr co)          = IfaceLRCo lr (go_co co)
     go_co (IfaceInstCo c1 c2)        = IfaceInstCo (go_co c1) (go_co c2)
-    go_co (IfaceEraseEqCo r t1 t2 c) = IfaceEraseEqCo r (go t1) (go t2) (go_co c)
+    go_co (IfaceEraseEqCo r t1 t2 c)
+      = IfaceEraseEqCo r (go t1) (go t2) (go_co c)
     go_co (IfaceKindCo co)           = IfaceKindCo (go_co co)
     go_co (IfaceSubCo co)            = IfaceSubCo (go_co co)
     go_co (IfaceAxiomRuleCo n cos)   = IfaceAxiomRuleCo n (go_cos cos)
@@ -1223,7 +1224,8 @@ ppr_co ctxt_prec (IfaceSubCo co)
   = ppr_special_co ctxt_prec (text "Sub") [co]
 ppr_co ctxt_prec (IfaceEraseEqCo role ty1 ty2 co)
   = ppr_special_co ctxt_prec
-      (text "EraseEq" <> (parens $ ppr role <> comma <+> ppr ty1 <> comma <+> ppr ty2))
+      (text "EraseEq" <>
+       (parens $ ppr role <> comma <+> ppr ty1 <> comma <+> ppr ty2))
       [co]
 ppr_co ctxt_prec (IfaceKindCo co)
   = ppr_special_co ctxt_prec (text "Kind") [co]
