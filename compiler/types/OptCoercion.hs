@@ -506,9 +506,8 @@ opt_trans2 _ co1 co2
 -- Optimize coercions with a top-level use of transitivity.
 opt_trans_rule :: InScopeSet -> NormalNonIdCo -> NormalNonIdCo -> Maybe NormalCo
 
-opt_trans_rule is in_co1@(EraseEqCo r1 t11 t12 co1)
-                  in_co2@(EraseEqCo r2 t21 t22 co2)
-  | t12 `eqType` t21
+opt_trans_rule is in_co1@(EraseEqCo r1 t11 _ co1)
+                  in_co2@(EraseEqCo r2 _ t22 co2)
   = ASSERT( r1 == r2 )
     fireTransRule "EraseEqCo" in_co1 in_co2 $
     mkEraseEqCo r1 t11 t22 (opt_trans is co1 co2)
