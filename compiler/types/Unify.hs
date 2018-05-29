@@ -1405,11 +1405,8 @@ ty_co_match menv subst (TyVarTy tv1) co lkco rkco
   | tv1' `elemVarSet` me_tmpls menv           -- tv1' is a template var
   = if any (inRnEnvR rn_env) (tyCoVarsOfCoList co)
     then Nothing      -- occurs check failed
-    else let (Pair t1 t2, r) = coercionKindRole co
-         in Just $ extendVarEnv subst tv1' $
-                   mkEraseCastLeftCo r t1 (mkSymCo lkco)
-                   `mkTransCo` co
-                   `mkTransCo` mkEraseCastRightCo r t2 (mkSymCo rkco)
+    else Just $ extendVarEnv subst tv1' $
+                castCoercionKindI co (mkSymCo lkco) (mkSymCo rkco)
 
   -- TODO: EraseEqCo
   | otherwise

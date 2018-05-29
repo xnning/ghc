@@ -38,7 +38,7 @@ module Coercion (
         mkAxiomInstCo, mkProofIrrelCo,
         downgradeRole, maybeSubCo, mkAxiomRuleCo,
         mkEraseEqCo, mkEraseCastRightCo, mkEraseCastLeftCo,
-        mkKindCo,
+        mkKindCo, castCoercionKind, castCoercionKindI,
 
         mkHeteroCoercionType,
 
@@ -1300,6 +1300,33 @@ instCoercions g ws
       = do { g' <- instCoercion g_tys g w
            ; return (piResultTy <$> g_tys <*> w_tys, g') }
 
+-- | Creates a new coercion with both of its types casted by different casts
+-- @castCoercionKind g r t1 t2 h1 h2@, where @g :: t1 ~r t2@,
+-- has type @(t1 |> h1) ~r (t2 |> h2)@.
+-- @h1@ and @h2@ must be nominal.
+castCoercionKind :: Coercion -> Role -> Type -> Type
+                 -> CoercionN -> CoercionN -> Coercion
+castCoercionKind g r t1 t2 h1 h2
+  = mkEraseCastLeftCo r t1 h1
+    `mkTransCo` g
+    `mkTransCo` mkEraseCastRightCo r t2 h2
+
+-- | Creates a new coercion with both of its types casted by different casts
+-- @castCoercionKind g h1 h2@, where @g :: t1 ~r t2@,
+-- has type @(t1 |> h1) ~r (t2 |> h2)@.
+-- @h1@ and @h2@ must be nominal.
+-- It calls @coercionKindRole@, which is quite inefficient (what 'I' stands for)
+-- Use @castCoercionKind@ instead if @t1@, @t2@, and @r@ are known beforehand.
+castCoercionKindI :: Coercion -> CoercionN -> CoercionN -> Coercion
+castCoercionKindI g h1 h2
+  | isReflCo h1 && isReflCo h2 = g
+  | isReflCo h1                = g `mkTransCo` mkEraseCastRightCo r t2 h2
+  | isReflCo h2                = mkEraseCastLeftCo r t1 h1 `mkTransCo` g
+  | otherwise                  = mkEraseCastLeftCo r t1 h1
+                                 `mkTransCo` g
+                                 `mkTransCo` mkEraseCastRightCo r t2 h2
+  where (Pair t1 t2, r) = coercionKindRole g
+
 -- See note [Newtype coercions] in TyCon
 
 mkPiCos :: Role -> [Var] -> Coercion -> Coercion
@@ -1639,12 +1666,8 @@ ty_co_subst lc role ty
                              mkForAllCo v' h $! ty_co_subst lc' r ty
     go r ty@(LitTy {})     = ASSERT( r == Nominal )
                              mkReflCo r ty
-    go r (CastTy ty co)    = let co' = go r ty
-                                 (Pair t1 t2, _) = coercionKindRole co'
-                             in mkEraseCastLeftCo r t1 (substLeftCo lc co)
-                                `mkTransCo` co'
-                                `mkTransCo`
-                                mkEraseCastRightCo r t2 (substRightCo lc co)
+    go r (CastTy ty co)    = castCoercionKindI (go r ty) (substLeftCo lc co)
+                                                         (substRightCo lc co)
     go r (CoercionTy co)   = mkProofIrrelCo r kco (substLeftCo lc co)
                                                   (substRightCo lc co)
       where kco = go Nominal (coercionType co)
