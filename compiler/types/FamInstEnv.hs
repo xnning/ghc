@@ -1376,9 +1376,7 @@ normalise_type ty
       = do { (nco, nty) <- go ty
            ; lc <- getLC
            ; let co' = substRightCo lc co
-           ; return (mkEraseCastLeftCo Nominal ty co
-                     `mkTransCo` nco
-                     `mkTransCo` mkEraseCastRightCo Nominal nty co'
+           ; return (castCoercionKind nco Nominal ty nty co co'
                     , mkCastTy nty co') }
     go (CoercionTy co)
       = do { lc <- getLC
