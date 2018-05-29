@@ -1061,7 +1061,7 @@ The typing rule for coercion after erasure is:
   EraseEqCo r t1 t2 g : t1 ~r t2
 
 where |t| will erase all casts and coercions. This rule is isomorphic to the
-Coherence rule:
+old Coherence rule:
 
   g1 : s ~ t    s : k1    g2 : k1 ~ k2
   ------------------------------------

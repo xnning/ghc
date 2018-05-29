@@ -1403,7 +1403,11 @@ ty_co_match _ subst (CoercionTy {}) _ _ _
   = Just subst -- don't inspect coercions
 
 ty_co_match menv subst ty (Refl r (CastTy t co)) lkco rkco
-  -- @Refl r (CastTy ty co)@ cannot be dealt with in @pushRefl@
+  -- In @pushRefl@, pushing reflexive coercion inside CastTy will give us
+  -- t |> co ~ t ; <t> ; t ~ t |> co
+  -- But transitive coercions are not helpful in matching. Therefore we deal
+  -- with it here: we do recursion on the smaller reflexive coercion,
+  -- while propagating the correct kind coercions.
   = let kco' = mkSymCo co
     in ty_co_match menv subst ty (Refl r t) (lkco `mkTransCo` kco')
                                             (rkco `mkTransCo` kco')

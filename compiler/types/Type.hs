@@ -2135,6 +2135,8 @@ eqType :: Type -> Type -> Bool
 -- checks whether the types are equal, ignoring casts and coercions.
 -- (The kind check is a recursive call, but since all kinds have type
 -- @Type@, there is no need to check the types of kinds.)
+-- If kinds are guaranteed to be equal, use @eqTypeK@ instead, which
+-- is faster.
 -- See also Note [Non-trivial definitional equality] in TyCoRep.
 eqType t1 t2 = isEqual $ nonDetCmpType t1 t2
   -- It's OK to use nonDetCmpType here and eqType is deterministic,
@@ -2225,6 +2227,8 @@ nonDetCmpTypeX keq env orig_t1 orig_t2 =
       -- If there are casts then we also need to do a comparison of the kinds of
       -- the types being compared
       TEQX | keq    -> toOrdering $ go env k1 k2
+      -- If the order of types can be decided, or if EqKindFlag = False,
+      -- then there is no need to compare kinds
       ty_ordering   -> toOrdering ty_ordering
   where
     k1 = typeKind orig_t1
