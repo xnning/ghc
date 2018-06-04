@@ -1624,7 +1624,10 @@ allTyVarsInTy = go
     go (CastTy ty co)    = go ty `unionVarSet` go_co co
     go (CoercionTy co)   = go_co co
 
-    go_co (Refl _ ty)           = go ty
+    go_mco Nothing   = emptyVarSet
+    go_mco (Just co) = go_co co
+
+    go_co (GRefl _ ty mco)      = go ty `unionVarSet` go_mco mco
     go_co (TyConAppCo _ _ args) = go_cos args
     go_co (AppCo co arg)        = go_co co `unionVarSet` go_co arg
     go_co (ForAllCo tv h co)
@@ -1639,9 +1642,6 @@ allTyVarsInTy = go
     go_co (NthCo _ _ co)        = go_co co
     go_co (LRCo _ co)           = go_co co
     go_co (InstCo co arg)       = go_co co `unionVarSet` go_co arg
-    go_co (EraseEqCo _ t1 t2 c) = go t1 `unionVarSet`
-                                  go t2 `unionVarSet`
-                                  go_co c
     go_co (KindCo co)           = go_co co
     go_co (SubCo co)            = go_co co
     go_co (AxiomRuleCo _ cs)    = go_cos cs

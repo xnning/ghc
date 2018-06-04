@@ -1622,9 +1622,18 @@ lintCoercion :: OutCoercion -> LintM (LintedKind, LintedKind, LintedType, Linted
 
 -- If you edit this function, you may need to update the GHC formalism
 -- See Note [GHC Formalism]
-lintCoercion (Refl r ty)
+lintCoercion (GRefl r ty Nothing)
   = do { k <- lintType ty
        ; return (k, k, ty, ty, r) }
+
+lintCoercion (GRefl r ty (Just co))
+  = do { k <- lintType ty
+       ; (_, _, k1, k2, r') <- lintCoercion co
+       ; ensureEqTys k k1
+               (hang (text "GRefl coercion kind mis-match:" <+> ppr co)
+                   2 (vcat [ppr ty, ppr k, ppr k1]))
+       ; lintRole co Nominal r'
+       ; return (k1, k2, ty, mkCastTy ty co, r) }
 
 lintCoercion co@(TyConAppCo r tc cos)
   | tc `hasKey` funTyConKey
@@ -1646,7 +1655,7 @@ lintCoercion co@(TyConAppCo r tc cos)
 lintCoercion co@(AppCo co1 co2)
   | TyConAppCo {} <- co1
   = failWithL (text "TyConAppCo to the left of AppCo:" <+> ppr co)
-  | Refl _ (TyConApp {}) <- co1
+  | GRefl _ (TyConApp {}) Nothing <- co1
   = failWithL (text "Refl (TyConApp ...) to the left of AppCo:" <+> ppr co)
   | otherwise
   = do { (k1,  k2,  s1, s2, r1) <- lintCoercion co1
@@ -1883,27 +1892,6 @@ lintCoercion co@(AxiomInstCo con ind cos)
                     (bad_ax (text "check_ki2" <+> vcat [ ppr co, ppr k'', ppr ktv, ppr ktv_kind_r ] ))
            ; return (extendTCvSubst subst_l ktv s',
                      extendTCvSubst subst_r ktv t') }
-
-lintCoercion co@(EraseEqCo r1 t1 t2 co1)
-  = do { (_, _, k1, k2, r2) <- lintCoercion co1
-       -- types are equivalent, ignoring casts and coercions.
-       ; lintL (t1 `eqTypeK` t2)
-               (hang (text "EraseEq coercion type mis-match after erasure:"
-                      <+> ppr co)
-                   2 (vcat [ppr t1, ppr t2]))
-       -- the kind of t1 == L of co1
-       ; tk1 <- lintType t1
-       ; ensureEqTys k1 tk1
-               (hang (text "EraseEq coercion left kind mis-match:" <+> ppr co)
-                   2 (vcat [ppr t1, ppr k1, ppr tk1]))
-       -- the kind of t2 == R of co1
-       ; tk2 <- lintType t2
-       ; ensureEqTys k2 tk2
-               (hang (text "EraseEq coercion right kind mis-match:" <+> ppr co)
-                   2 (vcat [ppr t2, ppr k2, ppr tk2]))
-       -- kind coercion has Nonimal role
-       ; lintRole co1 Nominal r2
-       ; return (k1, k2, t1, t2, r1) }
 
 lintCoercion (KindCo co)
   = do { (k1, k2, _, _, _) <- lintCoercion co

@@ -111,7 +111,10 @@ synonymTyConsOfType ty
      -- in the same recursive group.  Possibly this restriction will be
      -- lifted in the future but for now, this code is "just for completeness
      -- sake".
-     go_co (Refl _ ty)            = go ty
+     go_mco Nothing   = emptyNameEnv
+     go_mco (Just co) = go_co co
+
+     go_co (GRefl _ ty mco)       = go ty `plusNameEnv` go_mco mco
      go_co (TyConAppCo _ tc cs)   = go_tc tc `plusNameEnv` go_co_s cs
      go_co (AppCo co co')         = go_co co `plusNameEnv` go_co co'
      go_co (ForAllCo _ co co')    = go_co co `plusNameEnv` go_co co'
@@ -125,7 +128,6 @@ synonymTyConsOfType ty
      go_co (NthCo _ _ co)         = go_co co
      go_co (LRCo _ co)            = go_co co
      go_co (InstCo co co')        = go_co co `plusNameEnv` go_co co'
-     go_co (EraseEqCo _ t1 t2 co) = go t1 `plusNameEnv` go t2 `plusNameEnv` go_co co
      go_co (KindCo co)            = go_co co
      go_co (SubCo co)             = go_co co
      go_co (AxiomRuleCo _ cs)     = go_co_s cs

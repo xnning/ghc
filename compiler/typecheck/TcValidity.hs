@@ -2030,8 +2030,12 @@ fvType (CoercionTy co)       = fvCo co
 fvTypes :: [Type] -> [TyVar]
 fvTypes tys                = concat (map fvType tys)
 
+fvMCo :: Maybe Coercion -> [TyCoVar]
+fvMCo Nothing   = []
+fvMCo (Just co) = fvCo co
+
 fvCo :: Coercion -> [TyCoVar]
-fvCo (Refl _ ty)            = fvType ty
+fvCo (GRefl _ ty mco)       = fvType ty ++ fvMCo mco
 fvCo (TyConAppCo _ _ args)  = concatMap fvCo args
 fvCo (AppCo co arg)         = fvCo co ++ fvCo arg
 fvCo (ForAllCo tv h co)     = filter (/= tv) (fvCo co) ++ fvCo h
@@ -2044,7 +2048,6 @@ fvCo (TransCo co1 co2)      = fvCo co1 ++ fvCo co2
 fvCo (NthCo _ _ co)         = fvCo co
 fvCo (LRCo _ co)            = fvCo co
 fvCo (InstCo co arg)        = fvCo co ++ fvCo arg
-fvCo (EraseEqCo _ t1 t2 co) = fvType t1 ++ fvType t2 ++ fvCo co
 fvCo (KindCo co)            = fvCo co
 fvCo (SubCo co)             = fvCo co
 fvCo (AxiomRuleCo _ cs)     = concatMap fvCo cs

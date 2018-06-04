@@ -170,11 +170,24 @@ opt_co4_wrap env sym rep r co
     result
 -}
 
-opt_co4 env _   rep r (Refl _r ty)
+opt_co4 env _   rep r (GRefl _r ty Nothing)
   = ASSERT2( r == _r, text "Expected role:" <+> ppr r $$
                       text "Found role:" <+> ppr _r   $$
                       text "Type:" <+> ppr ty )
     liftCoSubst (chooseRole rep r) env ty
+
+opt_co4 env sym  rep r (GRefl _r ty (Just co))
+  = ASSERT2( r == _r, text "Expected role:" <+> ppr r $$
+                      text "Found role:" <+> ppr _r   $$
+                      text "Type:" <+> ppr ty )
+    if sym
+    then GRefl r' (mkCastTy ty' co2) (Just co1)
+    else GRefl r' ty' (Just co2)
+  where
+    r'  = (chooseRole rep r)
+    co1 = opt_co4 env True  False Nominal co
+    co2 = opt_co4 env False False Nominal co
+    ty' = substTy (lcSubstLeft env) ty
 
 opt_co4 env sym rep r (SymCo co)  = opt_co4_wrap env (not sym) rep r co
   -- surprisingly, we don't have to do anything to the env here. This is
@@ -225,7 +238,7 @@ opt_co4 env sym rep r (CoVarCo cv)
   = opt_co4_wrap (zapLiftingContext env) sym rep r co
 
   | ty1 `eqType` ty2   -- See Note [Optimise CoVarCo to Refl]
-  = Refl (chooseRole rep r) ty1
+  = mkReflCo (chooseRole rep r) ty1
 
   | otherwise
   = ASSERT( isCoVar cv1 )
@@ -273,7 +286,7 @@ opt_co4 env sym rep r (TransCo co1 co2)
     co2' = opt_co4_wrap env sym rep r co2
     in_scope = lcInScopeSet env
 
-opt_co4 env _sym rep r (NthCo _r n (Refl _r2 ty))
+opt_co4 env _sym rep r (NthCo _r n (GRefl _r2 ty Nothing))
   | Just (_tc, args) <- ASSERT( r == _r )
                         splitTyConApp_maybe ty
   = liftCoSubst (chooseRole rep r) env (args `getNth` n)
@@ -331,7 +344,7 @@ opt_co4 env sym rep r (InstCo co1 arg)
   | Just (tv, kind_co, co_body) <- splitForAllCo_maybe co1
   = opt_co4_wrap (extendLiftingContext env tv
                     (arg' `mkTransCo`
-                     mkEraseCastRightCo Nominal t2 (mkSymCo kind_co)))
+                     mkGReflRightCo Nominal t2 (mkSymCo kind_co)))
                  sym rep r co_body
 
     -- See if it is a forall after optimization
@@ -341,7 +354,7 @@ opt_co4 env sym rep r (InstCo co1 arg)
   | Just (tv', kind_co', co_body') <- splitForAllCo_maybe co1'
   = opt_co4_wrap (extendLiftingContext (zapLiftingContext env) tv'
                     (arg' `mkTransCo`
-                     mkEraseCastRightCo Nominal t2 (mkSymCo kind_co')))
+                     mkGReflRightCo Nominal t2 (mkSymCo kind_co')))
             False False r' co_body'
 
   | otherwise = InstCo co1' arg'
@@ -350,18 +363,6 @@ opt_co4 env sym rep r (InstCo co1 arg)
     r'   = chooseRole rep r
     arg' = opt_co4_wrap env sym False Nominal arg
     Pair _ t2 = coercionKind arg'
-
-opt_co4 env sym rep r (EraseEqCo _r t1 t2 h)
-  | sym
-  = ASSERT(r == _r)
-    EraseEqCo (chooseRole rep r) t2' t1' h'
-  | otherwise
-  = ASSERT(r == _r)
-    EraseEqCo (chooseRole rep r) t1' t2' h'
-  where
-    h' = opt_co4 env sym False Nominal h
-    t1' = substTy (lcSubstLeft env) t1
-    t2' = substTy (lcSubstRight env) t2
 
 opt_co4 env sym _rep r (KindCo co)
   = ASSERT( r == Nominal )
@@ -475,12 +476,14 @@ opt_transList is = zipWith (opt_trans is)
 opt_trans :: InScopeSet -> NormalCo -> NormalCo -> NormalCo
 opt_trans is co1 co2
   | isReflCo co1 = co2
+    -- optimize when co1 is a Refl Co
   | otherwise    = opt_trans1 is co1 co2
 
 opt_trans1 :: InScopeSet -> NormalNonIdCo -> NormalCo -> NormalCo
 -- First arg is not the identity
 opt_trans1 is co1 co2
   | isReflCo co2 = co1
+    -- optimize when co2 is a Refl Co
   | otherwise    = opt_trans2 is co1 co2
 
 opt_trans2 :: InScopeSet -> NormalNonIdCo -> NormalNonIdCo -> NormalCo
@@ -506,11 +509,10 @@ opt_trans2 _ co1 co2
 -- Optimize coercions with a top-level use of transitivity.
 opt_trans_rule :: InScopeSet -> NormalNonIdCo -> NormalNonIdCo -> Maybe NormalCo
 
-opt_trans_rule is in_co1@(EraseEqCo r1 t11 _ co1)
-                  in_co2@(EraseEqCo r2 _ t22 co2)
+opt_trans_rule is in_co1@(GRefl r1 t1 (Just co1)) in_co2@(GRefl r2 _ (Just co2))
   = ASSERT( r1 == r2 )
-    fireTransRule "EraseEqCo" in_co1 in_co2 $
-    mkEraseEqCo r1 t11 t22 (opt_trans is co1 co2)
+    fireTransRule "GRefl" in_co1 in_co2 $
+    mkGReflCo r1 t1 (Just $ opt_trans is co1 co2)
 
 -- Push transitivity through matching destructors
 opt_trans_rule is in_co1@(NthCo r1 d1 co1) in_co2@(NthCo r2 d2 co2)
@@ -669,7 +671,7 @@ opt_trans_rule _ co1 co2        -- Identity rule
   , Pair _ ty2 <- coercionKind co2
   , ty1 `eqType` ty2
   = fireTransRule "RedTypeDirRefl" co1 co2 $
-    Refl r ty2
+    mkReflCo r ty2
 
 opt_trans_rule _ _ _ = Nothing
 
@@ -704,8 +706,8 @@ opt_trans_rule_app is orig_co1 orig_co2 co1a co1bs co2a co2bs
         kcoa = mkKindCo $ buildCoercion lt2a rt1a
         kcobs = map mkKindCo $ zipWith buildCoercion lt2bs rt1bs
 
-        co2a'   = mkEraseCastLeftCo rt2a lt2a kcoa `mkTransCo` co2a
-        co2bs'  = zipWith3 mkEraseCastLeftCo rt2bs lt2bs kcobs
+        co2a'   = mkGReflLeftCo rt2a lt2a kcoa `mkTransCo` co2a
+        co2bs'  = zipWith3 mkGReflLeftCo rt2bs lt2bs kcobs
         co2bs'' = zipWith mkTransCo co2bs' co2bs
     in
     mkAppCos (opt_trans is co1a co2a')
@@ -955,7 +957,7 @@ etaForAllCo_maybe co
   , isForAllTy ty2
   , let kind_co = mkNthCo Nominal 0 co
   = Just ( tv1, kind_co
-         , mkInstCo co (mkEraseCastRightCo Nominal (TyVarTy tv1) kind_co))
+         , mkInstCo co (mkGReflRightCo Nominal (TyVarTy tv1) kind_co))
 
   | otherwise
   = Nothing

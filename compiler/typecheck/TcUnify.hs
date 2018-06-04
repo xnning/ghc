@@ -971,7 +971,7 @@ promoteTcType dest_lvl ty
                                           , uo_thing    = Nothing
                                           , uo_visible  = False }
            ; ki_co <- uType KindLevel kind_orig (typeKind ty) res_kind
-           ; let co = mkTcEraseCastRightCo Nominal ty ki_co
+           ; let co = mkTcGReflRightCo Nominal ty ki_co
            ; return (co, ty `mkCastTy` ki_co) }
 
 {- Note [Promoting a type]
@@ -1329,12 +1329,12 @@ uType t_or_k origin orig_ty1 orig_ty2
     go (CastTy t1 co1) t2
       = do { co_tys <- go t1 t2
            ; let role = coercionRole co_tys
-           ; return (mkEraseCastLeftCo role t1 co1 `mkTransCo` co_tys) }
+           ; return (mkGReflLeftCo role t1 co1 `mkTransCo` co_tys) }
 
     go t1 (CastTy t2 co2)
       = do { co_tys <- go t1 t2
            ; let role = coercionRole co_tys
-           ; return (co_tys `mkTransCo` mkEraseCastRightCo role t2 co2) }
+           ; return (co_tys `mkTransCo` mkGReflRightCo role t2 co2) }
 
         -- See Note [Expanding synonyms during unification]
         --

@@ -404,8 +404,8 @@ expandTypeSynonyms ty
     go subst (CastTy ty co)  = mkCastTy (go subst ty) (go_co subst co)
     go subst (CoercionTy co) = mkCoercionTy (go_co subst co)
 
-    go_co subst (Refl r ty)
-      = mkReflCo r (go subst ty)
+    go_co subst (GRefl r ty mco)
+      = mkGReflCo r (go subst ty) (fmap (go_co subst) mco)
        -- NB: coercions are always expanded upon creation
     go_co subst (TyConAppCo r tc args)
       = mkTyConAppCo r tc (map (go_co subst) args)
@@ -432,8 +432,6 @@ expandTypeSynonyms ty
       = mkLRCo lr (go_co subst co)
     go_co subst (InstCo co arg)
       = mkInstCo (go_co subst co) (go_co subst arg)
-    go_co subst (EraseEqCo r t1 t2 co)
-      = mkEraseEqCo r (go subst t1) (go subst t2) (go_co subst co)
     go_co subst (KindCo co)
       = mkKindCo (go_co subst co)
     go_co subst (SubCo co)
@@ -542,7 +540,10 @@ mapCoercion mapper@(TyCoMapper { tcm_smart = smart, tcm_covar = covar
             env co
   = go co
   where
-    go (Refl r ty) = Refl r <$> mapType mapper env ty
+    go_mco Nothing   = return Nothing
+    go_mco (Just co) = Just <$> (go co)
+
+    go (GRefl r ty mco) = GRefl r <$> mapType mapper env ty <*> (go_mco mco)
     go (TyConAppCo r tc args)
       = mktyconappco r tc <$> mapM go args
     go (AppCo c1 c2) = mkappco <$> go c1 <*> go c2
@@ -566,9 +567,6 @@ mapCoercion mapper@(TyCoMapper { tcm_smart = smart, tcm_covar = covar
     go (NthCo r i co)      = mknthco r i <$> go co
     go (LRCo lr co)        = mklrco lr <$> go co
     go (InstCo co arg)     = mkinstco <$> go co <*> go arg
-    go (EraseEqCo r t1 t2 c)
-      = mkeraseeqco r <$> mapType mapper env t1
-                      <*> mapType mapper env t2 <*> go c
     go (KindCo co)         = mkkindco <$> go co
     go (SubCo co)          = mksubco <$> go co
 
@@ -578,15 +576,15 @@ mapCoercion mapper@(TyCoMapper { tcm_smart = smart, tcm_covar = covar
     go_prov p@(PluginProv _)    = return p
 
     ( mktyconappco, mkappco, mkaxiominstco, mkunivco
-      , mksymco, mktransco, mknthco, mklrco, mkinstco, mkeraseeqco
+      , mksymco, mktransco, mknthco, mklrco, mkinstco
       , mkkindco, mksubco, mkforallco)
       | smart
       = ( mkTyConAppCo, mkAppCo, mkAxiomInstCo, mkUnivCo
-        , mkSymCo, mkTransCo, mkNthCo, mkLRCo, mkInstCo, mkEraseEqCo
+        , mkSymCo, mkTransCo, mkNthCo, mkLRCo, mkInstCo
         , mkKindCo, mkSubCo, mkForAllCo )
       | otherwise
       = ( TyConAppCo, AppCo, AxiomInstCo, UnivCo
-        , SymCo, TransCo, NthCo, LRCo, InstCo, EraseEqCo
+        , SymCo, TransCo, NthCo, LRCo, InstCo
         , KindCo, SubCo, ForAllCo )
 
 {-
@@ -2574,7 +2572,7 @@ tyConsOfType ty
      go (CastTy ty co)              = go ty `unionUniqSets` go_co co
      go (CoercionTy co)             = go_co co
 
-     go_co (Refl _ ty)             = go ty
+     go_co (GRefl _ ty mco)        = go ty `unionUniqSets` go_mco mco
      go_co (TyConAppCo _ tc args)  = go_tc tc `unionUniqSets` go_cos args
      go_co (AppCo co arg)          = go_co co `unionUniqSets` go_co arg
      go_co (ForAllCo _ kind_co co) = go_co kind_co `unionUniqSets` go_co co
@@ -2588,10 +2586,12 @@ tyConsOfType ty
      go_co (NthCo _ _ co)          = go_co co
      go_co (LRCo _ co)             = go_co co
      go_co (InstCo co arg)         = go_co co `unionUniqSets` go_co arg
-     go_co (EraseEqCo _ t1 t2 co)  = go t1 `unionUniqSets` go t2 `unionUniqSets` go_co co
      go_co (KindCo co)             = go_co co
      go_co (SubCo co)              = go_co co
      go_co (AxiomRuleCo _ cs)      = go_cos cs
+
+     go_mco Nothing   = emptyUniqSet
+     go_mco (Just co) = go_co co
 
      go_prov UnsafeCoerceProv    = emptyUniqSet
      go_prov (PhantomProv co)    = go_co co
