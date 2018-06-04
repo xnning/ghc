@@ -281,7 +281,7 @@ data IfaceTyConInfo   -- Used to guide pretty-printing
     deriving (Eq)
 
 data IfaceCoercion
-  = IfaceReflCo       Role IfaceType
+  = IfaceGReflCo      Role IfaceType (Maybe IfaceCoercion)
   | IfaceFunCo        Role IfaceCoercion IfaceCoercion
   | IfaceTyConAppCo   Role IfaceTyCon [IfaceCoercion]
   | IfaceAppCo        IfaceCoercion IfaceCoercion
@@ -298,7 +298,6 @@ data IfaceCoercion
   | IfaceNthCo        Int IfaceCoercion
   | IfaceLRCo         LeftOrRight IfaceCoercion
   | IfaceInstCo       IfaceCoercion IfaceCoercion
-  | IfaceEraseEqCo    Role IfaceType IfaceType IfaceCoercion
   | IfaceKindCo       IfaceCoercion
   | IfaceSubCo        IfaceCoercion
   | IfaceFreeCoVar    CoVar    -- See Note [Free tyvars in IfaceType]
@@ -442,8 +441,11 @@ substIfaceType env ty
     go (IfaceCastTy ty co)    = IfaceCastTy (go ty) (go_co co)
     go (IfaceCoercionTy co)   = IfaceCoercionTy (go_co co)
 
-    go_co (IfaceReflCo r ty)     = IfaceReflCo r (go ty)
-    go_co (IfaceFunCo r c1 c2)   = IfaceFunCo r (go_co c1) (go_co c2)
+    go_mco Nothing   = Nothing
+    go_mco (Just co) = Just $ go_co co
+
+    go_co (IfaceGReflCo r ty mco)    = IfaceGReflCo r (go ty) (go_mco mco)
+    go_co (IfaceFunCo r c1 c2)       = IfaceFunCo r (go_co c1) (go_co c2)
     go_co (IfaceTyConAppCo r tc cos) = IfaceTyConAppCo r tc (go_cos cos)
     go_co (IfaceAppCo c1 c2)         = IfaceAppCo (go_co c1) (go_co c2)
     go_co (IfaceForAllCo {})         = pprPanic "substIfaceCoercion" (ppr ty)
@@ -457,8 +459,6 @@ substIfaceType env ty
     go_co (IfaceNthCo n co)          = IfaceNthCo n (go_co co)
     go_co (IfaceLRCo lr co)          = IfaceLRCo lr (go_co co)
     go_co (IfaceInstCo c1 c2)        = IfaceInstCo (go_co c1) (go_co c2)
-    go_co (IfaceEraseEqCo r t1 t2 c)
-      = IfaceEraseEqCo r (go t1) (go t2) (go_co c)
     go_co (IfaceKindCo co)           = IfaceKindCo (go_co co)
     go_co (IfaceSubCo co)            = IfaceSubCo (go_co co)
     go_co (IfaceAxiomRuleCo n cos)   = IfaceAxiomRuleCo n (go_cos cos)
@@ -1160,7 +1160,11 @@ pprIfaceCoercion = ppr_co topPrec
 pprParendIfaceCoercion = ppr_co appPrec
 
 ppr_co :: PprPrec -> IfaceCoercion -> SDoc
-ppr_co _         (IfaceReflCo r ty) = angleBrackets (ppr ty) <> ppr_role r
+ppr_co _         (IfaceGReflCo r ty Nothing)
+  = angleBrackets (ppr ty) <> ppr_role r
+ppr_co ctxt_prec (IfaceGReflCo r ty (Just co))
+  = ppr_special_co ctxt_prec
+    (text "GRefl" <+> ppr r <+> pprParendIfaceType ty) [co]
 ppr_co ctxt_prec (IfaceFunCo r co1 co2)
   = maybeParen ctxt_prec funPrec $
     sep (ppr_co funPrec co1 : ppr_fun_tail co2)
@@ -1221,11 +1225,6 @@ ppr_co ctxt_prec (IfaceLRCo lr co)
   = ppr_special_co ctxt_prec (ppr lr) [co]
 ppr_co ctxt_prec (IfaceSubCo co)
   = ppr_special_co ctxt_prec (text "Sub") [co]
-ppr_co ctxt_prec (IfaceEraseEqCo role ty1 ty2 co)
-  = ppr_special_co ctxt_prec
-      (text "EraseEq" <>
-       (parens $ ppr role <> comma <+> ppr ty1 <> comma <+> ppr ty2))
-      [co]
 ppr_co ctxt_prec (IfaceKindCo co)
   = ppr_special_co ctxt_prec (text "Kind") [co]
 
@@ -1457,10 +1456,11 @@ instance Binary IfaceType where
                        return (IfaceLitTy n)
 
 instance Binary IfaceCoercion where
-  put_ bh (IfaceReflCo a b) = do
+  put_ bh (IfaceGReflCo a b c) = do
           putByte bh 1
           put_ bh a
           put_ bh b
+          put_ bh c
   put_ bh (IfaceFunCo a b c) = do
           putByte bh 2
           put_ bh a
@@ -1513,12 +1513,6 @@ instance Binary IfaceCoercion where
           putByte bh 13
           put_ bh a
           put_ bh b
-  put_ bh (IfaceEraseEqCo a b c d) = do
-          putByte bh 14
-          put_ bh a
-          put_ bh b
-          put_ bh c
-          put_ bh d
   put_ bh (IfaceKindCo a) = do
           putByte bh 15
           put_ bh a
@@ -1540,7 +1534,8 @@ instance Binary IfaceCoercion where
       case tag of
            1 -> do a <- get bh
                    b <- get bh
-                   return $ IfaceReflCo a b
+                   c <- get bh
+                   return $ IfaceGReflCo a b c
            2 -> do a <- get bh
                    b <- get bh
                    c <- get bh
@@ -1581,11 +1576,6 @@ instance Binary IfaceCoercion where
            13-> do a <- get bh
                    b <- get bh
                    return $ IfaceInstCo a b
-           14-> do a <- get bh
-                   b <- get bh
-                   c <- get bh
-                   d <- get bh
-                   return $ IfaceEraseEqCo a b c d
            15-> do a <- get bh
                    return $ IfaceKindCo a
            16-> do a <- get bh
