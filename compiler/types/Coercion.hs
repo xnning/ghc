@@ -1941,7 +1941,9 @@ coercionKind co =
       where f co' | Just ty <- splitAppTy_maybe co'
                   = pickLR lr ty
                   | otherwise
-                  = panic "go LRCo splitAppTy"
+                  = pprTrace "go LR"
+                    ( vcat [ text "splitAppTy:" <+> ppr co <+> ppr co'])
+                    panic "go LRCo splitAppTy"
     go (InstCo aco arg)     = go_app aco [arg]
     go (KindCo co)          = typeKind <$> go co
     go (SubCo co)           = go co
