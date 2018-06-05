@@ -172,6 +172,17 @@ opt_co4 env _   rep r (GRefl _r ty Nothing)
                       text "Type:" <+> ppr ty )
     liftCoSubst (chooseRole rep r) env ty
 
+opt_co4 env sym  rep r (GRefl _r ty (Just co))
+  = ASSERT2( r == _r, text "Expected role:" <+> ppr r $$
+                      text "Found role:" <+> ppr _r   $$
+                      text "Type:" <+> ppr ty )
+    GRefl (chooseRole rep r) ty' (Just co')
+  where
+    co' = opt_co4 env sym False Nominal co
+    ty' | sym       = mkCastTy (substTy (lcSubstLeft env) ty) co'
+        | otherwise = substTy (lcSubstLeft env) ty
+
+
 opt_co4 env sym rep r (SymCo co)  = opt_co4_wrap env (not sym) rep r co
   -- surprisingly, we don't have to do anything to the env here. This is
   -- because any "lifting" substitutions in the env are tied to ForAllCos,
