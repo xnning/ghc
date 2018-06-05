@@ -1006,7 +1006,11 @@ nthCoRole n co
     (Pair lty _, r) = coercionKindRole co
 
 mkLRCo :: LeftOrRight -> Coercion -> Coercion
-mkLRCo lr (GRefl eq ty Nothing) = GRefl eq (pickLR lr (splitAppTy ty)) Nothing
+mkLRCo lr (GRefl eq ty Nothing)
+  | Just ty <- splitAppTy_maybe ty
+  = GRefl eq (pickLR lr ty) Nothing
+  | Nothing <- splitAppTy_maybe ty
+  = panic "mkLRCo splitAppTy"
 mkLRCo lr co                    = LRCo lr co
 
 -- | Instantiates a 'Coercion'.
@@ -1932,7 +1936,12 @@ coercionKind co =
       = pprPanic "coercionKind" (ppr g)
       where
         tys = go co
-    go (LRCo lr co)         = (pickLR lr . splitAppTy) <$> go co
+    go (LRCo lr co)
+      = f <$> go co
+      where f co' | Just ty <- splitAppTy_maybe co'
+                  = pickLR lr ty
+                  | otherwise
+                  = panic "go LRCo splitAppTy"
     go (InstCo aco arg)     = go_app aco [arg]
     go (KindCo co)          = typeKind <$> go co
     go (SubCo co)           = go co

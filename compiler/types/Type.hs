@@ -775,9 +775,13 @@ tcRepSplitTyConApp_maybe _
 splitAppTy :: Type -> (Type, Type)
 -- ^ Attempts to take a type application apart, as in 'splitAppTy_maybe',
 -- and panics if this is not possible
-splitAppTy ty = case splitAppTy_maybe ty of
-                Just pr -> pr
-                Nothing -> panic "splitAppTy"
+splitAppTy ty =
+  case splitAppTy_maybe ty of
+    Just pr -> pr
+    Nothing ->
+      pprTrace "splitAppTy"
+      ( vcat [ text "splitAppTy:" <+> ppr ty])
+      panic "splitAppTy"
 
 -------------
 splitAppTys :: Type -> (Type, [Type])
