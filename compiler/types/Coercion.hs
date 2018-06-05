@@ -1024,7 +1024,7 @@ mkKindCo co
        -- so it's OK here.
   , let tk1 = typeKind ty1
         tk2 = typeKind ty2
-  , tk1 `eqType` tk2
+  , tk1 `eqTypeK` tk2
   = Refl Nominal tk1
   | otherwise
   = KindCo co
@@ -1194,7 +1194,7 @@ promoteCoercion :: Coercion -> CoercionN
 -- First cases handles anything that should yield refl.
 promoteCoercion co = case co of
 
-    _ | ki1 `eqType` ki2
+    _ | ki1 `eqTypeK` ki2
       -> mkNomReflCo (typeKind ty1)
      -- no later branch should return refl
      --    The ASSERT( False )s throughout
