@@ -1336,7 +1336,10 @@ tcIfaceTyLit (IfaceStrTyLit n) = return (StrTyLit n)
 tcIfaceCo :: IfaceCoercion -> IfL Coercion
 tcIfaceCo = go
   where
-    go (IfaceReflCo r t)         = Refl r <$> tcIfaceType t
+    go_mco Nothing   = pure Nothing
+    go_mco (Just co) = Just <$> (go co)
+
+    go (IfaceGReflCo r t mco)     = GRefl r <$> tcIfaceType t <*> go_mco mco
     go (IfaceFunCo r c1 c2)      = mkFunCo r <$> go c1 <*> go c2
     go (IfaceTyConAppCo r tc cs)
       = TyConAppCo r <$> tcIfaceTyCon tc <*> mapM go cs
@@ -1356,9 +1359,6 @@ tcIfaceCo = go
     go (IfaceNthCo d c)          = do { c' <- go c
                                       ; return $ mkNthCo (nthCoRole d c') d c' }
     go (IfaceLRCo lr c)          = LRCo lr  <$> go c
-    go (IfaceEraseEqCo r t1 t2 c) = EraseEqCo r <$> tcIfaceType t1
-                                                <*> tcIfaceType t2
-                                                <*> go c
     go (IfaceKindCo c)           = KindCo   <$> go c
     go (IfaceSubCo c)            = SubCo    <$> go c
     go (IfaceAxiomRuleCo ax cos) = AxiomRuleCo <$> tcIfaceCoAxiomRule ax

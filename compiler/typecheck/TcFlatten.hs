@@ -1214,7 +1214,7 @@ flatten_args_fast orig_binders orig_inner_ki orig_roles orig_tys
           -- but this isn't necessary:
           --   mkTcSymCo (Refl a b) = Refl a b,
           --   mkCastTy x (Refl _ _) = x
-          --   mkTcEraseCastLeftCo _ ty (Refl _ _) `mkTransCo` co = co
+          --   mkTcGReflLeftCo _ ty (Refl _ _) `mkTransCo` co = co
           --
           -- Also, no need to check isAnonTyBinder or isNamedTyBinder, since
           -- we've already established that they're all anonymous.
@@ -1284,7 +1284,7 @@ flatten_args_slow orig_binders orig_inner_ki orig_fvs orig_roles orig_tys
            ; let kind_co = mkTcSymCo $
                    liftCoSubst Nominal lc (tyBinderType binder)
                  !casted_xi = xi `mkCastTy` kind_co
-                 casted_co = mkTcEraseCastLeftCo role xi kind_co
+                 casted_co = mkTcGReflLeftCo role xi kind_co
                              `mkTcTransCo` co
 
              -- now, extend the lifting context with the new binding
@@ -1316,7 +1316,7 @@ flatten_args_slow orig_binders orig_inner_ki orig_fvs orig_roles orig_tys
                <- go acc_xis acc_cos zapped_lc bndrs new_inner roles casted_tys
            -- cos_out :: xis_out ~ casted_tys
            -- we need to return cos :: xis_out ~ tys
-           ; let cos = zipWith3 mkTcEraseCastRightCo
+           ; let cos = zipWith3 mkTcGReflRightCo
                                 roles
                                 casted_tys
                                 (map mkTcSymCo arg_cos)
@@ -1492,7 +1492,7 @@ homogenise_result :: Xi              -- a flattened type
 homogenise_result xi co kind_co
   = let xi' = xi `mkCastTy` kind_co
         r   = coercionRole co
-        co' = mkTcEraseCastLeftCo r xi kind_co `mkTransCo` co
+        co' = mkTcGReflLeftCo r xi kind_co `mkTransCo` co
     in  (xi', co')
 {-# INLINE homogenise_result #-}
 
@@ -1628,7 +1628,7 @@ flatten_exact_fam_app_fully tc tys
                                   -- flatten it
                                   -- fsk_co :: fsk_xi ~ fsk
                            ; let xi  = fsk_xi `mkCastTy` kind_co
-                                 co' = mkTcEraseCastLeftCo role fsk_xi kind_co
+                                 co' = mkTcGReflLeftCo role fsk_xi kind_co
                                        `mkTransCo` fsk_co
                                        `mkTransCo`
                                        maybeSubCo eq_rel (mkSymCo co)
@@ -1665,7 +1665,7 @@ flatten_exact_fam_app_fully tc tys
                                  -- NB: fsk's kind is already flattened because
                                  --     the xis are flattened
                                  ; let xi = mkTyVarTy fsk `mkCastTy` kind_co
-                                       co' = mkTcEraseCastLeftCo role
+                                       co' = mkTcGReflLeftCo role
                                                                  (mkTyVarTy fsk)
                                                                  kind_co
                                              `mkTransCo`
@@ -1717,7 +1717,7 @@ flatten_exact_fam_app_fully tc tys
                        ; let role = eqRelRole eq_rel
                              xi' = xi `mkCastTy` kind_co
                              co' = update_co $
-                                   mkTcEraseCastLeftCo role xi kind_co
+                                   mkTcGReflLeftCo role xi kind_co
                                    `mkTransCo` mkSymCo co
                        ; return $ Just (xi', co') }
                Nothing -> pure Nothing }
@@ -1747,7 +1747,7 @@ flatten_exact_fam_app_fully tc tys
                              role = eqRelRole eq_rel
                              xi' = xi `mkCastTy` kind_co
                              co' = update_co $
-                                   mkTcEraseCastLeftCo role xi kind_co
+                                   mkTcGReflLeftCo role xi kind_co
                                    `mkTransCo` mkSymCo co
                        ; return $ Just (xi', co') }
                Nothing -> pure Nothing }

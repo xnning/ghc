@@ -981,7 +981,7 @@ promoteTcType dest_lvl ty
                                           , uo_thing    = Nothing
                                           , uo_visible  = False }
            ; ki_co <- uType KindLevel kind_orig (typeKind ty) res_kind
-           ; let co = mkTcEraseCastRightCo Nominal ty ki_co
+           ; let co = mkTcGReflRightCo Nominal ty ki_co
            ; return (co, ty `mkCastTy` ki_co) }
 
 {- Note [Promoting a type]
@@ -1339,12 +1339,12 @@ uType t_or_k origin orig_ty1 orig_ty2
     go (CastTy t1 co1) t2
       = do { co_tys <- go t1 t2
            ; let role = coercionRole co_tys
-           ; return (mkEraseCastLeftCo role t1 co1 `mkTransCo` co_tys) }
+           ; return (mkGReflLeftCo role t1 co1 `mkTransCo` co_tys) }
 
     go t1 (CastTy t2 co2)
       = do { co_tys <- go t1 t2
            ; let role = coercionRole co_tys
-           ; return (co_tys `mkTransCo` mkEraseCastRightCo role t2 co2) }
+           ; return (co_tys `mkTransCo` mkGReflRightCo role t2 co2) }
 
         -- See Note [Expanding synonyms during unification]
         --
@@ -2250,8 +2250,14 @@ occCheckExpand tv ty
            -- See Note [Occurrence checking: look inside kinds]
 
     ------------------
-    go_co env (Refl r ty)               = do { ty' <- go env ty
-                                             ; return (mkReflCo r ty') }
+    go_mco _    Nothing  = return Nothing
+    go_mco env (Just co) = do { co' <- go_co env co
+                              ; return (Just co')}
+
+    ------------------
+    go_co env (GRefl r ty mco)          = do { ty' <- go env ty
+                                             ; mco' <- go_mco env mco
+                                             ; return (mkGReflCo r ty' mco') }
       -- Note: Coercions do not contain type synonyms
     go_co env (TyConAppCo r tc args)    = do { args' <- mapM (go_co env) args
                                              ; return (mkTyConAppCo r tc args') }
@@ -2291,10 +2297,6 @@ occCheckExpand tv ty
     go_co env (InstCo co arg)           = do { co' <- go_co env co
                                              ; arg' <- go_co env arg
                                              ; return (mkInstCo co' arg') }
-    go_co env (EraseEqCo r ty1 ty2 co)  = do { ty1' <- go env ty1
-                                             ; ty2' <- go env ty2
-                                             ; co'  <- go_co env co
-                                             ; return (mkEraseEqCo r ty1' ty2' co') }
     go_co env (KindCo co)               = do { co' <- go_co env co
                                              ; return (mkKindCo co') }
     go_co env (SubCo co)                = do { co' <- go_co env co
