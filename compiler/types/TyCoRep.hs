@@ -3113,12 +3113,9 @@ typeSize (TyConApp _ ts)            = 1 + sum (map typeSize ts)
 typeSize (CastTy ty co)             = typeSize ty + coercionSize co
 typeSize (CoercionTy co)            = coercionSize co
 
-mcoercionSize :: Maybe Coercion -> Int
-mcoercionSize Nothing   = 0
-mcoercionSize (Just co) = coercionSize co
-
 coercionSize :: Coercion -> Int
-coercionSize (GRefl _ ty co)     = 1 + typeSize ty + mcoercionSize co
+coercionSize (GRefl _ ty Nothing)  = typeSize ty
+coercionSize (GRefl _ ty (Just co))= 1 + typeSize ty + coercionSize co
 coercionSize (TyConAppCo _ _ args) = 1 + sum (map coercionSize args)
 coercionSize (AppCo co arg)      = coercionSize co + coercionSize arg
 coercionSize (ForAllCo _ h co)   = 1 + coercionSize co + coercionSize h
