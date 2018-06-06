@@ -170,19 +170,19 @@ opt_co4_wrap env sym rep r co
     result
 -}
 
-opt_co4 env _   rep r (GRefl _r ty Nothing)
+opt_co4 env _   rep r (GRefl _r ty MRefl)
   = ASSERT2( r == _r, text "Expected role:" <+> ppr r $$
                       text "Found role:" <+> ppr _r   $$
                       text "Type:" <+> ppr ty )
     liftCoSubst (chooseRole rep r) env ty
 
-opt_co4 env sym  rep r (GRefl _r ty (Just co))
+opt_co4 env sym  rep r (GRefl _r ty (MCo co))
   = ASSERT2( r == _r, text "Expected role:" <+> ppr r $$
                       text "Found role:" <+> ppr _r   $$
                       text "Type:" <+> ppr ty )
     if sym
-    then GRefl r' (mkCastTy ty' co2) (Just co1)
-    else GRefl r' ty' (Just co2)
+    then GRefl r' (mkCastTy ty' co2) (MCo co1)
+    else GRefl r' ty' (MCo co2)
   where
     r'  = (chooseRole rep r)
     co1 = opt_co4 env True  False Nominal co
@@ -286,7 +286,7 @@ opt_co4 env sym rep r (TransCo co1 co2)
     co2' = opt_co4_wrap env sym rep r co2
     in_scope = lcInScopeSet env
 
-opt_co4 env _sym rep r (NthCo _r n (GRefl _r2 ty Nothing))
+opt_co4 env _sym rep r (NthCo _r n (GRefl _r2 ty MRefl))
   | Just (_tc, args) <- ASSERT( r == _r )
                         splitTyConApp_maybe ty
   = liftCoSubst (chooseRole rep r) env (args `getNth` n)
@@ -509,10 +509,10 @@ opt_trans2 _ co1 co2
 -- Optimize coercions with a top-level use of transitivity.
 opt_trans_rule :: InScopeSet -> NormalNonIdCo -> NormalNonIdCo -> Maybe NormalCo
 
-opt_trans_rule is in_co1@(GRefl r1 t1 (Just co1)) in_co2@(GRefl r2 _ (Just co2))
+opt_trans_rule is in_co1@(GRefl r1 t1 (MCo co1)) in_co2@(GRefl r2 _ (MCo co2))
   = ASSERT( r1 == r2 )
     fireTransRule "GRefl" in_co1 in_co2 $
-    mkGReflCo r1 t1 (Just $ opt_trans is co1 co2)
+    mkGReflCo r1 t1 (MCo $ opt_trans is co1 co2)
 
 -- Push transitivity through matching destructors
 opt_trans_rule is in_co1@(NthCo r1 d1 co1) in_co2@(NthCo r2 d2 co2)

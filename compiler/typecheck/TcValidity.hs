@@ -2030,9 +2030,9 @@ fvType (CoercionTy co)       = fvCo co
 fvTypes :: [Type] -> [TyVar]
 fvTypes tys                = concat (map fvType tys)
 
-fvMCo :: Maybe Coercion -> [TyCoVar]
-fvMCo Nothing   = []
-fvMCo (Just co) = fvCo co
+fvMCo :: MCoercion -> [TyCoVar]
+fvMCo MRefl    = []
+fvMCo (MCo co) = fvCo co
 
 fvCo :: Coercion -> [TyCoVar]
 fvCo (GRefl _ ty mco)       = fvType ty ++ fvMCo mco

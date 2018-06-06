@@ -1622,11 +1622,11 @@ lintCoercion :: OutCoercion -> LintM (LintedKind, LintedKind, LintedType, Linted
 
 -- If you edit this function, you may need to update the GHC formalism
 -- See Note [GHC Formalism]
-lintCoercion (GRefl r ty Nothing)
+lintCoercion (GRefl r ty MRefl)
   = do { k <- lintType ty
        ; return (k, k, ty, ty, r) }
 
-lintCoercion (GRefl r ty (Just co))
+lintCoercion (GRefl r ty (MCo co))
   = do { k <- lintType ty
        ; (_, _, k1, k2, r') <- lintCoercion co
        ; ensureEqTys k k1
@@ -1655,7 +1655,7 @@ lintCoercion co@(TyConAppCo r tc cos)
 lintCoercion co@(AppCo co1 co2)
   | TyConAppCo {} <- co1
   = failWithL (text "TyConAppCo to the left of AppCo:" <+> ppr co)
-  | GRefl _ (TyConApp {}) Nothing <- co1
+  | GRefl _ (TyConApp {}) MRefl <- co1
   = failWithL (text "Refl (TyConApp ...) to the left of AppCo:" <+> ppr co)
   | otherwise
   = do { (k1,  k2,  s1, s2, r1) <- lintCoercion co1

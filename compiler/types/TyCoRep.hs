@@ -34,7 +34,7 @@ module TyCoRep (
         UnivCoProvenance(..),
         CoercionHole(..), coHoleCoVar, setCoHoleCoVar,
         CoercionN, CoercionR, CoercionP, KindCoercion,
-        MCoercion(..), MCoercionR,
+        MCoercion(..), MCoercionR, MCoercionN,
 
         -- * Functions over types
         mkTyConTy, mkTyVarTy, mkTyVarTys,
@@ -862,7 +862,7 @@ data Coercion
 
   -- These ones mirror the shape of types
   = -- GRefl :: "e" -> _ -> Maybe N -> e
-    GRefl Role Type (Maybe CoercionN)  -- See Note [Refl invariant]
+    GRefl Role Type MCoercionN  -- See Note [Refl invariant]
           -- Invariant: applications of (Refl T) to a bunch of identity coercions
           --            always show up as Refl.
           -- For example  (Refl T) (Refl a) (Refl b) shows up as (Refl (T a b)).
@@ -957,7 +957,9 @@ data MCoercion
     -- A trivial Reflexivity coercion
   | MCo Coercion
     -- Other coercions
+  deriving Data.Data
 type MCoercionR = MCoercion
+type MCoercionN = MCoercion
 
 instance Outputable MCoercion where
   ppr MRefl    = text "MRefl"
@@ -1582,9 +1584,9 @@ tyCoVarsOfCoList :: Coercion -> [TyCoVar]
 -- See Note [Free variables of types]
 tyCoVarsOfCoList co = fvVarList $ tyCoFVsOfCo co
 
-tyCoFVsOfMCo :: Maybe Coercion -> FV
-tyCoFVsOfMCo Nothing   = emptyFV
-tyCoFVsOfMCo (Just co) = tyCoFVsOfCo co
+tyCoFVsOfMCo :: MCoercion -> FV
+tyCoFVsOfMCo MRefl    = emptyFV
+tyCoFVsOfMCo (MCo co) = tyCoFVsOfCo co
 
 tyCoFVsOfCo :: Coercion -> FV
 -- Extracts type and coercion variables from a coercion
@@ -1656,9 +1658,9 @@ coVarsOfType (CoercionTy co)     = coVarsOfCo co
 coVarsOfTypes :: [Type] -> TyCoVarSet
 coVarsOfTypes tys = mapUnionVarSet coVarsOfType tys
 
-coVarsOfMCo :: Maybe Coercion -> CoVarSet
-coVarsOfMCo Nothing   = emptyVarSet
-coVarsOfMCo (Just co) = coVarsOfCo co
+coVarsOfMCo :: MCoercion -> CoVarSet
+coVarsOfMCo MRefl    = emptyVarSet
+coVarsOfMCo (MCo co) = coVarsOfCo co
 
 coVarsOfCo :: Coercion -> CoVarSet
 -- Extract *coercion* variables only.  Tiresome to repeat the code, but easy.
@@ -1765,9 +1767,9 @@ noFreeVarsOfType (LitTy _)        = True
 noFreeVarsOfType (CastTy ty co)   = noFreeVarsOfType ty && noFreeVarsOfCo co
 noFreeVarsOfType (CoercionTy co)  = noFreeVarsOfCo co
 
-noFreeVarsOfMCo :: Maybe Coercion -> Bool
-noFreeVarsOfMCo Nothing   = True
-noFreeVarsOfMCo (Just co) = noFreeVarsOfCo co
+noFreeVarsOfMCo :: MCoercion -> Bool
+noFreeVarsOfMCo MRefl    = True
+noFreeVarsOfMCo (MCo co) = noFreeVarsOfCo co
 
 -- | Returns True if this coercion has no free variables. Should be the same as
 -- isEmptyVarSet . tyCoVarsOfCo, but faster in the non-forall case.
@@ -2448,8 +2450,12 @@ subst_co subst co
     go_ty :: Type -> Type
     go_ty = subst_ty subst
 
+    go_mco :: MCoercion -> MCoercion
+    go_mco MRefl    = MRefl
+    go_mco (MCo co) = MCo (go co)
+
     go :: Coercion -> Coercion
-    go (GRefl r ty co1)      = (mkGReflCo r $! (go_ty ty)) $! (fmap go co1)
+    go (GRefl r ty mco)      = (mkGReflCo r $! (go_ty ty)) $! (go_mco mco)
     go (TyConAppCo r tc args)= let args' = map go args
                                in  args' `seqList` mkTyConAppCo r tc args'
     go (AppCo co arg)        = (mkAppCo $! go co) $! go arg
@@ -3048,7 +3054,10 @@ tidyCo :: TidyEnv -> Coercion -> Coercion
 tidyCo env@(_, subst) co
   = go co
   where
-    go (GRefl r ty co1)      = GRefl r (tidyType env ty) $! fmap go co1
+    go_mco MRefl    = MRefl
+    go_mco (MCo co) = MCo (go co)
+
+    go (GRefl r ty mco)      = GRefl r (tidyType env ty) $! go_mco mco
     go (TyConAppCo r tc cos) = let args = map go cos
                                in args `seqList` TyConAppCo r tc args
     go (AppCo co1 co2)       = (AppCo $! go co1) $! go co2
@@ -3114,8 +3123,8 @@ typeSize (CastTy ty co)             = typeSize ty + coercionSize co
 typeSize (CoercionTy co)            = coercionSize co
 
 coercionSize :: Coercion -> Int
-coercionSize (GRefl _ ty Nothing)  = typeSize ty
-coercionSize (GRefl _ ty (Just co))= 1 + typeSize ty + coercionSize co
+coercionSize (GRefl _ ty MRefl)    = typeSize ty
+coercionSize (GRefl _ ty (MCo co)) = 1 + typeSize ty + coercionSize co
 coercionSize (TyConAppCo _ _ args) = 1 + sum (map coercionSize args)
 coercionSize (AppCo co arg)      = coercionSize co + coercionSize arg
 coercionSize (ForAllCo _ h co)   = 1 + coercionSize co + coercionSize h

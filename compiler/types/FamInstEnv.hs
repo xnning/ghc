@@ -1624,8 +1624,8 @@ allTyVarsInTy = go
     go (CastTy ty co)    = go ty `unionVarSet` go_co co
     go (CoercionTy co)   = go_co co
 
-    go_mco Nothing   = emptyVarSet
-    go_mco (Just co) = go_co co
+    go_mco MRefl    = emptyVarSet
+    go_mco (MCo co) = go_co co
 
     go_co (GRefl _ ty mco)      = go ty `unionVarSet` go_mco mco
     go_co (TyConAppCo _ _ args) = go_cos args
