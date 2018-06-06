@@ -1408,7 +1408,6 @@ ty_co_match menv subst (TyVarTy tv1) co lkco rkco
     else Just $ extendVarEnv subst tv1' $
                 castCoercionKindI co (mkSymCo lkco) (mkSymCo rkco)
 
-  -- TODO: EraseEqCo
   | otherwise
   = Nothing
 
