@@ -32,7 +32,7 @@ import GhcPrelude
 import TcRnMonad
 import TcEnv
 import TcBinds( tcRecSelBinds )
-import TyCoRep( Type(..), Coercion(..), UnivCoProvenance(..) )
+import TyCoRep( Type(..), Coercion(..), MCoercion(..), UnivCoProvenance(..) )
 import TcType
 import TysWiredIn( unitTy )
 import MkCore( rEC_SEL_ERROR_ID )
@@ -111,8 +111,8 @@ synonymTyConsOfType ty
      -- in the same recursive group.  Possibly this restriction will be
      -- lifted in the future but for now, this code is "just for completeness
      -- sake".
-     go_mco Nothing   = emptyNameEnv
-     go_mco (Just co) = go_co co
+     go_mco MRefl    = emptyNameEnv
+     go_mco (MCo co) = go_co co
 
      go_co (GRefl _ ty mco)       = go ty `plusNameEnv` go_mco mco
      go_co (TyConAppCo _ tc cs)   = go_tc tc `plusNameEnv` go_co_s cs

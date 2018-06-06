@@ -14,6 +14,7 @@ module IfaceType (
         IfExtName, IfLclName,
 
         IfaceType(..), IfacePredType, IfaceKind, IfaceCoercion(..),
+        IfaceMCoercion(..),
         IfaceUnivCoProv(..),
         IfaceTyCon(..), IfaceTyConInfo(..), IfaceTyConSort(..), IsPromoted(..),
         IfaceTyLit(..), IfaceTcArgs(..),
@@ -280,8 +281,12 @@ data IfaceTyConInfo   -- Used to guide pretty-printing
                    , ifaceTyConSort       :: IfaceTyConSort }
     deriving (Eq)
 
+data IfaceMCoercion
+  = IfaceMRefl
+  | IfaceMCo IfaceCoercion
+
 data IfaceCoercion
-  = IfaceGReflCo      Role IfaceType (Maybe IfaceCoercion)
+  = IfaceGReflCo      Role IfaceType (IfaceMCoercion)
   | IfaceFunCo        Role IfaceCoercion IfaceCoercion
   | IfaceTyConAppCo   Role IfaceTyCon [IfaceCoercion]
   | IfaceAppCo        IfaceCoercion IfaceCoercion
@@ -441,8 +446,8 @@ substIfaceType env ty
     go (IfaceCastTy ty co)    = IfaceCastTy (go ty) (go_co co)
     go (IfaceCoercionTy co)   = IfaceCoercionTy (go_co co)
 
-    go_mco Nothing   = Nothing
-    go_mco (Just co) = Just $ go_co co
+    go_mco IfaceMRefl    = IfaceMRefl
+    go_mco (IfaceMCo co) = IfaceMCo $ go_co co
 
     go_co (IfaceGReflCo r ty mco)    = IfaceGReflCo r (go ty) (go_mco mco)
     go_co (IfaceFunCo r c1 c2)       = IfaceFunCo r (go_co c1) (go_co c2)
@@ -1160,9 +1165,9 @@ pprIfaceCoercion = ppr_co topPrec
 pprParendIfaceCoercion = ppr_co appPrec
 
 ppr_co :: PprPrec -> IfaceCoercion -> SDoc
-ppr_co _         (IfaceGReflCo r ty Nothing)
+ppr_co _         (IfaceGReflCo r ty IfaceMRefl)
   = angleBrackets (ppr ty) <> ppr_role r
-ppr_co ctxt_prec (IfaceGReflCo r ty (Just co))
+ppr_co ctxt_prec (IfaceGReflCo r ty (IfaceMCo co))
   = ppr_special_co ctxt_prec
     (text "GRefl" <+> ppr r <+> pprParendIfaceType ty) [co]
 ppr_co ctxt_prec (IfaceFunCo r co1 co2)
@@ -1454,6 +1459,21 @@ instance Binary IfaceType where
                       ; return (IfaceTupleTy s i tys) }
               _  -> do n <- get bh
                        return (IfaceLitTy n)
+
+instance Binary IfaceMCoercion where
+  put_ bh IfaceMRefl = do
+          putByte bh 1
+  put_ bh (IfaceMCo co) = do
+          putByte bh 2
+          put_ bh co
+
+  get bh = do
+    tag <- getByte bh
+    case tag of
+         1 -> return IfaceMRefl
+         2 -> do a <- get bh
+                 return $ IfaceMCo a
+         _ -> panic ("get IfaceMCoercion " ++ show tag)
 
 instance Binary IfaceCoercion where
   put_ bh (IfaceGReflCo a b c) = do

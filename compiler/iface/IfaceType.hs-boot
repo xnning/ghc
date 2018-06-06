@@ -14,5 +14,6 @@ data IfaceType
 data IfaceTyCon
 data IfaceTyLit
 data IfaceCoercion
+data IfaceMCoercion
 type IfaceTvBndr      = (IfLclName, IfaceKind)
 type IfaceForAllBndr  = TyVarBndr IfaceTvBndr ArgFlag

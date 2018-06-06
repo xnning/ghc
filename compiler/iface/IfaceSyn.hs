@@ -1425,9 +1425,9 @@ freeNamesIfType (IfaceDFunTy s t)     = freeNamesIfType s &&& freeNamesIfType t
 freeNamesIfType (IfaceCastTy t c)     = freeNamesIfType t &&& freeNamesIfCoercion c
 freeNamesIfType (IfaceCoercionTy c)   = freeNamesIfCoercion c
 
-freeNamesIfMCoercion :: Maybe IfaceCoercion -> NameSet
-freeNamesIfMCoercion Nothing   = emptyNameSet
-freeNamesIfMCoercion (Just co) = freeNamesIfCoercion co
+freeNamesIfMCoercion :: IfaceMCoercion -> NameSet
+freeNamesIfMCoercion IfaceMRefl    = emptyNameSet
+freeNamesIfMCoercion (IfaceMCo co) = freeNamesIfCoercion co
 
 freeNamesIfCoercion :: IfaceCoercion -> NameSet
 freeNamesIfCoercion (IfaceGReflCo _ t mco)

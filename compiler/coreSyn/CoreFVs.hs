@@ -366,9 +366,9 @@ orphNamesOfThings f = foldr (unionNameSet . f) emptyNameSet
 orphNamesOfTypes :: [Type] -> NameSet
 orphNamesOfTypes = orphNamesOfThings orphNamesOfType
 
-orphNamesOfMCo :: Maybe Coercion -> NameSet
-orphNamesOfMCo Nothing   = emptyNameSet
-orphNamesOfMCo (Just co) = orphNamesOfCo co
+orphNamesOfMCo :: MCoercion -> NameSet
+orphNamesOfMCo MRefl    = emptyNameSet
+orphNamesOfMCo (MCo co) = orphNamesOfCo co
 
 orphNamesOfCo :: Coercion -> NameSet
 orphNamesOfCo (GRefl _ ty mco)      = orphNamesOfType ty `unionNameSet` orphNamesOfMCo mco

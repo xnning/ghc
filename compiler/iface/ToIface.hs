@@ -221,8 +221,8 @@ toIfaceCoercionX :: VarSet -> Coercion -> IfaceCoercion
 toIfaceCoercionX fr co
   = go co
   where
-    go_mco Nothing          = Nothing
-    go_mco (Just co)        = Just $ go co
+    go_mco MRefl     = IfaceMRefl
+    go_mco (MCo co)  = IfaceMCo $ go co
 
     go (GRefl r ty mco)     = IfaceGReflCo r (toIfaceTypeX fr ty) (go_mco mco)
     go (CoVarCo cv)

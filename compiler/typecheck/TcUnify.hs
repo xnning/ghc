@@ -2242,9 +2242,9 @@ occCheckExpand tv ty
            -- See Note [Occurrence checking: look inside kinds]
 
     ------------------
-    go_mco _    Nothing  = return Nothing
-    go_mco env (Just co) = do { co' <- go_co env co
-                              ; return (Just co')}
+    go_mco _    MRefl   = return MRefl
+    go_mco env (MCo co) = do { co' <- go_co env co
+                              ; return (MCo co')}
 
     ------------------
     go_co env (GRefl r ty mco)          = do { ty' <- go env ty
