@@ -59,7 +59,7 @@ module Coercion (
 
         pickLR,
 
-        isReflCo, isReflCo_maybe, isGReflCo_maybe, isReflexiveCo, isReflexiveCo_maybe,
+        isGReflCo, isReflCo, isReflCo_maybe, isGReflCo_maybe, isReflexiveCo, isReflexiveCo_maybe,
         isReflCoVar_maybe,
 
         -- ** Coercion variables
@@ -556,7 +556,10 @@ role is bizarre and a caller should have to ask for this behavior explicitly.
 
 -- | Make a generalized reflexive coercion
 mkGReflCo :: Role -> Type -> MCoercionN -> Coercion
-mkGReflCo = GRefl
+mkGReflCo r ty MRefl = GRefl r ty MRefl
+mkGReflCo r ty (MCo co)
+  | isGReflCo co = GRefl r ty MRefl
+  | otherwise    = GRefl r ty (MCo co)
 
 -- | Make a reflexive coercion
 mkReflCo :: Role -> Type -> Coercion
@@ -873,7 +876,6 @@ mkSymCo :: Coercion -> Coercion
 -- Do a few simple optimizations, but don't bother pushing occurrences
 -- of symmetry to the leaves; the optimizer will take care of that.
 mkSymCo co@(GRefl _ _ MRefl)      = co
-mkSymCo    (GRefl r t (MCo co))   = GRefl r (mkCastTy t co) (MCo $ mkSymCo co)
 mkSymCo    (SymCo co)             = co
 mkSymCo    (SubCo (SymCo co))     = SubCo co
 mkSymCo co                        = SymCo co

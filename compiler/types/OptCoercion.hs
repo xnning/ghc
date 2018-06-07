@@ -176,14 +176,11 @@ opt_co4 env sym  rep r (GRefl _r ty (MCo co))
   = ASSERT2( r == _r, text "Expected role:" <+> ppr r $$
                       text "Found role:" <+> ppr _r   $$
                       text "Type:" <+> ppr ty )
-    if sym
-    then GRefl r' (mkCastTy ty' co2) (MCo co1)
-    else GRefl r' ty' (MCo co2)
+    wrapSym sym $ mkGReflCo r' ty' (MCo co')
   where
-    r'  = (chooseRole rep r)
-    co1 = opt_co4 env True  False Nominal co
-    co2 = opt_co4 env False False Nominal co
+    r'  = chooseRole rep r
     ty' = substTy (lcSubstLeft env) ty
+    co' = opt_co4 env False False Nominal co
 
 opt_co4 env sym rep r (SymCo co)  = opt_co4_wrap env (not sym) rep r co
   -- surprisingly, we don't have to do anything to the env here. This is
