@@ -2218,8 +2218,6 @@ nonDetCmpTypeX env orig_t1 orig_t2 =
       -- If there are casts then we also need to do a comparison of the kinds of
       -- the types being compared
       TEQX          -> toOrdering $ go env k1 k2
-      -- If the order of types can be decided, or if EqKindFlag = False,
-      -- then there is no need to compare kinds
       ty_ordering   -> toOrdering ty_ordering
   where
     k1 = typeKind orig_t1
