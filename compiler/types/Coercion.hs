@@ -451,6 +451,8 @@ isReflCoVar_maybe cv
   | otherwise
   = Nothing
 
+-- | Tests if this coercion is obviously a generalized reflexive coercion.
+-- Guaranteed to work very quickly.
 isGReflCo :: Coercion -> Bool
 isGReflCo (GRefl{}) = True
 isGReflCo _         = False
@@ -462,9 +464,8 @@ isReflCo :: Coercion -> Bool
 isReflCo (GRefl _ _ MRefl) = True
 isReflCo _                   = False
 
--- | Returns the type coerced if this coercion is reflexive. Guaranteed
--- to work very quickly. Sometimes a coercion can be reflexive, but not
--- obviously so. c.f. 'isReflexiveCo_maybe'
+-- | Returns the type coerced if this coercion is a generalized reflexive
+-- coercion. Guaranteed to work very quickly.
 isGReflCo_maybe :: Coercion -> Maybe (Type, MCoercion)
 isGReflCo_maybe (GRefl _ ty co) = Just (ty, co)
 isGReflCo_maybe _ = Nothing
@@ -603,7 +604,7 @@ mkFunCo r co1 co2
     -- See Note [Refl invariant]
   | Just (ty1, _) <- isGReflCo_maybe co1
   , Just (ty2, _) <- isGReflCo_maybe co2
-  -- Arrows always have kind @*@, thus Nothing
+  -- Arrows always have kind @*@, thus MRefl
   = GRefl r (mkFunTy ty1 ty2) MRefl
   | otherwise = FunCo r co1 co2
 
@@ -617,7 +618,7 @@ mkAppCo (GRefl r ty1 MRefl) arg
   | Just (ty2, _) <- isGReflCo_maybe arg
   -- Given t1 :: k1', t2 :: k2',
   -- if |t1| = |t2|, k1' = k2', |s1| = |s2|,
-  -- then the return kinds of the application are the same, thus Nothing
+  -- then the return kinds of the application are the same, thus MRefl
   = GRefl r (mkAppTy ty1 ty2) MRefl
 
   | Just (tc, tys) <- splitTyConApp_maybe ty1
@@ -628,7 +629,7 @@ mkAppCo (GRefl r ty1 MRefl) arg
     zip_roles (r1:rs) (ty1:tys)     = mkReflCo r1 ty1 : zip_roles rs tys
     zip_roles _       _             = panic "zip_roles" -- but the roles are infinite...
 
--- Note, when the first argument is @GRefl r ty1 (Just co)@,
+-- Note, when the first argument is @GRefl r ty1 (MCo co)@,
 -- it is possible to do some optimizations.
 -- But it requires to call @coercionKind co@ to get @co :: kc1 ~ kc2@
 -- and case analyze on the shape of @kc1@, @kc2@, which is quite expensive.
@@ -886,9 +887,6 @@ mkTransCo :: Coercion -> Coercion -> Coercion
 mkTransCo co1 (GRefl _ _ MRefl) = co1
 mkTransCo (GRefl _ _ MRefl) co2 = co2
 mkTransCo (GRefl r t1 (MCo co1)) (GRefl _ _ (MCo co2))
-  -- Is this optimization feasible?
-  -- Do I need to check whether their roles are equal
-  -- and types are indeed equivalent?
   = GRefl r t1 (MCo $ mkTransCo co1 co2)
 mkTransCo co1 co2                 = TransCo co1 co2
 
@@ -1352,7 +1350,7 @@ castCoercionKind g r t1 t2 h1 h2
 -- @castCoercionKind g h1 h2@, where @g :: t1 ~r t2@,
 -- has type @(t1 |> h1) ~r (t2 |> h2)@.
 -- @h1@ and @h2@ must be nominal.
--- It calls @coercionKindRole@, which is quite inefficient (what 'I' stands for)
+-- It calls @coercionKindRole@, so it's quite inefficient (which 'I' stands for)
 -- Use @castCoercionKind@ instead if @t1@, @t2@, and @r@ are known beforehand.
 castCoercionKindI :: Coercion -> CoercionN -> CoercionN -> Coercion
 castCoercionKindI g h1 h2
