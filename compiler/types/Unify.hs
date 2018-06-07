@@ -1370,7 +1370,7 @@ ty_co_match menv subst ty co lkco rkco
 
   -- handle Refl case:
   | tyCoVarsOfType ty `isNotInDomainOf` subst
-  , Just (ty', MRefl) <- isGReflCo_maybe co
+  , Just (ty', _) <- isReflCo_maybe co
   , ty `eqType` ty'
   = Just subst
 

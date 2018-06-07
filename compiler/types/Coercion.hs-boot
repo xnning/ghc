@@ -34,6 +34,7 @@ mkSubCo :: Coercion -> Coercion
 mkProofIrrelCo :: Role -> Coercion -> Coercion -> Coercion -> Coercion
 mkAxiomRuleCo :: CoAxiomRule -> [Coercion] -> Coercion
 
+isGReflCo :: Coercion -> Bool
 isReflCo :: Coercion -> Bool
 isReflexiveCo :: Coercion -> Bool
 decomposePiCos :: Kind -> [Type] -> Coercion -> ([Coercion], Coercion)
