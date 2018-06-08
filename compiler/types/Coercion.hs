@@ -560,6 +560,8 @@ mkGReflCo :: Role -> Type -> MCoercionN -> Coercion
 mkGReflCo r ty MRefl = GRefl r ty MRefl
 mkGReflCo r ty (MCo co)
   | isGReflCo co = GRefl r ty MRefl
+    -- the kinds of @k1@ and @k2@ are the same, thus @isGReflCo@
+    -- instead of @isReflCo@
   | otherwise    = GRefl r ty (MCo co)
 
 -- | Make a reflexive coercion
@@ -1025,19 +1027,19 @@ mkInstCo co arg = InstCo co arg
 -- produces @co' :: ty ~r (ty |> co)@
 mkGReflRightCo :: Role -> Type -> CoercionN -> Coercion
 mkGReflRightCo r ty co
-  | isGReflCo co = mkReflCo r ty
+  | isGReflCo co = GRefl r ty MRefl
     -- the kinds of @k1@ and @k2@ are the same, thus @isGReflCo@
     -- instead of @isReflCo@
-  | otherwise    = mkGReflCo r ty (MCo co)
+  | otherwise    = GRefl r ty (MCo co)
 
 -- | Given @ty :: k1@, @co :: k1 ~ k2@,
 -- produces @co' :: (ty |> co) ~r ty@
 mkGReflLeftCo :: Role -> Type -> CoercionN -> Coercion
 mkGReflLeftCo r ty co
-  | isGReflCo co = mkReflCo r ty
+  | isGReflCo co = GRefl r ty MRefl
     -- the kinds of @k1@ and @k2@ are the same, thus @isGReflCo@
     -- instead of @isReflCo@
-  | otherwise    = mkSymCo $ mkGReflCo r ty (MCo co)
+  | otherwise    = mkSymCo $ GRefl r ty (MCo co)
 
 -- | Given @co :: (a :: k) ~ (b :: k')@ produce @co' :: k ~ k'@.
 mkKindCo :: Coercion -> Coercion
@@ -1353,13 +1355,9 @@ castCoercionKind g r t1 t2 h1 h2
 -- It calls @coercionKindRole@, so it's quite inefficient (which 'I' stands for)
 -- Use @castCoercionKind@ instead if @t1@, @t2@, and @r@ are known beforehand.
 castCoercionKindI :: Coercion -> CoercionN -> CoercionN -> Coercion
-castCoercionKindI g h1 h2
-  | isGReflCo h1 && isReflCo h2 = g
-  | isGReflCo h1                = g `mkTransCo` mkGReflRightCo r t2 h2
-  | isGReflCo h2                = mkGReflLeftCo r t1 h1 `mkTransCo` g
-  | otherwise                   = mkGReflLeftCo r t1 h1
-                                 `mkTransCo` g
-                                 `mkTransCo` mkGReflRightCo r t2 h2
+castCoercionKindI g h1 h2 = mkGReflLeftCo r t1 h1
+                            `mkTransCo` g
+                            `mkTransCo` mkGReflRightCo r t2 h2
   where (Pair t1 t2, r) = coercionKindRole g
 
 -- See note [Newtype coercions] in TyCon
