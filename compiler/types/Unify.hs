@@ -1409,7 +1409,7 @@ ty_co_match menv subst ty (GRefl r (CastTy t co) MRefl) lkco rkco
   -- while propagating the correct kind coercions.
   = let kco' = mkSymCo co
     in ty_co_match menv subst ty (GRefl r t MRefl) (lkco `mkTransCo` kco')
-                                                     (rkco `mkTransCo` kco')
+                                                   (rkco `mkTransCo` kco')
 
 
 ty_co_match menv subst ty co lkco rkco
