@@ -1572,13 +1572,13 @@ instance Binary IfaceCoercion where
           put_ bh a
           put_ bh b
   put_ bh (IfaceKindCo a) = do
-          putByte bh 15
+          putByte bh 14
           put_ bh a
   put_ bh (IfaceSubCo a) = do
-          putByte bh 16
+          putByte bh 15
           put_ bh a
   put_ bh (IfaceAxiomRuleCo a b) = do
-          putByte bh 17
+          putByte bh 16
           put_ bh a
           put_ bh b
   put_ _ (IfaceFreeCoVar cv)
@@ -1634,11 +1634,11 @@ instance Binary IfaceCoercion where
            13-> do a <- get bh
                    b <- get bh
                    return $ IfaceInstCo a b
-           15-> do a <- get bh
+           14-> do a <- get bh
                    return $ IfaceKindCo a
-           16-> do a <- get bh
+           15-> do a <- get bh
                    return $ IfaceSubCo a
-           17-> do a <- get bh
+           16-> do a <- get bh
                    b <- get bh
                    return $ IfaceAxiomRuleCo a b
            _ -> panic ("get IfaceCoercion " ++ show tag)

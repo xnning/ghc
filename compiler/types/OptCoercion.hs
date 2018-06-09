@@ -927,15 +927,15 @@ Suppose we have
 
 but g is *not* a ForAllCo. We want to eta-expand it. So, we do this:
 
-  g' = all a1:(ForAllKindCo g).(InstCo g (a1 ~ a2 |> ForAllKindCo g))
+  g' = all a1:(ForAllKindCo g).(InstCo g (a1 ~ a1 |> ForAllKindCo g))
 
 Call the kind coercion h1 and the body coercion h2. We can see that
 
-  h2 : t1 ~ t2[a2 |-> (a1 |> h2)]
+  h2 : t1 ~ t2[a2 |-> (a1 |> h1)]
 
 According to the typing rule for ForAllCo, we get that
 
-  g' : all a1:k1.t1  ~  all a1:k2.(t2[a2 |-> (a1 |> h2)][a1 |-> a1 |> sym h2])
+  g' : all a1:k1.t1  ~  all a1:k2.(t2[a2 |-> (a1 |> h1)][a1 |-> a1 |> sym h1])
 
 or
 

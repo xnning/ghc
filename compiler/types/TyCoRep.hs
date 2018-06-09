@@ -863,6 +863,8 @@ data Coercion
   -- These ones mirror the shape of types
   = -- GRefl :: "e" -> _ -> Maybe N -> e
     GRefl Role Type MCoercionN  -- See Note [Refl invariant]
+          -- Refl == GRefl r ty MRefl :: ty ~r ty
+          -- GRefl r ty (MCo co)      :: ty ~r ty |> co
           -- Invariant: applications of (Refl T) to a bunch of identity coercions
           --            always show up as Refl.
           -- For example  (Refl T) (Refl a) (Refl b) shows up as (Refl (T a b)).
