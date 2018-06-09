@@ -1666,8 +1666,8 @@ flatten_exact_fam_app_fully tc tys
                                  --     the xis are flattened
                                  ; let xi = mkTyVarTy fsk `mkCastTy` kind_co
                                        co' = mkTcGReflLeftCo role
-                                                                 (mkTyVarTy fsk)
-                                                                 kind_co
+                                                             (mkTyVarTy fsk)
+                                                             kind_co
                                              `mkTransCo`
                                              maybeSubCo eq_rel (mkSymCo co)
                                              `mkTransCo` ret_co
