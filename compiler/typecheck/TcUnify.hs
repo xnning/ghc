@@ -1265,7 +1265,7 @@ uType, uType_defer
   -> CtOrigin
   -> TcType    -- ty1 is the *actual* type
   -> TcType    -- ty2 is the *expected* type
-  -> TcM Coercion
+  -> TcM CoercionN
 
 --------------
 -- It is always safe to defer unification to the main constraint solver
@@ -1300,7 +1300,7 @@ uType t_or_k origin orig_ty1 orig_ty2
             else traceTc "u_tys yields coercion:" (ppr co)
        ; return co }
   where
-    go :: TcType -> TcType -> TcM Coercion
+    go :: TcType -> TcType -> TcM CoercionN
         -- The arguments to 'go' are always semantically identical
         -- to orig_ty{1,2} except for looking through type synonyms
 
@@ -1328,13 +1328,11 @@ uType t_or_k origin orig_ty1 orig_ty2
 
     go (CastTy t1 co1) t2
       = do { co_tys <- go t1 t2
-           ; let role = coercionRole co_tys
-           ; return (mkGReflLeftCo role t1 co1 `mkTransCo` co_tys) }
+           ; return (mkGReflLeftCo Nominal t1 co1 `mkTransCo` co_tys) }
 
     go t1 (CastTy t2 co2)
       = do { co_tys <- go t1 t2
-           ; let role = coercionRole co_tys
-           ; return (co_tys `mkTransCo` mkGReflRightCo role t2 co2) }
+           ; return (co_tys `mkTransCo` mkGReflRightCo Nominal t2 co2) }
 
         -- See Note [Expanding synonyms during unification]
         --

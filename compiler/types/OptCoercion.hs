@@ -180,7 +180,8 @@ opt_co4 env sym  rep r (GRefl _r ty (MCo co))
   = ASSERT2( r == _r, text "Expected role:" <+> ppr r $$
                       text "Found role:" <+> ppr _r   $$
                       text "Type:" <+> ppr ty )
-    wrapSym sym $ mkGReflCo r' ty' (MCo co')
+    wrapSym sym $ liftCoSubst r' env ty
+                  `mkTransCo` mkGReflRightCo r' ty' co'
   where
     r'  = chooseRole rep r
     ty' = substTy (lcSubstLeft env) ty
