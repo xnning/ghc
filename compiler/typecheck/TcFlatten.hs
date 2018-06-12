@@ -1473,7 +1473,8 @@ flatten_app_ty_args fun_xi fun_co arg_tys
                       arg_co = mkAppCos fun_co arg_cos
                 ; return (arg_xi, arg_co, kind_co) }
 
-       ; return (homogenise_result xi co kind_co) }
+       ; let role = coercionRole co
+       ; return (homogenise_result xi co role kind_co) }
 
 flatten_ty_con_app :: TyCon -> [TcType] -> FlatM (Xi, Coercion)
 flatten_ty_con_app tc tys
@@ -1481,17 +1482,17 @@ flatten_ty_con_app tc tys
        ; (xis, cos, kind_co) <- flatten_args_tc tc (tyConRolesX role tc) tys
        ; let tyconapp_xi = mkTyConApp tc xis
              tyconapp_co = mkTyConAppCo role tc cos
-       ; return (homogenise_result tyconapp_xi tyconapp_co kind_co) }
+       ; return (homogenise_result tyconapp_xi tyconapp_co role kind_co) }
 
 -- Make the result of flattening homogeneous (Note [Flattening] (F2))
 homogenise_result :: Xi              -- a flattened type
-                  -> Coercion        -- :: xi ~ original ty
+                  -> Coercion        -- :: xi ~r original ty
+                  -> Role            -- r
                   -> CoercionN       -- kind_co :: typeKind(xi) ~N typeKind(ty)
                   -> (Xi, Coercion)  -- (xi |> kind_co, (xi |> kind_co)
-                                     --   ~ original ty)
-homogenise_result xi co kind_co
+                                     --   ~r original ty)
+homogenise_result xi co r kind_co
   = let xi' = xi `mkCastTy` kind_co
-        r   = coercionRole co
         co' = mkTcGReflLeftCo r xi kind_co `mkTransCo` co
     in  (xi', co')
 {-# INLINE homogenise_result #-}
@@ -1664,10 +1665,9 @@ flatten_exact_fam_app_fully tc tys
 
                                  -- NB: fsk's kind is already flattened because
                                  --     the xis are flattened
-                                 ; let xi = mkTyVarTy fsk `mkCastTy` kind_co
-                                       co' = mkTcGReflLeftCo role
-                                                             (mkTyVarTy fsk)
-                                                             kind_co
+                                 ; let fsk_ty = mkTyVarTy fsk
+                                       xi = fsk_ty `mkCastTy` kind_co
+                                       co' = mkTcGReflLeftCo role fsk_ty kind_co
                                              `mkTransCo`
                                              maybeSubCo eq_rel (mkSymCo co)
                                              `mkTransCo` ret_co

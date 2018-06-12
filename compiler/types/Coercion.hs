@@ -461,8 +461,9 @@ isGReflCo _         = False
 -- very quickly. Sometimes a coercion can be reflexive, but not obviously
 -- so. c.f. 'isReflexiveCo'
 isReflCo :: Coercion -> Bool
-isReflCo (GRefl _ _ MRefl) = True
-isReflCo _                 = False
+isReflCo (GRefl _ _ MRefl)         = True
+isReflCo (GRefl _ _ (MCo GRefl{})) = True
+isReflCo _                         = False
 
 -- | Returns the type coerced if this coercion is a generalized reflexive
 -- coercion. Guaranteed to work very quickly.
@@ -474,7 +475,8 @@ isGReflCo_maybe _ = Nothing
 -- to work very quickly. Sometimes a coercion can be reflexive, but not
 -- obviously so. c.f. 'isReflexiveCo_maybe'
 isReflCo_maybe :: Coercion -> Maybe (Type, Role)
-isReflCo_maybe (GRefl r ty MRefl) = Just (ty, r)
+isReflCo_maybe (GRefl r ty MRefl)         = Just (ty, r)
+isReflCo_maybe (GRefl r ty (MCo GRefl{})) = Just (ty, r)
 isReflCo_maybe _ = Nothing
 
 -- | Slowly checks if the coercion is reflexive. Don't call this in a loop,
@@ -485,7 +487,8 @@ isReflexiveCo = isJust . isReflexiveCo_maybe
 -- | Extracts the coerced type from a reflexive coercion. This potentially
 -- walks over the entire coercion, so avoid doing this in a loop.
 isReflexiveCo_maybe :: Coercion -> Maybe (Type, Role)
-isReflexiveCo_maybe (GRefl r ty MRefl) = Just (ty, r)
+isReflexiveCo_maybe (GRefl r ty MRefl)         = Just (ty, r)
+isReflexiveCo_maybe (GRefl r ty (MCo GRefl{})) = Just (ty, r)
 isReflexiveCo_maybe co
   | ty1 `eqType` ty2
   = Just (ty1, r)
@@ -1113,6 +1116,7 @@ mkProofIrrelCo :: Role       -- ^ role of the created coercion, "r"
 -- if the two coercion prove the same fact, I just don't care what
 -- the individual coercions are.
 mkProofIrrelCo r (GRefl {}) g  _  = mkReflCo r (mkCoercionTy g)
+  -- kco is a kind coercion, thus @GRefl {}@ rather than @GRefl _ _ MRefl@
 mkProofIrrelCo r kco        g1 g2 = mkUnivCo (ProofIrrelProv kco) r
                                              (mkCoercionTy g1) (mkCoercionTy g2)
 
