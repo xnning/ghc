@@ -646,6 +646,7 @@ rnIfaceMCo IfaceMRefl    = pure IfaceMRefl
 rnIfaceMCo (IfaceMCo co) = IfaceMCo <$> rnIfaceCo co
 
 rnIfaceCo :: Rename IfaceCoercion
+rnIfaceCo (IfaceReflCo ty) = IfaceReflCo <$> rnIfaceType ty
 rnIfaceCo (IfaceGReflCo role ty mco)
   = IfaceGReflCo role <$> rnIfaceType ty <*> rnIfaceMCo mco
 rnIfaceCo (IfaceFunCo role co1 co2)

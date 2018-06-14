@@ -1430,6 +1430,7 @@ freeNamesIfMCoercion IfaceMRefl    = emptyNameSet
 freeNamesIfMCoercion (IfaceMCo co) = freeNamesIfCoercion co
 
 freeNamesIfCoercion :: IfaceCoercion -> NameSet
+freeNamesIfCoercion (IfaceReflCo t) = freeNamesIfType t
 freeNamesIfCoercion (IfaceGReflCo _ t mco)
   = freeNamesIfType t &&& freeNamesIfMCoercion mco
 freeNamesIfCoercion (IfaceFunCo _ c1 c2)

@@ -2245,6 +2245,8 @@ occCheckExpand tv ty
                               ; return (MCo co')}
 
     ------------------
+    go_co env (Refl ty)                 = do { ty' <- go env ty
+                                             ; return (mkNomReflCo ty') }
     go_co env (GRefl r ty mco)          = do { ty' <- go env ty
                                              ; mco' <- go_mco env mco
                                              ; return (mkGReflCo r ty' mco') }

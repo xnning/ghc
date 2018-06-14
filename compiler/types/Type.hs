@@ -406,6 +406,8 @@ expandTypeSynonyms ty
     go_mco _     MRefl    = MRefl
     go_mco subst (MCo co) = MCo (go_co subst co)
 
+    go_co subst (Refl ty)
+      = mkNomReflCo (go subst ty)
     go_co subst (GRefl r ty mco)
       = mkGReflCo r (go subst ty) (go_mco subst mco)
        -- NB: coercions are always expanded upon creation
@@ -545,7 +547,8 @@ mapCoercion mapper@(TyCoMapper { tcm_smart = smart, tcm_covar = covar
     go_mco MRefl    = return MRefl
     go_mco (MCo co) = MCo <$> (go co)
 
-    go (GRefl r ty mco) = GRefl r <$> mapType mapper env ty <*> (go_mco mco)
+    go (Refl ty) = Refl <$> mapType mapper env ty
+    go (GRefl r ty mco) = mkgreflco r <$> mapType mapper env ty <*> (go_mco mco)
     go (TyConAppCo r tc args)
       = mktyconappco r tc <$> mapM go args
     go (AppCo c1 c2) = mkappco <$> go c1 <*> go c2
@@ -579,15 +582,15 @@ mapCoercion mapper@(TyCoMapper { tcm_smart = smart, tcm_covar = covar
 
     ( mktyconappco, mkappco, mkaxiominstco, mkunivco
       , mksymco, mktransco, mknthco, mklrco, mkinstco
-      , mkkindco, mksubco, mkforallco)
+      , mkkindco, mksubco, mkforallco, mkgreflco)
       | smart
       = ( mkTyConAppCo, mkAppCo, mkAxiomInstCo, mkUnivCo
         , mkSymCo, mkTransCo, mkNthCo, mkLRCo, mkInstCo
-        , mkKindCo, mkSubCo, mkForAllCo )
+        , mkKindCo, mkSubCo, mkForAllCo, mkGReflCo )
       | otherwise
       = ( TyConAppCo, AppCo, AxiomInstCo, UnivCo
         , SymCo, TransCo, NthCo, LRCo, InstCo
-        , KindCo, SubCo, ForAllCo )
+        , KindCo, SubCo, ForAllCo, GRefl )
 
 {-
 ************************************************************************
@@ -2399,6 +2402,7 @@ tyConsOfType ty
      go (CastTy ty co)              = go ty `unionUniqSets` go_co co
      go (CoercionTy co)             = go_co co
 
+     go_co (Refl ty)               = go ty
      go_co (GRefl _ ty mco)        = go ty `unionUniqSets` go_mco mco
      go_co (TyConAppCo _ tc args)  = go_tc tc `unionUniqSets` go_cos args
      go_co (AppCo co arg)          = go_co co `unionUniqSets` go_co arg

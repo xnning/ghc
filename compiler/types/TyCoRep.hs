@@ -849,9 +849,11 @@ data Coercion
   --    -   _ stands for a parameter that is not a Role or Coercion.
 
   -- These ones mirror the shape of types
-  = -- GRefl :: "e" -> _ -> Maybe N -> e
-    GRefl Role Type MCoercionN  -- See Note [Refl invariant]
-          -- Refl == GRefl r ty MRefl :: ty ~r ty
+  = -- Refl :: _ -> N
+    Refl Type  -- See Note [Refl invariant]
+  -- GRefl :: "e" -> _ -> Maybe N -> e
+  | GRefl Role Type MCoercionN  -- See Note [Refl invariant]
+          -- Refl == GRefl Nominal ty MRefl :: ty ~n ty
           -- GRefl r ty (MCo co)      :: ty ~r ty |> co
           -- Invariant: applications of (Refl T) to a bunch of identity coercions
           --            always show up as Refl.
@@ -1577,6 +1579,8 @@ tyCoFVsOfMCo (MCo co) = tyCoFVsOfCo co
 tyCoFVsOfCo :: Coercion -> FV
 -- Extracts type and coercion variables from a coercion
 -- See Note [Free variables of types]
+tyCoFVsOfCo (Refl ty) fv_cand in_scope acc
+  = tyCoFVsOfType ty fv_cand in_scope acc
 tyCoFVsOfCo (GRefl _ ty mco) fv_cand in_scope acc
   = (tyCoFVsOfType ty `unionFV` tyCoFVsOfMCo mco) fv_cand in_scope acc
 tyCoFVsOfCo (TyConAppCo _ _ cos) fv_cand in_scope acc = tyCoFVsOfCos cos fv_cand in_scope acc
@@ -1650,6 +1654,7 @@ coVarsOfMCo (MCo co) = coVarsOfCo co
 
 coVarsOfCo :: Coercion -> CoVarSet
 -- Extract *coercion* variables only.  Tiresome to repeat the code, but easy.
+coVarsOfCo (Refl ty)             = coVarsOfType ty
 coVarsOfCo (GRefl _ ty co)       = coVarsOfType ty `unionVarSet` coVarsOfMCo co
 coVarsOfCo (TyConAppCo _ _ args) = coVarsOfCos args
 coVarsOfCo (AppCo co arg)      = coVarsOfCo co `unionVarSet` coVarsOfCo arg
@@ -1760,6 +1765,7 @@ noFreeVarsOfMCo (MCo co) = noFreeVarsOfCo co
 -- | Returns True if this coercion has no free variables. Should be the same as
 -- isEmptyVarSet . tyCoVarsOfCo, but faster in the non-forall case.
 noFreeVarsOfCo :: Coercion -> Bool
+noFreeVarsOfCo (Refl ty)              = noFreeVarsOfType ty
 noFreeVarsOfCo (GRefl _ ty co)        = noFreeVarsOfType ty && noFreeVarsOfMCo co
 noFreeVarsOfCo (TyConAppCo _ _ args)  = all noFreeVarsOfCo args
 noFreeVarsOfCo (AppCo c1 c2)          = noFreeVarsOfCo c1 && noFreeVarsOfCo c2
@@ -2443,6 +2449,7 @@ subst_co subst co
     go_mco (MCo co) = MCo (go co)
 
     go :: Coercion -> Coercion
+    go (Refl ty)             = mkNomReflCo $! (go_ty ty)
     go (GRefl r ty mco)      = (mkGReflCo r $! (go_ty ty)) $! (go_mco mco)
     go (TyConAppCo r tc args)= let args' = map go args
                                in  args' `seqList` mkTyConAppCo r tc args'
@@ -3040,6 +3047,7 @@ tidyCo env@(_, subst) co
     go_mco MRefl    = MRefl
     go_mco (MCo co) = MCo (go co)
 
+    go (Refl ty)             = Refl (tidyType env ty)
     go (GRefl r ty mco)      = GRefl r (tidyType env ty) $! go_mco mco
     go (TyConAppCo r tc cos) = let args = map go cos
                                in args `seqList` TyConAppCo r tc args
@@ -3106,6 +3114,7 @@ typeSize (CastTy ty co)             = typeSize ty + coercionSize co
 typeSize (CoercionTy co)            = coercionSize co
 
 coercionSize :: Coercion -> Int
+coercionSize (Refl ty)             = typeSize ty
 coercionSize (GRefl _ ty MRefl)    = typeSize ty
 coercionSize (GRefl _ ty (MCo co)) = 1 + typeSize ty + coercionSize co
 coercionSize (TyConAppCo _ _ args) = 1 + sum (map coercionSize args)

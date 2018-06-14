@@ -286,7 +286,8 @@ data IfaceMCoercion
   | IfaceMCo IfaceCoercion
 
 data IfaceCoercion
-  = IfaceGReflCo      Role IfaceType (IfaceMCoercion)
+  = IfaceReflCo       IfaceType
+  | IfaceGReflCo      Role IfaceType (IfaceMCoercion)
   | IfaceFunCo        Role IfaceCoercion IfaceCoercion
   | IfaceTyConAppCo   Role IfaceTyCon [IfaceCoercion]
   | IfaceAppCo        IfaceCoercion IfaceCoercion
@@ -449,6 +450,7 @@ substIfaceType env ty
     go_mco IfaceMRefl    = IfaceMRefl
     go_mco (IfaceMCo co) = IfaceMCo $ go_co co
 
+    go_co (IfaceReflCo ty)           = IfaceReflCo (go ty)
     go_co (IfaceGReflCo r ty mco)    = IfaceGReflCo r (go ty) (go_mco mco)
     go_co (IfaceFunCo r c1 c2)       = IfaceFunCo r (go_co c1) (go_co c2)
     go_co (IfaceTyConAppCo r tc cos) = IfaceTyConAppCo r tc (go_cos cos)
@@ -1165,6 +1167,7 @@ pprIfaceCoercion = ppr_co topPrec
 pprParendIfaceCoercion = ppr_co appPrec
 
 ppr_co :: PprPrec -> IfaceCoercion -> SDoc
+ppr_co _         (IfaceReflCo ty) = angleBrackets (ppr ty) <> ppr_role Nominal
 ppr_co _         (IfaceGReflCo r ty IfaceMRefl)
   = angleBrackets (ppr ty) <> ppr_role r
 ppr_co ctxt_prec (IfaceGReflCo r ty (IfaceMCo co))
@@ -1476,71 +1479,74 @@ instance Binary IfaceMCoercion where
          _ -> panic ("get IfaceMCoercion " ++ show tag)
 
 instance Binary IfaceCoercion where
-  put_ bh (IfaceGReflCo a b c) = do
+  put_ bh (IfaceReflCo a) = do
           putByte bh 1
           put_ bh a
-          put_ bh b
-          put_ bh c
-  put_ bh (IfaceFunCo a b c) = do
+  put_ bh (IfaceGReflCo a b c) = do
           putByte bh 2
           put_ bh a
           put_ bh b
           put_ bh c
-  put_ bh (IfaceTyConAppCo a b c) = do
+  put_ bh (IfaceFunCo a b c) = do
           putByte bh 3
           put_ bh a
           put_ bh b
           put_ bh c
-  put_ bh (IfaceAppCo a b) = do
+  put_ bh (IfaceTyConAppCo a b c) = do
           putByte bh 4
           put_ bh a
           put_ bh b
-  put_ bh (IfaceForAllCo a b c) = do
+          put_ bh c
+  put_ bh (IfaceAppCo a b) = do
           putByte bh 5
+          put_ bh a
+          put_ bh b
+  put_ bh (IfaceForAllCo a b c) = do
+          putByte bh 6
           put_ bh a
           put_ bh b
           put_ bh c
   put_ bh (IfaceCoVarCo a) = do
-          putByte bh 6
+          putByte bh 7
           put_ bh a
   put_ bh (IfaceAxiomInstCo a b c) = do
-          putByte bh 7
+          putByte bh 8
           put_ bh a
           put_ bh b
           put_ bh c
   put_ bh (IfaceUnivCo a b c d) = do
-          putByte bh 8
+          putByte bh 9
           put_ bh a
           put_ bh b
           put_ bh c
           put_ bh d
   put_ bh (IfaceSymCo a) = do
-          putByte bh 9
-          put_ bh a
-  put_ bh (IfaceTransCo a b) = do
           putByte bh 10
           put_ bh a
-          put_ bh b
-  put_ bh (IfaceNthCo a b) = do
+  put_ bh (IfaceTransCo a b) = do
           putByte bh 11
           put_ bh a
           put_ bh b
-  put_ bh (IfaceLRCo a b) = do
+  put_ bh (IfaceNthCo a b) = do
           putByte bh 12
           put_ bh a
           put_ bh b
-  put_ bh (IfaceInstCo a b) = do
+  put_ bh (IfaceLRCo a b) = do
           putByte bh 13
           put_ bh a
           put_ bh b
-  put_ bh (IfaceKindCo a) = do
+  put_ bh (IfaceInstCo a b) = do
           putByte bh 14
           put_ bh a
-  put_ bh (IfaceSubCo a) = do
+          put_ bh b
+  put_ bh (IfaceKindCo a) = do
           putByte bh 15
           put_ bh a
-  put_ bh (IfaceAxiomRuleCo a b) = do
+  put_ bh (IfaceSubCo a) = do
           putByte bh 16
+          put_ bh a
+  put_ bh (IfaceAxiomRuleCo a b) = do
+          putByte bh 17
           put_ bh a
           put_ bh b
   put_ _ (IfaceFreeCoVar cv)
@@ -1553,54 +1559,56 @@ instance Binary IfaceCoercion where
       tag <- getByte bh
       case tag of
            1 -> do a <- get bh
-                   b <- get bh
-                   c <- get bh
-                   return $ IfaceGReflCo a b c
+                   return $ IfaceReflCo a
            2 -> do a <- get bh
                    b <- get bh
                    c <- get bh
-                   return $ IfaceFunCo a b c
+                   return $ IfaceGReflCo a b c
            3 -> do a <- get bh
                    b <- get bh
                    c <- get bh
-                   return $ IfaceTyConAppCo a b c
+                   return $ IfaceFunCo a b c
            4 -> do a <- get bh
                    b <- get bh
-                   return $ IfaceAppCo a b
+                   c <- get bh
+                   return $ IfaceTyConAppCo a b c
            5 -> do a <- get bh
+                   b <- get bh
+                   return $ IfaceAppCo a b
+           6 -> do a <- get bh
                    b <- get bh
                    c <- get bh
                    return $ IfaceForAllCo a b c
-           6 -> do a <- get bh
-                   return $ IfaceCoVarCo a
            7 -> do a <- get bh
+                   return $ IfaceCoVarCo a
+           8 -> do a <- get bh
                    b <- get bh
                    c <- get bh
                    return $ IfaceAxiomInstCo a b c
-           8 -> do a <- get bh
+           9 -> do a <- get bh
                    b <- get bh
                    c <- get bh
                    d <- get bh
                    return $ IfaceUnivCo a b c d
-           9 -> do a <- get bh
-                   return $ IfaceSymCo a
            10-> do a <- get bh
-                   b <- get bh
-                   return $ IfaceTransCo a b
+                   return $ IfaceSymCo a
            11-> do a <- get bh
                    b <- get bh
-                   return $ IfaceNthCo a b
+                   return $ IfaceTransCo a b
            12-> do a <- get bh
                    b <- get bh
-                   return $ IfaceLRCo a b
+                   return $ IfaceNthCo a b
            13-> do a <- get bh
                    b <- get bh
-                   return $ IfaceInstCo a b
+                   return $ IfaceLRCo a b
            14-> do a <- get bh
-                   return $ IfaceKindCo a
+                   b <- get bh
+                   return $ IfaceInstCo a b
            15-> do a <- get bh
-                   return $ IfaceSubCo a
+                   return $ IfaceKindCo a
            16-> do a <- get bh
+                   return $ IfaceSubCo a
+           17-> do a <- get bh
                    b <- get bh
                    return $ IfaceAxiomRuleCo a b
            _ -> panic ("get IfaceCoercion " ++ show tag)

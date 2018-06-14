@@ -371,6 +371,7 @@ orphNamesOfMCo MRefl    = emptyNameSet
 orphNamesOfMCo (MCo co) = orphNamesOfCo co
 
 orphNamesOfCo :: Coercion -> NameSet
+orphNamesOfCo (Refl ty)             = orphNamesOfType ty
 orphNamesOfCo (GRefl _ ty mco)      = orphNamesOfType ty `unionNameSet` orphNamesOfMCo mco
 orphNamesOfCo (TyConAppCo _ tc cos) = unitNameSet (getName tc) `unionNameSet` orphNamesOfCos cos
 orphNamesOfCo (AppCo co1 co2)       = orphNamesOfCo co1 `unionNameSet` orphNamesOfCo co2
