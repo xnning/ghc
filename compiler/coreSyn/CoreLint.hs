@@ -1622,6 +1622,10 @@ lintCoercion :: OutCoercion -> LintM (LintedKind, LintedKind, LintedType, Linted
 
 -- If you edit this function, you may need to update the GHC formalism
 -- See Note [GHC Formalism]
+lintCoercion (Refl ty)
+  = do { k <- lintType ty
+       ; return (k, k, ty, ty, Nominal) }
+
 lintCoercion (GRefl r ty MRefl)
   = do { k <- lintType ty
        ; return (k, k, ty, ty, r) }

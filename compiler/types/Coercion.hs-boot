@@ -29,6 +29,7 @@ mkNthCo :: HasDebugCallStack => Role -> Int -> Coercion -> Coercion
 mkLRCo :: LeftOrRight -> Coercion -> Coercion
 mkInstCo :: Coercion -> Coercion -> Coercion
 mkGReflCo :: Role -> Type -> MCoercionN -> Coercion
+mkNomReflCo :: Type -> Coercion
 mkKindCo :: Coercion -> Coercion
 mkSubCo :: Coercion -> Coercion
 mkProofIrrelCo :: Role -> Coercion -> Coercion -> Coercion -> Coercion

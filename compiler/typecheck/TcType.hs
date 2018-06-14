@@ -939,6 +939,7 @@ exactTyCoVarsOfType ty
     goMCo MRefl    = emptyVarSet
     goMCo (MCo co) = goCo co
 
+    goCo (Refl ty)            = go ty
     goCo (GRefl _ ty mco)     = go ty `unionVarSet` goMCo mco
     goCo (TyConAppCo _ _ args)= goCos args
     goCo (AppCo co arg)     = goCo co `unionVarSet` goCo arg

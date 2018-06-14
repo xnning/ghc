@@ -170,6 +170,12 @@ opt_co4_wrap env sym rep r co
     result
 -}
 
+opt_co4 env _   rep r (Refl ty)
+  = ASSERT2( r == Nominal, text "Expected role:" <+> ppr r    $$
+                           text "Found role:" <+> ppr Nominal $$
+                           text "Type:" <+> ppr ty )
+    liftCoSubst (chooseRole rep r) env ty
+
 opt_co4 env _   rep r (GRefl _r ty MRefl)
   = ASSERT2( r == _r, text "Expected role:" <+> ppr r $$
                       text "Found role:" <+> ppr _r   $$

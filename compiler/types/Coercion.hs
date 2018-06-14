@@ -577,7 +577,8 @@ mkRepReflCo = mkReflCo Representational
 
 -- | Make a nominal reflexive coercion
 mkNomReflCo :: Type -> Coercion
-mkNomReflCo = mkReflCo Nominal
+mkNomReflCo = Refl
+
 
 -- | Apply a type constructor to a list of coercions. It is the
 -- caller's responsibility to get the roles correct on argument coercions.
@@ -1820,7 +1821,7 @@ lcInScopeSet (LC subst _) = getTCvInScope subst
 -}
 
 seqCo :: Coercion -> ()
-seqCo (GRefl r ty MRefl)        = r `seq` seqType ty
+seqCo (Refl ty)                 = seqType ty
 seqCo (GRefl r ty (MCo co))     = r `seq` seqType ty `seq` seqCo co
 seqCo (TyConAppCo r tc cos)     = r `seq` tc `seq` seqCos cos
 seqCo (AppCo co1 co2)           = seqCo co1 `seq` seqCo co2
@@ -1887,6 +1888,7 @@ coercionKind :: Coercion -> Pair Type
 coercionKind co =
   go co
   where
+    go (Refl ty) = Pair ty ty
     go (GRefl _ ty MRefl) = Pair ty ty
     go (GRefl _ ty (MCo co1)) = Pair ty (mkCastTy ty co1)
     go (TyConAppCo _ tc cos)= mkTyConApp tc <$> (sequenceA $ map go cos)
@@ -1988,6 +1990,7 @@ coercionKindRole co = (coercionKind co, coercionRole co)
 coercionRole :: Coercion -> Role
 coercionRole = go
   where
+    go (Refl _) = Nominal
     go (GRefl r _ _) = r
     go (TyConAppCo r _ _) = r
     go (AppCo co1 _) = go co1

@@ -2035,6 +2035,7 @@ fvMCo MRefl    = []
 fvMCo (MCo co) = fvCo co
 
 fvCo :: Coercion -> [TyCoVar]
+fvCo (Refl ty)              = fvType ty
 fvCo (GRefl _ ty mco)       = fvType ty ++ fvMCo mco
 fvCo (TyConAppCo _ _ args)  = concatMap fvCo args
 fvCo (AppCo co arg)         = fvCo co ++ fvCo arg
