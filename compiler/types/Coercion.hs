@@ -457,18 +457,23 @@ isReflCoVar_maybe cv
 -- Guaranteed to work very quickly.
 isGReflCo :: Coercion -> Bool
 isGReflCo (GRefl{}) = True
-isGReflCo (Refl{})  = True
-  -- Refl ty == GRefl N ty MRefl
+isGReflCo (Refl{})  = True -- Refl ty == GRefl N ty MRefl
 isGReflCo _         = False
+
+-- | Tests if this MCoercion is obviously generalized reflexive
+-- Guaranteed to work very quickly.
+isGReflMCo :: MCoercion -> Bool
+isGReflMCo MRefl = True
+isGReflMCo (MCo co) | isGReflCo co = True
+isGReflMCo _ = False
 
 -- | Tests if this coercion is obviously reflexive. Guaranteed to work
 -- very quickly. Sometimes a coercion can be reflexive, but not obviously
 -- so. c.f. 'isReflexiveCo'
 isReflCo :: Coercion -> Bool
-isReflCo (Refl{})          = True
-isReflCo (GRefl _ _ MRefl) = True
-isReflCo (GRefl _ _ (MCo co)) | isGReflCo co = True
-isReflCo _                 = False
+isReflCo (Refl{}) = True
+isReflCo (GRefl _ _ mco) | isGReflMCo mco = True
+isReflCo _ = False
 
 -- | Returns the type coerced if this coercion is a generalized reflexive
 -- coercion. Guaranteed to work very quickly.
@@ -481,9 +486,8 @@ isGReflCo_maybe _ = Nothing
 -- to work very quickly. Sometimes a coercion can be reflexive, but not
 -- obviously so. c.f. 'isReflexiveCo_maybe'
 isReflCo_maybe :: Coercion -> Maybe (Type, Role)
-isReflCo_maybe (Refl ty)          = Just (ty, Nominal)
-isReflCo_maybe (GRefl r ty MRefl) = Just (ty, r)
-isReflCo_maybe (GRefl r ty (MCo co)) | isGReflCo co = Just (ty, r)
+isReflCo_maybe (Refl ty) = Just (ty, Nominal)
+isReflCo_maybe (GRefl r ty mco) | isGReflMCo mco = Just (ty, r)
 isReflCo_maybe _ = Nothing
 
 -- | Slowly checks if the coercion is reflexive. Don't call this in a loop,
@@ -494,9 +498,8 @@ isReflexiveCo = isJust . isReflexiveCo_maybe
 -- | Extracts the coerced type from a reflexive coercion. This potentially
 -- walks over the entire coercion, so avoid doing this in a loop.
 isReflexiveCo_maybe :: Coercion -> Maybe (Type, Role)
-isReflexiveCo_maybe (Refl ty)          = Just (ty, Nominal)
-isReflexiveCo_maybe (GRefl r ty MRefl) = Just (ty, r)
-isReflexiveCo_maybe (GRefl r ty (MCo co)) | isGReflCo co = Just (ty, r)
+isReflexiveCo_maybe (Refl ty) = Just (ty, Nominal)
+isReflexiveCo_maybe (GRefl r ty mco) | isGReflMCo mco = Just (ty, r)
 isReflexiveCo_maybe co
   | ty1 `eqType` ty2
   = Just (ty1, r)
@@ -565,11 +568,6 @@ appropriate? I (Richard E.) have decided not to do this, because upgrading a
 role is bizarre and a caller should have to ask for this behavior explicitly.
 
 -}
-
-isGReflMCo :: MCoercion -> Bool
-isGReflMCo MRefl = True
-isGReflMCo (MCo co) | isGReflCo co = True
-isGReflMCo _ = False
 
 -- | Make a generalized reflexive coercion
 mkGReflCo :: Role -> Type -> MCoercionN -> Coercion
