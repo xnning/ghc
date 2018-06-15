@@ -566,15 +566,17 @@ role is bizarre and a caller should have to ask for this behavior explicitly.
 
 -}
 
+isGReflMCo :: MCoercion -> Bool
+isGReflMCo MRefl = True
+isGReflMCo (MCo co) | isGReflCo co = True
+isGReflMCo _ = False
+
 -- | Make a generalized reflexive coercion
 mkGReflCo :: Role -> Type -> MCoercionN -> Coercion
-mkGReflCo Nominal ty MRefl = Refl ty
-mkGReflCo r       ty MRefl = GRefl r ty MRefl
-mkGReflCo r       ty (MCo co)
-  | isGReflCo co = GRefl r ty MRefl
-    -- the kinds of @k1@ and @k2@ are the same, thus @isGReflCo@
-    -- instead of @isReflCo@
-  | otherwise    = GRefl r ty (MCo co)
+mkGReflCo r ty mco
+  | isGReflMCo mco = if r == Nominal then Refl ty
+                     else GRefl r ty MRefl
+  | otherwise    = GRefl r ty mco
 
 -- | Make a reflexive coercion
 mkReflCo :: Role -> Type -> Coercion
