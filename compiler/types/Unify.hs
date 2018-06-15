@@ -1401,15 +1401,16 @@ ty_co_match _ subst (CoercionTy {}) _ _ _
 ty_co_match menv subst ty (GRefl r t (MCo co)) lkco rkco
   =  ty_co_match menv subst ty (GRefl r t MRefl) lkco (rkco `mkTransCo` mkSymCo co)
 
-ty_co_match menv subst ty (GRefl r (CastTy t co) MRefl) lkco rkco
+ty_co_match menv subst ty co1 lkco rkco
+  | Just (CastTy t co, r) <- isReflCo_maybe co1
   -- In @pushRefl@, pushing reflexive coercion inside CastTy will give us
   -- t |> co ~ t ; <t> ; t ~ t |> co
   -- But transitive coercions are not helpful. Therefore we deal
   -- with it here: we do recursion on the smaller reflexive coercion,
   -- while propagating the correct kind coercions.
   = let kco' = mkSymCo co
-    in ty_co_match menv subst ty (GRefl r t MRefl) (lkco `mkTransCo` kco')
-                                                   (rkco `mkTransCo` kco')
+    in ty_co_match menv subst ty (mkReflCo r t) (lkco `mkTransCo` kco')
+                                                (rkco `mkTransCo` kco')
 
 
 ty_co_match menv subst ty co lkco rkco
@@ -1456,16 +1457,18 @@ ty_co_match_args menv subst (ty:tys) (arg:args) (lkco:lkcos) (rkco:rkcos)
 ty_co_match_args _    _     _        _          _ _ = Nothing
 
 pushRefl :: Coercion -> Maybe Coercion
-pushRefl (GRefl Nominal (AppTy ty1 ty2) MRefl)
-  = Just (AppCo (mkReflCo Nominal ty1) (mkNomReflCo ty2))
-pushRefl (GRefl r (FunTy ty1 ty2) MRefl)
-  | Just rep1 <- getRuntimeRep_maybe ty1
-  , Just rep2 <- getRuntimeRep_maybe ty2
-  = Just (TyConAppCo r funTyCon [ mkReflCo r rep1, mkReflCo r rep2
-                                , mkReflCo r ty1,  mkReflCo r ty2 ])
-pushRefl (GRefl r (TyConApp tc tys) MRefl)
-  = Just (TyConAppCo r tc (zipWith mkReflCo (tyConRolesX r tc) tys))
-pushRefl (GRefl r (ForAllTy (TvBndr tv _) ty) MRefl)
-  = Just (mkHomoForAllCos_NoRefl [tv] (mkReflCo r ty))
+pushRefl co =
+  case (isReflCo_maybe co) of
+    Just (AppTy ty1 ty2, Nominal)
+      -> Just (AppCo (mkReflCo Nominal ty1) (mkNomReflCo ty2))
+    Just (FunTy ty1 ty2, r)
+      | Just rep1 <- getRuntimeRep_maybe ty1
+      , Just rep2 <- getRuntimeRep_maybe ty2
+      ->  Just (TyConAppCo r funTyCon [ mkReflCo r rep1, mkReflCo r rep2
+                                       , mkReflCo r ty1,  mkReflCo r ty2 ])
+    Just (TyConApp tc tys, r)
+      -> Just (TyConAppCo r tc (zipWith mkReflCo (tyConRolesX r tc) tys))
+    Just (ForAllTy (TvBndr tv _) ty, r)
+      -> Just (mkHomoForAllCos_NoRefl [tv] (mkReflCo r ty))
     -- NB: NoRefl variant. Otherwise, we get a loop!
-pushRefl _                        = Nothing
+    _ -> Nothing
