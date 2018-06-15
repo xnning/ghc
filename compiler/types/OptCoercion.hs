@@ -290,11 +290,13 @@ opt_co4 env sym rep r (TransCo co1 co2)
     co2' = opt_co4_wrap env sym rep r co2
     in_scope = lcInScopeSet env
 
-opt_co4 env _sym rep r (NthCo _r n (GRefl _r2 ty MRefl))
-  | Just (_tc, args) <- ASSERT( r == _r )
+opt_co4 env _sym rep r (NthCo _r n co)
+  | Just (ty, _) <- isReflCo_maybe co
+  , Just (_tc, args) <- ASSERT( r == _r )
                         splitTyConApp_maybe ty
   = liftCoSubst (chooseRole rep r) env (args `getNth` n)
-  | n == 0
+  | Just (ty, _) <- isReflCo_maybe co
+  , n == 0
   , Just (tv, _) <- splitForAllTy_maybe ty
   = liftCoSubst (chooseRole rep r) env (tyVarKind tv)
 
