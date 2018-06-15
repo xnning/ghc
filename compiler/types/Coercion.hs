@@ -465,10 +465,10 @@ isGReflCo _         = False
 -- very quickly. Sometimes a coercion can be reflexive, but not obviously
 -- so. c.f. 'isReflexiveCo'
 isReflCo :: Coercion -> Bool
-isReflCo (Refl{})                  = True
-isReflCo (GRefl _ _ MRefl)         = True
-isReflCo (GRefl _ _ (MCo GRefl{})) = True
-isReflCo _                         = False
+isReflCo (Refl{})          = True
+isReflCo (GRefl _ _ MRefl) = True
+isReflCo (GRefl _ _ (MCo co)) | isGReflCo co = True
+isReflCo _                 = False
 
 -- | Returns the type coerced if this coercion is a generalized reflexive
 -- coercion. Guaranteed to work very quickly.
@@ -481,9 +481,9 @@ isGReflCo_maybe _ = Nothing
 -- to work very quickly. Sometimes a coercion can be reflexive, but not
 -- obviously so. c.f. 'isReflexiveCo_maybe'
 isReflCo_maybe :: Coercion -> Maybe (Type, Role)
-isReflCo_maybe (Refl ty)                  = Just (ty, Nominal)
-isReflCo_maybe (GRefl r ty MRefl)         = Just (ty, r)
-isReflCo_maybe (GRefl r ty (MCo GRefl{})) = Just (ty, r)
+isReflCo_maybe (Refl ty)          = Just (ty, Nominal)
+isReflCo_maybe (GRefl r ty MRefl) = Just (ty, r)
+isReflCo_maybe (GRefl r ty (MCo co)) | isGReflCo co = Just (ty, r)
 isReflCo_maybe _ = Nothing
 
 -- | Slowly checks if the coercion is reflexive. Don't call this in a loop,
@@ -494,9 +494,9 @@ isReflexiveCo = isJust . isReflexiveCo_maybe
 -- | Extracts the coerced type from a reflexive coercion. This potentially
 -- walks over the entire coercion, so avoid doing this in a loop.
 isReflexiveCo_maybe :: Coercion -> Maybe (Type, Role)
-isReflexiveCo_maybe (Refl ty)                  = Just (ty, Nominal)
-isReflexiveCo_maybe (GRefl r ty MRefl)         = Just (ty, r)
-isReflexiveCo_maybe (GRefl r ty (MCo GRefl{})) = Just (ty, r)
+isReflexiveCo_maybe (Refl ty)          = Just (ty, Nominal)
+isReflexiveCo_maybe (GRefl r ty MRefl) = Just (ty, r)
+isReflexiveCo_maybe (GRefl r ty (MCo co)) | isGReflCo co = Just (ty, r)
 isReflexiveCo_maybe co
   | ty1 `eqType` ty2
   = Just (ty1, r)
@@ -1043,20 +1043,20 @@ mkInstCo co arg = InstCo co arg
 -- | Given @ty :: k1@, @co :: k1 ~ k2@,
 -- produces @co' :: ty ~r (ty |> co)@
 mkGReflRightCo :: Role -> Type -> CoercionN -> Coercion
-mkGReflRightCo Nominal ty co | isGReflCo co = Refl ty
+mkGReflRightCo r ty co
+  | isGReflCo co = mkReflCo r ty
     -- the kinds of @k1@ and @k2@ are the same, thus @isGReflCo@
     -- instead of @isReflCo@
-mkGReflRightCo r ty co       | isGReflCo co = GRefl r ty MRefl
-                             | otherwise    = GRefl r ty (MCo co)
+  | otherwise = GRefl r ty (MCo co)
 
 -- | Given @ty :: k1@, @co :: k1 ~ k2@,
 -- produces @co' :: (ty |> co) ~r ty@
 mkGReflLeftCo :: Role -> Type -> CoercionN -> Coercion
-mkGReflLeftCo Nominal ty co | isGReflCo co = Refl ty
+mkGReflLeftCo r ty co
+  | isGReflCo co = mkReflCo r ty
     -- the kinds of @k1@ and @k2@ are the same, thus @isGReflCo@
     -- instead of @isReflCo@
-mkGReflLeftCo r ty co       | isGReflCo co = GRefl r ty MRefl
-                            | otherwise    = mkSymCo $ GRefl r ty (MCo co)
+  | otherwise    = mkSymCo $ GRefl r ty (MCo co)
 
 -- | Given @co :: (a :: k) ~ (b :: k')@ produce @co' :: k ~ k'@.
 mkKindCo :: Coercion -> Coercion
