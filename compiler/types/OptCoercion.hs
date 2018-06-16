@@ -520,7 +520,7 @@ opt_trans_rule :: InScopeSet -> NormalNonIdCo -> NormalNonIdCo -> Maybe NormalCo
 opt_trans_rule is in_co1@(GRefl r1 t1 (MCo co1)) in_co2@(GRefl r2 _ (MCo co2))
   = ASSERT( r1 == r2 )
     fireTransRule "GRefl" in_co1 in_co2 $
-    mkGReflCo r1 t1 (MCo $ opt_trans is co1 co2)
+    mkGReflRightCo r1 t1 (opt_trans is co1 co2)
 
 -- Push transitivity through matching destructors
 opt_trans_rule is in_co1@(NthCo r1 d1 co1) in_co2@(NthCo r2 d2 co2)
