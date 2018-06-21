@@ -1737,10 +1737,10 @@ canCFunEqCan ev fn tys fsk
                                -- new_co     :: F tys' ~ new_fsk
                                -- co         :: F tys ~ (new_fsk |> kind_co)
                             co = mkTcSymCo lhs_co `mkTcTransCo`
-                                 new_co `mkTcTransCo`
-                                 mkTcGReflRightCo Nominal
-                                                  (mkTyVarTy new_fsk)
-                                                  kind_co
+                                 mkTcCoherenceRightCo Nominal
+                                                      (mkTyVarTy new_fsk)
+                                                      kind_co
+                                                      new_co
 
                       ; traceTcS "Discharging fmv/fsk due to hetero flattening" (ppr ev)
                       ; dischargeFunEq ev fsk co xi

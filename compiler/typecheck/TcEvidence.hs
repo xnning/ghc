@@ -37,6 +37,7 @@ module TcEvidence (
   tcDowngradeRole,
   mkTcAxiomRuleCo, mkTcGReflRightCo, mkTcGReflLeftCo, mkTcPhantomCo,
   mkTcCoherenceLeftCo,
+  mkTcCoherenceRightCo,
   mkTcKindCo,
   tcCoercionKind, coVarsOfTcCo,
   mkTcCoVarCo,
@@ -120,6 +121,8 @@ mkTcGReflRightCo       :: Role -> TcType -> TcCoercionN -> TcCoercion
 mkTcGReflLeftCo        :: Role -> TcType -> TcCoercionN -> TcCoercion
 mkTcCoherenceLeftCo    :: Role -> TcType -> TcCoercionN
                        -> TcCoercion -> TcCoercion
+mkTcCoherenceRightCo   :: Role -> TcType -> TcCoercionN
+                       -> TcCoercion -> TcCoercion
 mkTcPhantomCo          :: TcCoercionN -> TcType -> TcType -> TcCoercionP
 mkTcKindCo             :: TcCoercion -> TcCoercionN
 mkTcCoVarCo            :: CoVar -> TcCoercion
@@ -154,6 +157,7 @@ mkTcAxiomRuleCo        = mkAxiomRuleCo
 mkTcGReflRightCo       = mkGReflRightCo
 mkTcGReflLeftCo        = mkGReflLeftCo
 mkTcCoherenceLeftCo    = mkCoherenceLeftCo
+mkTcCoherenceRightCo   = mkCoherenceRightCo
 mkTcPhantomCo          = mkPhantomCo
 mkTcKindCo             = mkKindCo
 mkTcCoVarCo            = mkCoVarCo

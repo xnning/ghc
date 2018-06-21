@@ -1328,11 +1328,11 @@ uType t_or_k origin orig_ty1 orig_ty2
 
     go (CastTy t1 co1) t2
       = do { co_tys <- go t1 t2
-           ; return (mkGReflLeftCo Nominal t1 co1 `mkTransCo` co_tys) }
+           ; return (mkCoherenceLeftCo Nominal t1 co1 co_tys) }
 
     go t1 (CastTy t2 co2)
       = do { co_tys <- go t1 t2
-           ; return (co_tys `mkTransCo` mkGReflRightCo Nominal t2 co2) }
+           ; return ( mkCoherenceRightCo Nominal t2 co2 co_tys) }
 
         -- See Note [Expanding synonyms during unification]
         --
