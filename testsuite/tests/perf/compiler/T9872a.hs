@@ -10,6 +10,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+
 import Prelude hiding (all, flip, map, filter )
 
 data Proxy a = Proxy

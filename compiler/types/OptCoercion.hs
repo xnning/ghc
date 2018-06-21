@@ -188,8 +188,7 @@ opt_co4 env sym  rep r (GRefl _r ty (MCo co))
                       text "Type:" <+> ppr ty )
     if isGReflCo co || isGReflCo co'
     then liftCoSubst r' env ty
-    else wrapSym sym $ liftCoSubst r' env ty
-                       `mkTransCo` mkGReflRightCo r' ty' co'
+    else wrapSym sym $ mkCoherenceRightCo r' ty' co' (liftCoSubst r' env ty)
   where
     r'  = chooseRole rep r
     ty' = substTy (lcSubstLeft env) ty
@@ -351,8 +350,7 @@ opt_co4 env sym rep r (InstCo co1 arg)
     -- forall over type...
   | Just (tv, kind_co, co_body) <- splitForAllCo_maybe co1
   = opt_co4_wrap (extendLiftingContext env tv
-                    (arg' `mkTransCo`
-                     mkGReflRightCo Nominal t2 (mkSymCo kind_co)))
+                    (mkCoherenceRightCo Nominal t2 (mkSymCo kind_co) arg'))
                  sym rep r co_body
 
     -- See if it is a forall after optimization
@@ -361,8 +359,7 @@ opt_co4 env sym rep r (InstCo co1 arg)
     -- forall over type...
   | Just (tv', kind_co', co_body') <- splitForAllCo_maybe co1'
   = opt_co4_wrap (extendLiftingContext (zapLiftingContext env) tv'
-                    (arg' `mkTransCo`
-                     mkGReflRightCo Nominal t2 (mkSymCo kind_co')))
+                    (mkCoherenceRightCo Nominal t2 (mkSymCo kind_co') arg'))
             False False r' co_body'
 
   | otherwise = InstCo co1' arg'
@@ -714,9 +711,9 @@ opt_trans_rule_app is orig_co1 orig_co2 co1a co1bs co2a co2bs
         kcoa = mkKindCo $ buildCoercion lt2a rt1a
         kcobs = map mkKindCo $ zipWith buildCoercion lt2bs rt1bs
 
-        co2a'   = mkGReflLeftCo rt2a lt2a kcoa `mkTransCo` co2a
-        co2bs'  = zipWith3 mkGReflLeftCo rt2bs lt2bs kcobs
-        co2bs'' = zipWith mkTransCo co2bs' co2bs
+        co2a'   = mkCoherenceLeftCo rt2a lt2a kcoa co2a
+        co2bs'  = {-# SCC "zipWith3Opt711" #-} zipWith3 mkGReflLeftCo rt2bs lt2bs kcobs
+        co2bs'' = {-# SCC "zipWithOpt712" #-} zipWith mkTransCo co2bs' co2bs
     in
     mkAppCos (opt_trans is co1a co2a')
              (zipWith (opt_trans is) co1bs co2bs'')

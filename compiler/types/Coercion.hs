@@ -37,7 +37,7 @@ module Coercion (
         mkUnsafeCo, mkHoleCo, mkUnivCo, mkSubCo,
         mkAxiomInstCo, mkProofIrrelCo,
         downgradeRole, maybeSubCo, mkAxiomRuleCo,
-        mkGReflRightCo, mkGReflLeftCo,
+        mkGReflRightCo, mkGReflLeftCo, mkCoherenceLeftCo, mkCoherenceRightCo,
         mkKindCo, castCoercionKind, castCoercionKindI,
 
         mkHeteroCoercionType,
@@ -1058,6 +1058,21 @@ mkGReflLeftCo r ty co
     -- instead of @isReflCo@
   | otherwise    = mkSymCo $ GRefl r ty (MCo co)
 
+-- | Given @ty :: k2@, @co :: k1 ~ k2@, @co2:: ty ~ ty'@,
+-- produces @co' :: (ty |> co) ~r ty'
+mkCoherenceLeftCo :: Role -> Type -> CoercionN -> Coercion -> Coercion
+mkCoherenceLeftCo r ty co co2
+  | isGReflCo co = co2
+  | otherwise = (mkSymCo $ GRefl r ty (MCo co)) `mkTransCo` co2
+
+-- | Given @ty :: k2@, @co :: k1 ~ k2@, @co2:: ty' ~ ty@,
+-- produces @co' :: ty' ~r (ty |> co)
+mkCoherenceRightCo :: Role -> Type -> CoercionN -> Coercion -> Coercion
+mkCoherenceRightCo r ty co co2
+  | isGReflCo co = co2
+  | otherwise = co2 `mkTransCo` GRefl r ty (MCo co)
+{-# SCC mkCoherenceRightCo #-}
+
 -- | Given @co :: (a :: k) ~ (b :: k')@ produce @co' :: k ~ k'@.
 mkKindCo :: Coercion -> Coercion
 mkKindCo co | Just (ty, _) <- isReflCo_maybe co = Refl (typeKind ty)
@@ -1361,12 +1376,11 @@ instCoercions g ws
 -- @castCoercionKind g r t1 t2 h1 h2@, where @g :: t1 ~r t2@,
 -- has type @(t1 |> h1) ~r (t2 |> h2)@.
 -- @h1@ and @h2@ must be nominal.
+{-# SCC castCoercionKind #-}
 castCoercionKind :: Coercion -> Role -> Type -> Type
                  -> CoercionN -> CoercionN -> Coercion
 castCoercionKind g r t1 t2 h1 h2
-  = mkGReflLeftCo r t1 h1
-    `mkTransCo` g
-    `mkTransCo` mkGReflRightCo r t2 h2
+  = mkCoherenceRightCo r t2 h2 (mkCoherenceLeftCo r t1 h1 g)
 
 -- | Creates a new coercion with both of its types casted by different casts
 -- @castCoercionKind g h1 h2@, where @g :: t1 ~r t2@,
@@ -1375,10 +1389,11 @@ castCoercionKind g r t1 t2 h1 h2
 -- It calls @coercionKindRole@, so it's quite inefficient (which 'I' stands for)
 -- Use @castCoercionKind@ instead if @t1@, @t2@, and @r@ are known beforehand.
 castCoercionKindI :: Coercion -> CoercionN -> CoercionN -> Coercion
-castCoercionKindI g h1 h2 = mkGReflLeftCo r t1 h1
-                            `mkTransCo` g
-                            `mkTransCo` mkGReflRightCo r t2 h2
+castCoercionKindI g h1 h2
+  = mkCoherenceRightCo r t2 h2 (mkCoherenceLeftCo r t1 h1 g)
   where (Pair t1 t2, r) = coercionKindRole g
+
+{-# SCC castCoercionKindI #-}
 
 -- See note [Newtype coercions] in TyCon
 
@@ -2015,6 +2030,8 @@ coercionKinds tys = sequenceA $ map coercionKind tys
 coercionKindRole :: Coercion -> (Pair Type, Role)
 coercionKindRole co = (coercionKind co, coercionRole co)
 
+{-# SCC coercionKindRole #-}
+
 -- | Retrieve the role from a coercion.
 coercionRole :: Coercion -> Role
 coercionRole = go
@@ -2068,12 +2085,12 @@ buildCoercion orig_ty1 orig_ty2 = go orig_ty1 orig_ty2
     go (CastTy ty1 co) ty2
       = let co' = go ty1 ty2
             r = coercionRole co'
-        in  mkGReflLeftCo r ty1 co `mkTransCo` co'
+        in  mkCoherenceLeftCo r ty1 co co'
 
     go ty1 (CastTy ty2 co)
       = let co' = go ty1 ty2
             r = coercionRole co'
-        in  co' `mkTransCo` mkGReflRightCo r ty2 co
+        in  mkCoherenceRightCo r ty2 co co'
 
     go ty1@(TyVarTy tv1) _tyvarty
       = ASSERT( case _tyvarty of
