@@ -973,7 +973,7 @@ promoteTcType dest_lvl ty
                                           , uo_thing    = Nothing
                                           , uo_visible  = False }
            ; ki_co <- uType KindLevel kind_orig (typeKind ty) res_kind
-           ; let co = mkTcNomReflCo ty `mkTcCoherenceRightCo` ki_co
+           ; let co = mkTcGReflRightCo Nominal ty ki_co
            ; return (co, ty `mkCastTy` ki_co) }
 
 {- Note [Promoting a type]
@@ -1267,7 +1267,7 @@ uType, uType_defer
   -> CtOrigin
   -> TcType    -- ty1 is the *actual* type
   -> TcType    -- ty2 is the *expected* type
-  -> TcM Coercion
+  -> TcM CoercionN
 
 --------------
 -- It is always safe to defer unification to the main constraint solver
@@ -1302,7 +1302,7 @@ uType t_or_k origin orig_ty1 orig_ty2
             else traceTc "u_tys yields coercion:" (ppr co)
        ; return co }
   where
-    go :: TcType -> TcType -> TcM Coercion
+    go :: TcType -> TcType -> TcM CoercionN
         -- The arguments to 'go' are always semantically identical
         -- to orig_ty{1,2} except for looking through type synonyms
 
@@ -1330,11 +1330,11 @@ uType t_or_k origin orig_ty1 orig_ty2
 
     go (CastTy t1 co1) t2
       = do { co_tys <- go t1 t2
-           ; return (mkCoherenceLeftCo co_tys co1) }
+           ; return (mkGReflLeftCo Nominal t1 co1 `mkTransCo` co_tys) }
 
     go t1 (CastTy t2 co2)
       = do { co_tys <- go t1 t2
-           ; return (mkCoherenceRightCo co_tys co2) }
+           ; return (co_tys `mkTransCo` mkGReflRightCo Nominal t2 co2) }
 
         -- See Note [Expanding synonyms during unification]
         --
@@ -2240,8 +2240,16 @@ occCheckExpand tv ty
            -- See Note [Occurrence checking: look inside kinds]
 
     ------------------
-    go_co env (Refl r ty)               = do { ty' <- go env ty
-                                             ; return (mkReflCo r ty') }
+    go_mco _    MRefl   = return MRefl
+    go_mco env (MCo co) = do { co' <- go_co env co
+                              ; return (MCo co')}
+
+    ------------------
+    go_co env (Refl ty)                 = do { ty' <- go env ty
+                                             ; return (mkNomReflCo ty') }
+    go_co env (GRefl r ty mco)          = do { ty' <- go env ty
+                                             ; mco' <- go_mco env mco
+                                             ; return (mkGReflCo r ty' mco') }
       -- Note: Coercions do not contain type synonyms
     go_co env (TyConAppCo r tc args)    = do { args' <- mapM (go_co env) args
                                              ; return (mkTyConAppCo r tc args') }
@@ -2281,9 +2289,6 @@ occCheckExpand tv ty
     go_co env (InstCo co arg)           = do { co' <- go_co env co
                                              ; arg' <- go_co env arg
                                              ; return (mkInstCo co' arg') }
-    go_co env (CoherenceCo co1 co2)     = do { co1' <- go_co env co1
-                                             ; co2' <- go_co env co2
-                                             ; return (mkCoherenceCo co1' co2') }
     go_co env (KindCo co)               = do { co' <- go_co env co
                                              ; return (mkKindCo co') }
     go_co env (SubCo co)                = do { co' <- go_co env co
