@@ -2470,8 +2470,15 @@ occCheckExpand vs_to_avoid ty
            -- See Note [Occurrence checking: look inside kinds]
 
     ------------------
-    go_co cxt (Refl r ty)               = do { ty' <- go cxt ty
-                                             ; return (mkReflCo r ty') }
+    go_mco _   MRefl = return MRefl
+    go_mco ctx (MCo co) = MCo <$> go_co ctx co
+
+    ------------------
+    go_co cxt (Refl ty)                 = do { ty' <- go cxt ty
+                                             ; return (mkNomReflCo ty') }
+    go_co cxt (GRefl r ty mco)          = do { mco' <- go_mco cxt mco
+                                             ; ty' <- go cxt ty
+                                             ; return (mkGReflCo r ty' mco') }
       -- Note: Coercions do not contain type synonyms
     go_co cxt (TyConAppCo r tc args)    = do { args' <- mapM (go_co cxt) args
                                              ; return (mkTyConAppCo r tc args') }
@@ -2511,9 +2518,6 @@ occCheckExpand vs_to_avoid ty
     go_co cxt (InstCo co arg)           = do { co' <- go_co cxt co
                                              ; arg' <- go_co cxt arg
                                              ; return (mkInstCo co' arg') }
-    go_co cxt (CoherenceCo co1 co2)     = do { co1' <- go_co cxt co1
-                                             ; co2' <- go_co cxt co2
-                                             ; return (mkCoherenceCo co1' co2') }
     go_co cxt (KindCo co)               = do { co' <- go_co cxt co
                                              ; return (mkKindCo co') }
     go_co cxt (SubCo co)                = do { co' <- go_co cxt co

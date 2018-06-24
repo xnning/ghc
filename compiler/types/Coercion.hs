@@ -589,7 +589,6 @@ mkRepReflCo ty = GRefl Representational ty MRefl
 mkNomReflCo :: Type -> Coercion
 mkNomReflCo = Refl
 
-
 -- | Apply a type constructor to a list of coercions. It is the
 -- caller's responsibility to get the roles correct on argument coercions.
 mkTyConAppCo :: HasDebugCallStack => Role -> TyCon -> [Coercion] -> Coercion
@@ -919,14 +918,12 @@ mkNthCo r n co
         mkReflCo r (tyVarKind tv)
 
     go r n co
-      | isReflCo co
+      | Just (ty, r0) <- isReflCo_maybe co
+      , let tc = tyConAppTyCon ty
       = ASSERT2( ok_tc_app ty n, ppr n $$ ppr ty )
         ASSERT( nthRole r0 tc n == r )
         mkReflCo r (tyConAppArgN n ty)
-      where Just (ty, r0) = isReflCo_maybe co
-            tc = tyConAppTyCon ty
-
-            ok_tc_app :: Type -> Int -> Bool
+      where ok_tc_app :: Type -> Int -> Bool
             ok_tc_app ty n
               | Just (_, tys) <- splitTyConApp_maybe ty
               = tys `lengthExceeds` n
@@ -1060,6 +1057,8 @@ mkGReflLeftCo r ty co
 
 -- | Given @ty :: k2@, @co :: k1 ~ k2@, @co2:: ty ~ ty'@,
 -- produces @co' :: (ty |> co) ~r ty'
+-- It is not only a utility function, but it saves allocation when co
+-- is a GRefl coercion.
 mkCoherenceLeftCo :: Role -> Type -> CoercionN -> Coercion -> Coercion
 mkCoherenceLeftCo r ty co co2
   | isGReflCo co = co2
@@ -1067,6 +1066,8 @@ mkCoherenceLeftCo r ty co co2
 
 -- | Given @ty :: k2@, @co :: k1 ~ k2@, @co2:: ty' ~ ty@,
 -- produces @co' :: ty' ~r (ty |> co)
+-- It is not only a utility function, but it saves allocation when co
+-- is a GRefl coercion.
 mkCoherenceRightCo :: Role -> Type -> CoercionN -> Coercion -> Coercion
 mkCoherenceRightCo r ty co co2
   | isGReflCo co = co2
