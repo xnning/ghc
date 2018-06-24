@@ -1283,7 +1283,7 @@ flatten_args_slow orig_binders orig_inner_ki orig_fvs orig_roles orig_tys
            ; let kind_co = mkTcSymCo $
                    liftCoSubst Nominal lc (tyBinderType binder)
                  !casted_xi = xi `mkCastTy` kind_co
-                 casted_co = {-# SCC "mkTcGReflLeftCo1287" #-} mkTcGReflLeftCo role xi kind_co
+                 casted_co =  mkTcGReflLeftCo role xi kind_co
                              `mkTcTransCo` co
 
              -- now, extend the lifting context with the new binding
@@ -1315,11 +1315,11 @@ flatten_args_slow orig_binders orig_inner_ki orig_fvs orig_roles orig_tys
                <- go acc_xis acc_cos zapped_lc bndrs new_inner roles casted_tys
            -- cos_out :: xis_out ~ casted_tys
            -- we need to return cos :: xis_out ~ tys
-           ; let cos = {-# SCC "zipwith3" #-} zipWith3 mkTcGReflRightCo
+           ; let cos = zipWith3 mkTcGReflRightCo
                                 roles
                                 casted_tys
                                 (map mkTcSymCo arg_cos)
-                 cos' = {-# SCC "zipwith" #-} zipWith mkTransCo cos_out cos
+                 cos' = zipWith mkTransCo cos_out cos
 
            ; return (xis_out, cos', res_co_out `mkTcTransCo` res_co) }
 
@@ -1339,7 +1339,6 @@ flatten_args_slow orig_binders orig_inner_ki orig_fvs orig_roles orig_tys
            -}
 
 ------------------
-{-# SCC flatten_one #-}
 flatten_one :: TcType -> FlatM (Xi, Coercion)
 -- Flatten a type to get rid of type function applications, returning
 -- the new type-function-free type, and a collection of new equality
@@ -1474,7 +1473,7 @@ flatten_app_ty_args fun_xi fun_co arg_tys
                       arg_co = mkAppCos fun_co arg_cos
                 ; return (arg_xi, arg_co, kind_co) }
 
-       ; let role = {-# SCC "coercionRole1476" #-} coercionRole co
+       ; let role = coercionRole co
        ; return (homogenise_result xi co role kind_co) }
 
 flatten_ty_con_app :: TyCon -> [TcType] -> FlatM (Xi, Coercion)
@@ -1494,7 +1493,7 @@ homogenise_result :: Xi              -- a flattened type
                                      --   ~r original ty)
 homogenise_result xi co r kind_co
   = let xi' = xi `mkCastTy` kind_co
-        co' = {-# SCC "mkTcGReflLeftCo1496" #-} mkTcCoherenceLeftCo r xi kind_co co
+        co' = mkTcCoherenceLeftCo r xi kind_co co
     in  (xi', co')
 {-# INLINE homogenise_result #-}
 
@@ -1592,7 +1591,6 @@ flatten_fam_app tc tys  -- Can be over-saturated
 
          ; flatten_app_ty_args xi1 co1 tys_rest } } }
 
-{-# SCC flatten_exact_fam_app_fully #-}
 -- the [TcType] exactly saturate the TyCon
 flatten_exact_fam_app_fully :: TyCon -> [TcType] -> FlatM (Xi, Coercion)
 flatten_exact_fam_app_fully tc tys
@@ -1631,7 +1629,7 @@ flatten_exact_fam_app_fully tc tys
                                   -- flatten it
                                   -- fsk_co :: fsk_xi ~ fsk
                            ; let xi  = fsk_xi `mkCastTy` kind_co
-                                 co' = {-# SCC "mkTcGReflLeftCo1633" #-} mkTcCoherenceLeftCo role fsk_xi kind_co fsk_co
+                                 co' = mkTcCoherenceLeftCo role fsk_xi kind_co fsk_co
                                        `mkTransCo`
                                        maybeSubCo eq_rel (mkSymCo co)
                                        `mkTransCo` ret_co
@@ -1668,7 +1666,7 @@ flatten_exact_fam_app_fully tc tys
                                  --     the xis are flattened
                                  ; let fsk_ty = mkTyVarTy fsk
                                        xi = fsk_ty `mkCastTy` kind_co
-                                       co' = {-# SCC "mkTcGReflLeftCo1671" #-} mkTcCoherenceLeftCo role fsk_ty kind_co (maybeSubCo eq_rel (mkSymCo co))
+                                       co' = mkTcCoherenceLeftCo role fsk_ty kind_co (maybeSubCo eq_rel (mkSymCo co))
                                              `mkTransCo` ret_co
                                  ; return (xi, co')
                                  }
@@ -1713,14 +1711,13 @@ flatten_exact_fam_app_fully tc tys
                        ; when (eq_rel == NomEq) $
                          liftTcS $
                          extendFlatCache tc tys ( co, xi, flavour )
-                       ; let role = {-# SCC "eqRelRole1715" #-} eqRelRole eq_rel
+                       ; let role = eqRelRole eq_rel
                              xi' = xi `mkCastTy` kind_co
                              co' = update_co $
-                                  {-# SCC "mkTcGReflLeftCo1721" #-} mkTcCoherenceLeftCo role xi kind_co (mkSymCo co)
+                                   mkTcCoherenceLeftCo role xi kind_co (mkSymCo co)
                        ; return $ Just (xi', co') }
                Nothing -> pure Nothing }
 
-    {-# SCC try_to_reduce_nocache #-}
     try_to_reduce_nocache :: TyCon   -- F, family tycon
                           -> [Type]  -- args, not necessarily flattened
                           -> CoercionN -- kind_co :: typeKind(F args)
@@ -1743,10 +1740,10 @@ flatten_exact_fam_app_fully tc tys
                        ; eq_rel <- getEqRel
                        ; let co  = maybeSubCo eq_rel norm_co
                                     `mkTransCo` mkSymCo final_co
-                             role = {-# SCC "eqRelRole1744" #-}eqRelRole eq_rel
+                             role = eqRelRole eq_rel
                              xi' = xi `mkCastTy` kind_co
                              co' = update_co $
-                                   {-# SCC "mkTcGReflLeftCo1751" #-} mkTcCoherenceLeftCo role xi kind_co (mkSymCo co)
+                                   mkTcCoherenceLeftCo role xi kind_co (mkSymCo co)
                        ; return $ Just (xi', co') }
                Nothing -> pure Nothing }
 

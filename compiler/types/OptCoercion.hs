@@ -706,8 +706,8 @@ opt_trans_rule_app is orig_co1 orig_co2 co1a co1bs co2a co2bs
         kcobs = map mkKindCo $ zipWith buildCoercion lt2bs rt1bs
 
         co2a'   = mkCoherenceLeftCo rt2a lt2a kcoa co2a
-        co2bs'  = {-# SCC "zipWith3Opt711" #-} zipWith3 mkGReflLeftCo rt2bs lt2bs kcobs
-        co2bs'' = {-# SCC "zipWithOpt712" #-} zipWith mkTransCo co2bs' co2bs
+        co2bs'  = zipWith3 mkGReflLeftCo rt2bs lt2bs kcobs
+        co2bs'' = zipWith mkTransCo co2bs' co2bs
     in
     mkAppCos (opt_trans is co1a co2a')
              (zipWith (opt_trans is) co1bs co2bs'')

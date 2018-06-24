@@ -1062,7 +1062,6 @@ mkCoherenceRightCo :: Role -> Type -> CoercionN -> Coercion -> Coercion
 mkCoherenceRightCo r ty co co2
   | isGReflCo co = co2
   | otherwise = co2 `mkTransCo` GRefl r ty co
-{-# SCC mkCoherenceRightCo #-}
 
 -- | Given @co :: (a :: k) ~ (b :: k')@ produce @co' :: k ~ k'@.
 mkKindCo :: Coercion -> Coercion
@@ -1364,7 +1363,6 @@ instCoercions g ws
 -- @castCoercionKind g r t1 t2 h1 h2@, where @g :: t1 ~r t2@,
 -- has type @(t1 |> h1) ~r (t2 |> h2)@.
 -- @h1@ and @h2@ must be nominal.
-{-# SCC castCoercionKind #-}
 castCoercionKind :: Coercion -> Role -> Type -> Type
                  -> CoercionN -> CoercionN -> Coercion
 castCoercionKind g r t1 t2 h1 h2
@@ -1380,8 +1378,6 @@ castCoercionKindI :: Coercion -> CoercionN -> CoercionN -> Coercion
 castCoercionKindI g h1 h2
   = mkCoherenceRightCo r t2 h2 (mkCoherenceLeftCo r t1 h1 g)
   where (Pair t1 t2, r) = coercionKindRole g
-
-{-# SCC castCoercionKindI #-}
 
 -- See note [Newtype coercions] in TyCon
 
@@ -2012,8 +2008,6 @@ coercionKinds tys = sequenceA $ map coercionKind tys
 -- Why both at once?  See Note [Computing a coercion kind and role]
 coercionKindRole :: Coercion -> (Pair Type, Role)
 coercionKindRole co = (coercionKind co, coercionRole co)
-
-{-# SCC coercionKindRole #-}
 
 -- | Retrieve the role from a coercion.
 coercionRole :: Coercion -> Role

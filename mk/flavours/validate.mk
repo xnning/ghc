@@ -3,15 +3,12 @@ SRC_HC_OPTS_STAGE1 = -fllvm-fill-undef-with-garbage   # See Trac 11487
 GhcStage1HcOpts    = -O -DDEBUG
 GhcStage2HcOpts    = -O -dcore-lint -dno-debug-output
 GhcLibHcOpts       = -O -dcore-lint -dno-debug-output
-# BUILD_PROF_LIBS    = NO
+BUILD_PROF_LIBS    = NO
 SplitObjs          = NO
 SplitSections      = NO
 HADDOCK_DOCS       = YES
-BUILD_SPHINX_HTML  = NO
+BUILD_SPHINX_HTML  = YES
 BUILD_SPHINX_PDF   = NO
-
-BUILD_PROF_LIBS    = YES
-GhcProfiled        = YES
 
 ifeq "$(ValidateHpc)" "YES"
 GhcStage2HcOpts   += -fhpc -hpcdir $(TOP)/testsuite/hpc_output/
