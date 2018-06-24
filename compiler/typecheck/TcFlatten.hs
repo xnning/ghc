@@ -1283,8 +1283,7 @@ flatten_args_slow orig_binders orig_inner_ki orig_fvs orig_roles orig_tys
            ; let kind_co = mkTcSymCo $
                    liftCoSubst Nominal lc (tyBinderType binder)
                  !casted_xi = xi `mkCastTy` kind_co
-                 casted_co =  mkTcGReflLeftCo role xi kind_co
-                             `mkTcTransCo` co
+                 casted_co =  mkTcCoherenceLeftCo role xi kind_co co
 
              -- now, extend the lifting context with the new binding
                  !new_lc | Just tv <- tyBinderVar_maybe binder
