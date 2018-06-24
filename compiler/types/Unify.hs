@@ -1454,8 +1454,8 @@ ty_co_match menv subst (ForAllTy (TvBndr tv1 _) ty1)
 ty_co_match _ subst (CoercionTy {}) _ _ _
   = Just subst -- don't inspect coercions
 
-ty_co_match menv subst ty (GRefl r t (MCo co)) lkco rkco
-  =  ty_co_match menv subst ty (GRefl r t MRefl) lkco (rkco `mkTransCo` mkSymCo co)
+ty_co_match menv subst ty (GRefl r t co) lkco rkco
+  =  ty_co_match menv subst ty (Refl r t) lkco (rkco `mkTransCo` mkSymCo co)
 
 ty_co_match menv subst ty co1 lkco rkco
   | Just (CastTy t co, r) <- isReflCo_maybe co1

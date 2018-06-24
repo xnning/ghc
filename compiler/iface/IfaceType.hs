@@ -286,8 +286,8 @@ data IfaceMCoercion
   | IfaceMCo IfaceCoercion
 
 data IfaceCoercion
-  = IfaceReflCo       IfaceType
-  | IfaceGReflCo      Role IfaceType (IfaceMCoercion)
+  = IfaceReflCo       Role IfaceType
+  | IfaceGReflCo      Role IfaceType (IfaceCoercion)
   | IfaceFunCo        Role IfaceCoercion IfaceCoercion
   | IfaceTyConAppCo   Role IfaceTyCon [IfaceCoercion]
   | IfaceAppCo        IfaceCoercion IfaceCoercion
@@ -462,11 +462,8 @@ substIfaceType env ty
     go (IfaceCastTy ty co)    = IfaceCastTy (go ty) (go_co co)
     go (IfaceCoercionTy co)   = IfaceCoercionTy (go_co co)
 
-    go_mco IfaceMRefl    = IfaceMRefl
-    go_mco (IfaceMCo co) = IfaceMCo $ go_co co
-
-    go_co (IfaceReflCo ty)           = IfaceReflCo (go ty)
-    go_co (IfaceGReflCo r ty mco)    = IfaceGReflCo r (go ty) (go_mco mco)
+    go_co (IfaceReflCo r ty)         = IfaceReflCo r (go ty)
+    go_co (IfaceGReflCo r ty co)     = IfaceGReflCo r (go ty) (go_co co)
     go_co (IfaceFunCo r c1 c2)       = IfaceFunCo r (go_co c1) (go_co c2)
     go_co (IfaceTyConAppCo r tc cos) = IfaceTyConAppCo r tc (go_cos cos)
     go_co (IfaceAppCo c1 c2)         = IfaceAppCo (go_co c1) (go_co c2)
@@ -1205,10 +1202,8 @@ pprIfaceCoercion = ppr_co topPrec
 pprParendIfaceCoercion = ppr_co appPrec
 
 ppr_co :: PprPrec -> IfaceCoercion -> SDoc
-ppr_co _         (IfaceReflCo ty) = angleBrackets (ppr ty) <> ppr_role Nominal
-ppr_co _         (IfaceGReflCo r ty IfaceMRefl)
-  = angleBrackets (ppr ty) <> ppr_role r
-ppr_co ctxt_prec (IfaceGReflCo r ty (IfaceMCo co))
+ppr_co _         (IfaceReflCo r ty) = angleBrackets (ppr ty) <> ppr_role r
+ppr_co ctxt_prec (IfaceGReflCo r ty co)
   = ppr_special_co ctxt_prec
     (text "GRefl" <+> ppr r <+> pprParendIfaceType ty) [co]
 ppr_co ctxt_prec (IfaceFunCo r co1 co2)
@@ -1517,9 +1512,10 @@ instance Binary IfaceMCoercion where
          _ -> panic ("get IfaceMCoercion " ++ show tag)
 
 instance Binary IfaceCoercion where
-  put_ bh (IfaceReflCo a) = do
+  put_ bh (IfaceReflCo a b) = do
           putByte bh 1
           put_ bh a
+          put_ bh b
   put_ bh (IfaceGReflCo a b c) = do
           putByte bh 2
           put_ bh a
@@ -1597,7 +1593,8 @@ instance Binary IfaceCoercion where
       tag <- getByte bh
       case tag of
            1 -> do a <- get bh
-                   return $ IfaceReflCo a
+                   b <- get bh
+                   return $ IfaceReflCo a b
            2 -> do a <- get bh
                    b <- get bh
                    c <- get bh

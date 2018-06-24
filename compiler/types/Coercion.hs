@@ -460,34 +460,27 @@ isGReflCo (GRefl{}) = True
 isGReflCo (Refl{})  = True -- Refl ty == GRefl N ty MRefl
 isGReflCo _         = False
 
--- | Tests if this MCoercion is obviously generalized reflexive
--- Guaranteed to work very quickly.
-isGReflMCo :: MCoercion -> Bool
-isGReflMCo MRefl = True
-isGReflMCo (MCo co) | isGReflCo co = True
-isGReflMCo _ = False
-
 -- | Tests if this coercion is obviously reflexive. Guaranteed to work
 -- very quickly. Sometimes a coercion can be reflexive, but not obviously
 -- so. c.f. 'isReflexiveCo'
 isReflCo :: Coercion -> Bool
 isReflCo (Refl{}) = True
-isReflCo (GRefl _ _ mco) | isGReflMCo mco = True
+isReflCo (GRefl _ _ co) | isGReflCo co = True
 isReflCo _ = False
 
 -- | Returns the type coerced if this coercion is a generalized reflexive
 -- coercion. Guaranteed to work very quickly.
 isGReflCo_maybe :: Coercion -> Maybe (Type, Role)
 isGReflCo_maybe (GRefl r ty _) = Just (ty, r)
-isGReflCo_maybe (Refl ty)      = Just (ty, Nominal)
+isGReflCo_maybe (Refl  r ty)   = Just (ty, r)
 isGReflCo_maybe _ = Nothing
 
 -- | Returns the type coerced if this coercion is reflexive. Guaranteed
 -- to work very quickly. Sometimes a coercion can be reflexive, but not
 -- obviously so. c.f. 'isReflexiveCo_maybe'
 isReflCo_maybe :: Coercion -> Maybe (Type, Role)
-isReflCo_maybe (Refl ty) = Just (ty, Nominal)
-isReflCo_maybe (GRefl r ty mco) | isGReflMCo mco = Just (ty, r)
+isReflCo_maybe (Refl r ty) = Just (ty, r)
+isReflCo_maybe (GRefl r ty co) | isGReflCo co = Just (ty, r)
 isReflCo_maybe _ = Nothing
 
 -- | Slowly checks if the coercion is reflexive. Don't call this in a loop,
@@ -498,8 +491,8 @@ isReflexiveCo = isJust . isReflexiveCo_maybe
 -- | Extracts the coerced type from a reflexive coercion. This potentially
 -- walks over the entire coercion, so avoid doing this in a loop.
 isReflexiveCo_maybe :: Coercion -> Maybe (Type, Role)
-isReflexiveCo_maybe (Refl ty) = Just (ty, Nominal)
-isReflexiveCo_maybe (GRefl r ty mco) | isGReflMCo mco = Just (ty, r)
+isReflexiveCo_maybe (Refl r ty) = Just (ty, r)
+isReflexiveCo_maybe (GRefl r ty co) | isGReflCo co = Just (ty, r)
 isReflexiveCo_maybe co
   | ty1 `eqType` ty2
   = Just (ty1, r)
@@ -570,24 +563,22 @@ role is bizarre and a caller should have to ask for this behavior explicitly.
 -}
 
 -- | Make a generalized reflexive coercion
-mkGReflCo :: Role -> Type -> MCoercionN -> Coercion
-mkGReflCo r ty mco
-  | isGReflMCo mco = if r == Nominal then Refl ty
-                     else GRefl r ty MRefl
-  | otherwise    = GRefl r ty mco
+mkGReflCo :: Role -> Type -> CoercionN -> Coercion
+mkGReflCo r ty co
+  | isGReflCo co = Refl r ty
+  | otherwise    = GRefl r ty co
 
 -- | Make a reflexive coercion
 mkReflCo :: Role -> Type -> Coercion
-mkReflCo Nominal ty = Refl ty
-mkReflCo r       ty = GRefl r ty MRefl
+mkReflCo = Refl
 
 -- | Make a representational reflexive coercion
 mkRepReflCo :: Type -> Coercion
-mkRepReflCo ty = GRefl Representational ty MRefl
+mkRepReflCo = Refl Representational
 
 -- | Make a nominal reflexive coercion
 mkNomReflCo :: Type -> Coercion
-mkNomReflCo = Refl
+mkNomReflCo = Refl Nominal
 
 
 -- | Apply a type constructor to a list of coercions. It is the
@@ -897,8 +888,8 @@ mkSymCo co                        = SymCo co
 mkTransCo :: Coercion -> Coercion -> Coercion
 mkTransCo co1 co2 | isReflCo co1 = co2
                   | isReflCo co2 = co1
-mkTransCo (GRefl r t1 (MCo co1)) (GRefl _ _ (MCo co2))
-  = GRefl r t1 (MCo $ mkTransCo co1 co2)
+mkTransCo (GRefl r t1 co1) (GRefl _ _ co2)
+  = GRefl r t1 (mkTransCo co1 co2)
 mkTransCo co1 co2                 = TransCo co1 co2
 
 mkNthCo :: HasDebugCallStack
@@ -1047,7 +1038,7 @@ mkGReflRightCo r ty co
   | isGReflCo co = mkReflCo r ty
     -- the kinds of @k1@ and @k2@ are the same, thus @isGReflCo@
     -- instead of @isReflCo@
-  | otherwise = GRefl r ty (MCo co)
+  | otherwise = GRefl r ty co
 
 -- | Given @ty :: k1@, @co :: k1 ~ k2@,
 -- produces @co' :: (ty |> co) ~r ty@
@@ -1056,27 +1047,27 @@ mkGReflLeftCo r ty co
   | isGReflCo co = mkReflCo r ty
     -- the kinds of @k1@ and @k2@ are the same, thus @isGReflCo@
     -- instead of @isReflCo@
-  | otherwise    = mkSymCo $ GRefl r ty (MCo co)
+  | otherwise    = mkSymCo $ GRefl r ty co
 
 -- | Given @ty :: k2@, @co :: k1 ~ k2@, @co2:: ty ~ ty'@,
 -- produces @co' :: (ty |> co) ~r ty'
 mkCoherenceLeftCo :: Role -> Type -> CoercionN -> Coercion -> Coercion
 mkCoherenceLeftCo r ty co co2
   | isGReflCo co = co2
-  | otherwise = (mkSymCo $ GRefl r ty (MCo co)) `mkTransCo` co2
+  | otherwise = (mkSymCo $ GRefl r ty co) `mkTransCo` co2
 
 -- | Given @ty :: k2@, @co :: k1 ~ k2@, @co2:: ty' ~ ty@,
 -- produces @co' :: ty' ~r (ty |> co)
 mkCoherenceRightCo :: Role -> Type -> CoercionN -> Coercion -> Coercion
 mkCoherenceRightCo r ty co co2
   | isGReflCo co = co2
-  | otherwise = co2 `mkTransCo` GRefl r ty (MCo co)
+  | otherwise = co2 `mkTransCo` GRefl r ty co
 {-# SCC mkCoherenceRightCo #-}
 
 -- | Given @co :: (a :: k) ~ (b :: k')@ produce @co' :: k ~ k'@.
 mkKindCo :: Coercion -> Coercion
-mkKindCo co | Just (ty, _) <- isReflCo_maybe co = Refl (typeKind ty)
-mkKindCo (GRefl _ _ (MCo co)) = co
+mkKindCo co | Just (ty, _) <- isReflCo_maybe co = Refl Nominal (typeKind ty)
+mkKindCo (GRefl _ _ co) = co
 mkKindCo (UnivCo (PhantomProv h) _ _ _)    = h
 mkKindCo (UnivCo (ProofIrrelProv h) _ _ _) = h
 mkKindCo co
@@ -1087,14 +1078,14 @@ mkKindCo co
   , let tk1 = typeKind ty1
         tk2 = typeKind ty2
   , tk1 `eqType` tk2
-  = Refl tk1
+  = Refl Nominal tk1
   | otherwise
   = KindCo co
 
 mkSubCo :: Coercion -> Coercion
 -- Input coercion is Nominal, result is Representational
 -- see also Note [Role twiddling functions]
-mkSubCo (Refl ty) = GRefl Representational ty MRefl
+mkSubCo (Refl _ ty) = Refl Representational ty
 mkSubCo (GRefl Nominal ty co) = GRefl Representational ty co
 mkSubCo (TyConAppCo Nominal tc cos)
   = TyConAppCo Representational tc (applyRoles tc cos)
@@ -1173,7 +1164,7 @@ setNominalRole_maybe r co
   | otherwise = setNominalRole_maybe_helper co
   where
     setNominalRole_maybe_helper (SubCo co)  = Just co
-    setNominalRole_maybe_helper co@(Refl _) = Just co
+    setNominalRole_maybe_helper (Refl _ ty) = Just $ Refl Nominal ty
     setNominalRole_maybe_helper (GRefl _ ty co) = Just $ GRefl Nominal ty co
     setNominalRole_maybe_helper (TyConAppCo Representational tc cos)
       = do { cos' <- zipWithM setNominalRole_maybe (tyConRolesX Representational tc) cos
@@ -1263,13 +1254,10 @@ promoteCoercion co = case co of
      --    The ASSERT( False )s throughout
      -- are these cases explicitly, but they should never fire.
 
-    Refl _ -> ASSERT( False )
-              mkNomReflCo ki1
+    Refl _ _ -> ASSERT( False )
+                mkNomReflCo ki1
 
-    GRefl _ _ MRefl -> ASSERT( False )
-                       mkNomReflCo ki1
-
-    GRefl _ _ (MCo co) -> co
+    GRefl _ _ co -> co
 
     TyConAppCo _ tc args
       | Just co' <- instCoercions (mkNomReflCo (tyConKind tc)) args
@@ -1789,7 +1777,7 @@ liftCoSubstVarBndrUsing fun lc@(LC subst cenv) old_var
     Pair k1 _    = coercionKind eta
     new_var      = uniqAway (getTCvInScope subst) (setVarType old_var k1)
 
-    lifted   = Refl (TyVarTy new_var)
+    lifted   = Refl Nominal (TyVarTy new_var)
     new_cenv = extendVarEnv cenv old_var lifted
 
 -- | Is a var in the domain of a lifting context?
@@ -1860,13 +1848,9 @@ lcInScopeSet (LC subst _) = getTCvInScope subst
 %************************************************************************
 -}
 
-seqMCo :: MCoercion -> ()
-seqMCo MRefl    = ()
-seqMCo (MCo co) = seqCo co
-
 seqCo :: Coercion -> ()
-seqCo (Refl ty)                 = seqType ty
-seqCo (GRefl r ty mco)          = r `seq` seqType ty `seq` seqMCo mco
+seqCo (Refl r ty)               = r `seq` seqType ty
+seqCo (GRefl r ty co)           = r `seq` seqType ty `seq` seqCo co
 seqCo (TyConAppCo r tc cos)     = r `seq` tc `seq` seqCos cos
 seqCo (AppCo co1 co2)           = seqCo co1 `seq` seqCo co2
 seqCo (ForAllCo tv k co)        = seqType (tyVarKind tv) `seq` seqCo k
@@ -1932,9 +1916,8 @@ coercionKind :: Coercion -> Pair Type
 coercionKind co =
   go co
   where
-    go (Refl ty) = Pair ty ty
-    go (GRefl _ ty MRefl) = Pair ty ty
-    go (GRefl _ ty (MCo co1)) = Pair ty (mkCastTy ty co1)
+    go (Refl _ ty) = Pair ty ty
+    go (GRefl _ ty co1) = Pair ty (mkCastTy ty co1)
     go (TyConAppCo _ tc cos)= mkTyConApp tc <$> (sequenceA $ map go cos)
     go (AppCo co1 co2)      = mkAppTy <$> go co1 <*> go co2
     go co@(ForAllCo tv1 k_co co1)
@@ -2036,7 +2019,7 @@ coercionKindRole co = (coercionKind co, coercionRole co)
 coercionRole :: Coercion -> Role
 coercionRole = go
   where
-    go (Refl _) = Nominal
+    go (Refl r _) = r
     go (GRefl r _ _) = r
     go (TyConAppCo r _ _) = r
     go (AppCo co1 _) = go co1
