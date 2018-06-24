@@ -170,13 +170,19 @@ opt_co4_wrap env sym rep r co
     result
 -}
 
-opt_co4 env _   rep r (Refl _r ty)
-  = ASSERT2( r == _r, text "Expected role:" <+> ppr r    $$
-                      text "Found role:" <+> ppr _r $$
+opt_co4 env _   rep r (Refl ty)
+  = ASSERT2( r == Nominal, text "Expected role:" <+> ppr r    $$
+                           text "Found role:" <+> ppr Nominal $$
+                           text "Type:" <+> ppr ty )
+    liftCoSubst (chooseRole rep r) env ty
+
+opt_co4 env _   rep r (GRefl _r ty MRefl)
+  = ASSERT2( r == _r, text "Expected role:" <+> ppr r $$
+                      text "Found role:" <+> ppr _r   $$
                       text "Type:" <+> ppr ty )
     liftCoSubst (chooseRole rep r) env ty
 
-opt_co4 env sym  rep r (GRefl _r ty co)
+opt_co4 env sym  rep r (GRefl _r ty (MCo co))
   = ASSERT2( r == _r, text "Expected role:" <+> ppr r $$
                       text "Found role:" <+> ppr _r   $$
                       text "Type:" <+> ppr ty )
@@ -508,7 +514,7 @@ opt_trans2 _ co1 co2
 -- Optimize coercions with a top-level use of transitivity.
 opt_trans_rule :: InScopeSet -> NormalNonIdCo -> NormalNonIdCo -> Maybe NormalCo
 
-opt_trans_rule is in_co1@(GRefl r1 t1 co1) in_co2@(GRefl r2 _ co2)
+opt_trans_rule is in_co1@(GRefl r1 t1 (MCo co1)) in_co2@(GRefl r2 _ (MCo co2))
   = ASSERT( r1 == r2 )
     fireTransRule "GRefl" in_co1 in_co2 $
     mkGReflRightCo r1 t1 (opt_trans is co1 co2)

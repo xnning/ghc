@@ -403,10 +403,13 @@ expandTypeSynonyms ty
     go subst (CastTy ty co)  = mkCastTy (go subst ty) (go_co subst co)
     go subst (CoercionTy co) = mkCoercionTy (go_co subst co)
 
-    go_co subst (Refl r ty)
-      = mkReflCo r (go subst ty)
-    go_co subst (GRefl r ty co)
-      = mkGReflCo r (go subst ty) (go_co subst co)
+    go_mco _     MRefl    = MRefl
+    go_mco subst (MCo co) = MCo (go_co subst co)
+
+    go_co subst (Refl ty)
+      = mkNomReflCo (go subst ty)
+    go_co subst (GRefl r ty mco)
+      = mkGReflCo r (go subst ty) (go_mco subst mco)
        -- NB: coercions are always expanded upon creation
     go_co subst (TyConAppCo r tc args)
       = mkTyConAppCo r tc (map (go_co subst) args)
@@ -541,8 +544,11 @@ mapCoercion mapper@(TyCoMapper { tcm_smart = smart, tcm_covar = covar
             env co
   = go co
   where
-    go (Refl r ty) = Refl r <$> mapType mapper env ty
-    go (GRefl r ty co) = mkgreflco r <$> mapType mapper env ty <*> (go co)
+    go_mco MRefl    = return MRefl
+    go_mco (MCo co) = MCo <$> (go co)
+
+    go (Refl ty) = Refl <$> mapType mapper env ty
+    go (GRefl r ty mco) = mkgreflco r <$> mapType mapper env ty <*> (go_mco mco)
     go (TyConAppCo r tc args)
       = mktyconappco r tc <$> mapM go args
     go (AppCo c1 c2) = mkappco <$> go c1 <*> go c2
@@ -2548,8 +2554,8 @@ tyConsOfType ty
      go (CastTy ty co)              = go ty `unionUniqSets` go_co co
      go (CoercionTy co)             = go_co co
 
-     go_co (Refl _ ty)             = go ty
-     go_co (GRefl _ ty co)         = go ty `unionUniqSets` go_co co
+     go_co (Refl ty)               = go ty
+     go_co (GRefl _ ty mco)        = go ty `unionUniqSets` go_mco mco
      go_co (TyConAppCo _ tc args)  = go_tc tc `unionUniqSets` go_cos args
      go_co (AppCo co arg)          = go_co co `unionUniqSets` go_co arg
      go_co (ForAllCo _ kind_co co) = go_co kind_co `unionUniqSets` go_co co
@@ -2566,6 +2572,9 @@ tyConsOfType ty
      go_co (KindCo co)             = go_co co
      go_co (SubCo co)              = go_co co
      go_co (AxiomRuleCo _ cs)      = go_cos cs
+
+     go_mco MRefl    = emptyUniqSet
+     go_mco (MCo co) = go_co co
 
      go_prov UnsafeCoerceProv    = emptyUniqSet
      go_prov (PhantomProv co)    = go_co co

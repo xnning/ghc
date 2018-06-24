@@ -936,8 +936,11 @@ exactTyCoVarsOfType ty
     go (CastTy ty co)       = go ty `unionVarSet` goCo co
     go (CoercionTy co)      = goCo co
 
-    goCo (Refl _ ty)          = go ty
-    goCo (GRefl _ ty co)      = go ty `unionVarSet` goCo co
+    goMCo MRefl    = emptyVarSet
+    goMCo (MCo co) = goCo co
+
+    goCo (Refl ty)            = go ty
+    goCo (GRefl _ ty mco)     = go ty `unionVarSet` goMCo mco
     goCo (TyConAppCo _ _ args)= goCos args
     goCo (AppCo co arg)     = goCo co `unionVarSet` goCo arg
     goCo (ForAllCo tv k_co co)

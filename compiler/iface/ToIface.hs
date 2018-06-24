@@ -221,8 +221,11 @@ toIfaceCoercionX :: VarSet -> Coercion -> IfaceCoercion
 toIfaceCoercionX fr co
   = go co
   where
-    go (Refl r ty)          = IfaceReflCo r (toIfaceTypeX fr ty)
-    go (GRefl r ty co)      = IfaceGReflCo r (toIfaceTypeX fr ty) (go co)
+    go_mco MRefl     = IfaceMRefl
+    go_mco (MCo co)  = IfaceMCo $ go co
+
+    go (Refl ty)            = IfaceReflCo (toIfaceTypeX fr ty)
+    go (GRefl r ty mco)     = IfaceGReflCo r (toIfaceTypeX fr ty) (go_mco mco)
     go (CoVarCo cv)
       -- See [TcTyVars in IfaceType] in IfaceType
       | cv `elemVarSet` fr  = IfaceFreeCoVar cv
