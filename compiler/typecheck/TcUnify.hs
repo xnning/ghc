@@ -1324,7 +1324,7 @@ uType t_or_k origin orig_ty1 orig_ty2
       -- See Note [Expanding synonyms during unification]
     go ty1@(TyConApp tc1 []) (TyConApp tc2 [])
       | tc1 == tc2
-      = return $ mkReflCo Nominal ty1
+      = return $ mkNomReflCo ty1
 
     go (CastTy t1 co1) t2
       = do { co_tys <- go t1 t2

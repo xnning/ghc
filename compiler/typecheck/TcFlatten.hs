@@ -1229,7 +1229,7 @@ flatten_args_fast orig_binders orig_inner_ki orig_roles orig_tys
     finish (xis, cos, binders) = (xis, cos, kind_co)
       where
         final_kind = mkPiTys binders orig_inner_ki
-        kind_co    = mkReflCo Nominal final_kind
+        kind_co    = mkNomReflCo final_kind
 
 {-# INLINE flatten_args_slow #-}
 -- | Slow path, compared to flatten_args_fast, because this one must track
@@ -1472,7 +1472,7 @@ flatten_app_ty_args fun_xi fun_co arg_tys
                       arg_co = mkAppCos fun_co arg_cos
                 ; return (arg_xi, arg_co, kind_co) }
 
-       ; let role = coercionRole co
+       ; role <- getRole
        ; return (homogenise_result xi co role kind_co) }
 
 flatten_ty_con_app :: TyCon -> [TcType] -> FlatM (Xi, Coercion)
@@ -1491,9 +1491,9 @@ homogenise_result :: Xi              -- a flattened type
                   -> (Xi, Coercion)  -- (xi |> kind_co, (xi |> kind_co)
                                      --   ~r original ty)
 homogenise_result xi co r kind_co
-  = let xi' = xi `mkCastTy` kind_co
-        co' = mkTcCoherenceLeftCo r xi kind_co co
-    in  (xi', co')
+  | isGReflCo kind_co = (xi `mkCastTy` kind_co, co)
+  | otherwise         = (xi `mkCastTy` kind_co
+                        , (mkSymCo $ GRefl r xi (MCo kind_co)) `mkTransCo` co)
 {-# INLINE homogenise_result #-}
 
 -- Flatten a vector (list of arguments).
