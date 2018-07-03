@@ -762,7 +762,7 @@ mkPiTys tbs ty = foldr mkPiTy ty tbs
 isCoercionType :: Type -> Bool
 isCoercionType (TyConApp tc tys)
   | (tc `hasKey` eqPrimTyConKey) || (tc `hasKey` eqReprPrimTyConKey)
-  , tys `lengthIs` 4
+  , tys `lengthIs` 3
   = True
 isCoercionType _ = False
 

@@ -1544,7 +1544,7 @@ isPredTy ty = go ty []
     go_tc :: TyCon -> [KindOrType] -> Bool
     go_tc tc args
       | tc `hasKey` eqPrimTyConKey || tc `hasKey` eqReprPrimTyConKey
-                  = args `lengthIs` 4  -- ~# and ~R# sadly have result kind #
+                  = args `lengthIs` 3  -- ~# and ~R# sadly have result kind #
                                        -- not Constraint; but we still want
                                        -- isPredTy to reply True.
       | otherwise = go_k (tyConKind tc) args
