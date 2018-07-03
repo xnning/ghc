@@ -889,8 +889,10 @@ data Coercion
           -- AppCo :: e -> N -> e
 
   -- See Note [Forall coercions]
-  | ForAllCo TyVar KindCoercion Coercion
+  | ForAllCo TyCoVar CoercionN Coercion
          -- ForAllCo :: _ -> N -> e -> e
+         -- For TyVar, CoercionN is a kind coercion
+         -- For CoVar, CoercionN is a coercion between coercions
 
   | FunCo Role Coercion Coercion         -- lift FunTy
          -- FunCo :: "e" -> e -> e -> e
