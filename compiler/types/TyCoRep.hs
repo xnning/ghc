@@ -864,9 +864,8 @@ data Coercion
   = -- Refl :: _ -> N
     Refl Type  -- See Note [Refl invariant]
   -- GRefl :: "e" -> _ -> Maybe N -> e
+  -- See Note [Generalized reflexive coercion]
   | GRefl Role Type MCoercionN  -- See Note [Refl invariant]
-          -- Refl == GRefl Nominal ty MRefl :: ty ~n ty
-          -- GRefl r ty (MCo co)      :: ty ~r ty |> co
           -- Invariant: applications of (Refl T) to a bunch of identity coercions
           --            always show up as Refl.
           -- For example  (Refl T) (Refl a) (Refl b) shows up as (Refl (T a b)).
@@ -975,7 +974,7 @@ Note [Refl invariant]
 Invariant 1:
 
 Coercions have the following invariant
-     Refl is always lifted as far as possible.
+     Refl (similar for GRefl r ty MRefl) is always lifted as far as possible.
 
 You might think that a consequencs is:
      Every identity coercions has Refl at the root
@@ -985,6 +984,42 @@ But that's not quite true because of coercion variables.  Consider
      Left h    where h :: Maybe Int ~ Maybe Int
 etc.  So the consequence is only true of coercions that
 have no coercion variables.
+
+Note [Generalized reflexive coercion]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+GRefl is a generalized reflexive coercion (see Trac #15192). It wraps a kind
+coercion, which might be reflexive (MRefl) or any coercion (MCo co). The typing
+rules for GRefl:
+
+  ty : k1
+  ------------------------------------
+  GRefl r ty MRefl: ty ~r ty
+
+  ty : k1       co :: k1 ~ k2
+  ------------------------------------
+  GRefl r ty (MCo co) : ty ~r ty |> co
+
+Consider we have
+
+   g1 :: s ~r t
+   s  :: k1
+   g2 :: k1 ~ k2
+
+and we want to construct a coercions co which has type
+
+   (s |> g2) ~r t
+
+We can define
+
+   co = Sym (GRefl r s g2) ; g1
+
+It is easy to see that
+
+   Refl == GRefl Nominal ty MRefl :: ty ~n ty
+
+A nominal reflexive coercion is quite common, so we keep the special form Refl to
+save allocation.
 
 Note [Coercion axioms applied to coercions]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1115,6 +1115,17 @@ as desired. (Why do we want Star? Because we started with something of kind Star
 
 Whew.
 
+Note [flatten_exact_fam_app_fully performance]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The refactor of GRefl seems to cause performance trouble for T9872x: the allocation of flatten_exact_fam_app_fully_performance increased. See note [Generalized reflexive coercion] in TyCoRep for more information about GRefl and Trac #15192 for the current state.
+
+The explicit pattern match in homogenise_result helps with T9872a, b, c.
+
+Still, it increases the expected allocation of T9872d by ~2%.
+
+TODO: a step-by-step replay of the refactor to analyze the performance.
+
 -}
 
 {-# INLINE flatten_args_tc #-}
@@ -1491,6 +1502,8 @@ homogenise_result :: Xi              -- a flattened type
                   -> (Xi, Coercion)  -- (xi |> kind_co, (xi |> kind_co)
                                      --   ~r original ty)
 homogenise_result xi co r kind_co
+  -- the explicit pattern match here improves the performance of T9872a, b, c by
+  -- ~2%
   | isGReflCo kind_co = (xi `mkCastTy` kind_co, co)
   | otherwise         = (xi `mkCastTy` kind_co
                         , (mkSymCo $ GRefl r xi (MCo kind_co)) `mkTransCo` co)
@@ -1591,6 +1604,7 @@ flatten_fam_app tc tys  -- Can be over-saturated
          ; flatten_app_ty_args xi1 co1 tys_rest } } }
 
 -- the [TcType] exactly saturate the TyCon
+-- See note [flatten_exact_fam_app_fully performance]
 flatten_exact_fam_app_fully :: TyCon -> [TcType] -> FlatM (Xi, Coercion)
 flatten_exact_fam_app_fully tc tys
   -- See Note [Reduce type family applications eagerly]
