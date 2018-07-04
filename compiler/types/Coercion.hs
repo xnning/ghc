@@ -372,7 +372,7 @@ splitFunCo_maybe :: Coercion -> Maybe (Coercion, Coercion)
 splitFunCo_maybe (FunCo _ arg res) = Just (arg, res)
 splitFunCo_maybe _ = Nothing
 
-splitForAllCo_maybe :: Coercion -> Maybe (TyVar, Coercion, Coercion)
+splitForAllCo_maybe :: Coercion -> Maybe (TyCoVar, Coercion, Coercion)
 splitForAllCo_maybe (ForAllCo tv k_co co) = Just (tv, k_co, co)
 splitForAllCo_maybe _                     = Nothing
 
@@ -683,9 +683,12 @@ mkTransAppCo r1 co1 ty1a ty1b r2 co2 ty2a ty2b r3
                                       , ppr r2, ppr co2, ppr ty2a, ppr ty2b
                                       , ppr r3 ])
 
--- | Make a Coercion from a tyvar, a kind coercion, and a body coercion.
+-- | Make a Coercion from a tyvar or covar.
+-- If it is a tyvar, it then accepts a kind coercion, and a body coercion.
 -- The kind of the tyvar should be the left-hand kind of the kind coercion.
-mkForAllCo :: TyVar -> Coercion -> Coercion -> Coercion
+-- If it is a covar, it then accepts a coercion between coercions,
+-- and a body coercion.
+mkForAllCo :: TyCoVar -> Coercion -> Coercion -> Coercion
 mkForAllCo tv kind_co co
   | Refl r ty <- co
   , Refl {} <- kind_co
@@ -694,7 +697,7 @@ mkForAllCo tv kind_co co
   = ForAllCo tv kind_co co
 
 -- | Make nested ForAllCos
-mkForAllCos :: [(TyVar, Coercion)] -> Coercion -> Coercion
+mkForAllCos :: [(TyCoVar, Coercion)] -> Coercion -> Coercion
 mkForAllCos bndrs (Refl r ty)
   = let (refls_rev'd, non_refls_rev'd) = span (isReflCo . snd) (reverse bndrs) in
     foldl (flip $ uncurry ForAllCo)
@@ -704,14 +707,14 @@ mkForAllCos bndrs co = foldr (uncurry ForAllCo) co bndrs
 
 -- | Make a Coercion quantified over a type variable;
 -- the variable has the same type in both sides of the coercion
-mkHomoForAllCos :: [TyVar] -> Coercion -> Coercion
+mkHomoForAllCos :: [TyCoVar] -> Coercion -> Coercion
 mkHomoForAllCos tvs (Refl r ty)
   = Refl r (mkInvForAllTys tvs ty)
 mkHomoForAllCos tvs ty = mkHomoForAllCos_NoRefl tvs ty
 
 -- | Like 'mkHomoForAllCos', but doesn't check if the inner coercion
 -- is reflexive.
-mkHomoForAllCos_NoRefl :: [TyVar] -> Coercion -> Coercion
+mkHomoForAllCos_NoRefl :: [TyCoVar] -> Coercion -> Coercion
 mkHomoForAllCos_NoRefl tvs orig_co = foldr go orig_co tvs
   where
     go tv co = ForAllCo tv (mkNomReflCo (tyVarKind tv)) co
@@ -886,9 +889,9 @@ mkNthCo r n co
               | otherwise
               = False
 
-    go r 0 (ForAllCo _ kind_co _)
+    go r 0 (ForAllCo _ co _)
       = ASSERT( r == Nominal )
-        kind_co
+        co
       -- If co :: (forall a1:k1. t1) ~ (forall a2:k2. t2)
       -- then (nth 0 co :: k1 ~N k2)
 
@@ -1322,8 +1325,8 @@ mkPiCos r vs co = foldr (mkPiCo r) co vs
 -- | Make a forall 'Coercion', where both types related by the coercion
 -- are quantified over the same type variable.
 mkPiCo  :: Role -> Var -> Coercion -> Coercion
-mkPiCo r v co | isTyVar v = mkHomoForAllCos [v] co
-              | otherwise = mkFunCo r (mkReflCo r (varType v)) co
+mkPiCo r v co | isTyVar v || isCoVar v = mkHomoForAllCos [v] co
+              | otherwise              = mkFunCo r (mkReflCo r (varType v)) co
 
 -- mkCoCast (c :: s1 ~?r t1) (g :: (s1 ~?r t1) ~#R (s2 ~?r t2)) :: s2 ~?r t2
 -- The first coercion might be lifted or unlifted; thus the ~? above
