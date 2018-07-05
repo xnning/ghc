@@ -409,7 +409,6 @@ sameVis _        _        = True
 *                                                                      *
 ********************************************************************* -}
 
-
 -- Type Variable Binder
 --
 -- TyVarBndr is polymorphic in both tyvar and visibility fields:
