@@ -61,10 +61,10 @@ module Var (
         mustHaveLocalBinding,
 
         -- * TyVar's
-        TyVarBndr(..), ArgFlag(..), TyVarBinder,
+        TyVarBndr(..), ArgFlag(..), TyCoVarBinder,
         binderVar, binderVars, binderArgFlag, binderKind,
         isVisibleArgFlag, isInvisibleArgFlag, sameVis,
-        mkTyVarBinder, mkTyVarBinders,
+        mkTyCoVarBinder, mkTyCoVarBinders,
 
         -- ** Constructing TyVar's
         mkTyVar, mkTcTyVar,
@@ -380,7 +380,7 @@ updateVarTypeM f id = do { ty' <- f (varType id)
 -- Is something required to appear in source Haskell ('Required'),
 -- permitted by request ('Specified') (visible type application), or
 -- prohibited entirely from appearing in source Haskell ('Inferred')?
--- See Note [TyVarBndrs, TyVarBinders, TyConBinders, and visibility] in TyCoRep
+-- See Note [TyVarBndrs, TyCoVarBinders, TyConBinders, and visibility] in TyCoRep
 data ArgFlag = Inferred | Specified | Required
   deriving (Eq, Ord, Data)
   -- (<) on ArgFlag meant "is less visible than"
@@ -405,24 +405,25 @@ sameVis _        _        = True
 
 {- *********************************************************************
 *                                                                      *
-*                   TyVarBndr, TyVarBinder
+*                   TyVarBndr, TyCoVarBinder
 *                                                                      *
 ********************************************************************* -}
+
 
 -- Type Variable Binder
 --
 -- TyVarBndr is polymorphic in both tyvar and visibility fields:
---   * tyvar can be TyVar or IfaceTv
+--   * tyvar can be TyVar or IfaceTvBndr
 --   * argf  can be ArgFlag or TyConBndrVis
 data TyVarBndr tyvar argf = TvBndr tyvar argf
   deriving( Data )
 
 -- | Type Variable Binder
 --
--- A 'TyVarBinder' is the binder of a ForAllTy
+-- A 'TyCoVarBinder' is the binder of a ForAllTy
 -- It's convenient to define this synonym here rather its natural
 -- home in TyCoRep, because it's used in DataCon.hs-boot
-type TyVarBinder = TyVarBndr TyVar ArgFlag
+type TyCoVarBinder = TyVarBndr TyCoVar ArgFlag
 
 binderVar :: TyVarBndr tv argf -> tv
 binderVar (TvBndr v _) = v
@@ -437,12 +438,12 @@ binderKind :: TyVarBndr TyVar argf -> Kind
 binderKind (TvBndr tv _) = tyVarKind tv
 
 -- | Make a named binder
-mkTyVarBinder :: ArgFlag -> Var -> TyVarBinder
-mkTyVarBinder vis var = TvBndr var vis
+mkTyCoVarBinder :: ArgFlag -> TyVar -> TyVarCoBinder
+mkTyCoVarBinder vis var = TvBndr var vis
 
 -- | Make many named binders
-mkTyVarBinders :: ArgFlag -> [TyVar] -> [TyVarBinder]
-mkTyVarBinders vis = map (mkTyVarBinder vis)
+mkTyCoVarBinders :: ArgFlag -> [TyVar] -> [TyCoVarBinder]
+mkTyCoVarBinders vis = map (mkTyCoVarBinder vis)
 
 {-
 ************************************************************************
