@@ -924,7 +924,7 @@ mkDataCon name declared_infix prom_info
 
       -- See Note [Promoted data constructors] in TyCon
     prom_tv_bndrs = [ mkNamedTyConBinder vis tv
-                    | TvBndr tv vis <- user_tvbs ]
+                    | Bndr tv vis <- user_tvbs ]
 
     prom_arg_bndrs = mkCleanAnonTyConBinders prom_tv_bndrs (theta ++ orig_arg_tys)
     prom_res_kind  = orig_res_ty
@@ -1192,7 +1192,7 @@ dataConInstSig con@(MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
     , substTys   subst arg_tys)
   where
     univ_subst = zipTvSubst univ_tvs univ_tys
-    -- TODO : substTyCoVarBndrs
+    -- TODO : substVarBndrs
     (subst, ex_tvs') = Type.substTyVarBndrs univ_subst ex_tvs
 
 
