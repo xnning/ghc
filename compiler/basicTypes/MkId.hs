@@ -331,7 +331,7 @@ mkDictSelId name clas
     sel_names      = map idName (classAllSelIds clas)
     new_tycon      = isNewTyCon tycon
     [data_con]     = tyConDataCons tycon
-    tyvars         = dataConUserTyVarBinders data_con
+    tyvars         = dataConUserTyCoVarBinders data_con
     n_ty_args      = length tyvars
     arg_tys        = dataConRepArgTys data_con  -- Includes the dictionary superclasses
     val_index      = assoc "MkId.mkDictSelId" (sel_names `zip` [0..]) name
@@ -465,7 +465,7 @@ mkDataConWorkId wkr_name data_con
 
         ----------- Workers for newtypes --------------
     (nt_tvs, _, nt_arg_tys, _) = dataConSig data_con
-    res_ty_args  = mkTyVarTys nt_tvs
+    res_ty_args  = mkTyCoVarTys nt_tvs
     nt_wrap_ty   = dataConUserType data_con
     nt_work_info = noCafIdInfo          -- The NoCaf-ness is set by noCafIdInfo
                   `setArityInfo` 1      -- Arity 1
@@ -618,7 +618,7 @@ mkDataConRep dflags fam_envs wrap_name mb_bangs data_con
                      , dcr_bangs   = arg_ibangs }) }
 
   where
-    (univ_tvs, ex_tvs, eq_spec, theta, orig_arg_tys, _orig_res_ty)
+    (univ_tvs, ex_tvs, _dep_eq_spec, eq_spec, theta, orig_arg_tys, _orig_res_ty)
       = dataConFullSig data_con
     wrap_tvs     = dataConUserTyVars data_con
     res_ty_args  = substTyVars (mkTvSubstPrs (map eqSpecPair eq_spec)) univ_tvs
@@ -631,7 +631,8 @@ mkDataConRep dflags fam_envs wrap_name mb_bangs data_con
     orig_bangs   = dataConSrcBangs data_con
 
     wrap_arg_tys = theta ++ orig_arg_tys
-    wrap_arity   = length wrap_arg_tys
+    wrap_arity   = count isId ex_tvs + length wrap_arg_tys
+             -- TODO: should we include this @count@?
              -- The wrap_args are the arguments *other than* the eq_spec
              -- Because we are going to apply the eq_spec args manually in the
              -- wrapper
