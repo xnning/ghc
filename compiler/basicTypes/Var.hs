@@ -61,7 +61,7 @@ module Var (
         mustHaveLocalBinding,
 
         -- * TyVar's
-        TyVarBndr(..), ArgFlag(..), TyCoVarBinder,
+        VarBndr(..), ArgFlag(..), TyCoVarBinder,
         binderVar, binderVars, binderArgFlag, binderKind,
         isVisibleArgFlag, isInvisibleArgFlag, sameVis,
         mkTyCoVarBinder, mkTyCoVarBinders,
@@ -190,7 +190,7 @@ type OutId      = Id
 Note [Kind and type variables]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Before kind polymorphism, TyVar were used to mean type variables. Now
-they are use to mean kind *or* type variables. KindVar is used when we
+they are used to mean kind *or* type variables. KindVar is used when we
 know for sure that it is a kind variable. In future, we might want to
 go over the whole compiler code to use:
    - TKVar   to mean kind or type variables
@@ -380,7 +380,7 @@ updateVarTypeM f id = do { ty' <- f (varType id)
 -- Is something required to appear in source Haskell ('Required'),
 -- permitted by request ('Specified') (visible type application), or
 -- prohibited entirely from appearing in source Haskell ('Inferred')?
--- See Note [TyVarBndrs, TyCoVarBinders, TyConBinders, and visibility] in TyCoRep
+-- See Note [VarBndrs, TyCoVarBinders, TyConBinders, and visibility] in TyCoRep
 data ArgFlag = Inferred | Specified | Required
   deriving (Eq, Ord, Data)
   -- (<) on ArgFlag meant "is less visible than"
@@ -405,43 +405,43 @@ sameVis _        _        = True
 
 {- *********************************************************************
 *                                                                      *
-*                   TyVarBndr, TyCoVarBinder
+*                   VarBndr, TyCoVarBinder
 *                                                                      *
 ********************************************************************* -}
 
--- Type Variable Binder
+-- Variable Binder
 --
--- TyVarBndr is polymorphic in both tyvar and visibility fields:
---   * tyvar can be TyVar or IfaceTvBndr
+-- VarBndr is polymorphic in both tyvar and visibility fields:
+--   * var can be TyVar, TyCoVar or IfaceTvBndr
 --   * argf  can be ArgFlag or TyConBndrVis
-data TyVarBndr tyvar argf = TvBndr tyvar argf
+data VarBndr var argf = Bndr var argf
   deriving( Data )
 
--- | Type Variable Binder
+-- | Variable Binder
 --
 -- A 'TyCoVarBinder' is the binder of a ForAllTy
 -- It's convenient to define this synonym here rather its natural
 -- home in TyCoRep, because it's used in DataCon.hs-boot
-type TyCoVarBinder = TyVarBndr TyCoVar ArgFlag
+type TyCoVarBinder = VarBndr TyCoVar ArgFlag
 
-binderVar :: TyVarBndr tv argf -> tv
-binderVar (TvBndr v _) = v
+binderVar :: VarBndr tv argf -> tv
+binderVar (Bndr v _) = v
 
-binderVars :: [TyVarBndr tv argf] -> [tv]
+binderVars :: [VarBndr tv argf] -> [tv]
 binderVars tvbs = map binderVar tvbs
 
-binderArgFlag :: TyVarBndr tv argf -> argf
-binderArgFlag (TvBndr _ argf) = argf
+binderArgFlag :: VarBndr tv argf -> argf
+binderArgFlag (Bndr _ argf) = argf
 
-binderKind :: TyVarBndr TyVar argf -> Kind
-binderKind (TvBndr tv _) = tyVarKind tv
+binderKind :: VarBndr TyCoVar argf -> Kind
+binderKind (Bndr tv _) = varType tv
 
 -- | Make a named binder
-mkTyCoVarBinder :: ArgFlag -> TyVar -> TyVarCoBinder
-mkTyCoVarBinder vis var = TvBndr var vis
+mkTyCoVarBinder :: ArgFlag -> TyCoVar -> TyCoVarBinder
+mkTyCoVarBinder vis var = Bndr var vis
 
 -- | Make many named binders
-mkTyCoVarBinders :: ArgFlag -> [TyVar] -> [TyCoVarBinder]
+mkTyCoVarBinders :: ArgFlag -> [TyCoVar] -> [TyCoVarBinder]
 mkTyCoVarBinders vis = map (mkTyCoVarBinder vis)
 
 {-
@@ -500,20 +500,20 @@ setTcTyVarDetails :: TyVar -> TcTyVarDetails -> TyVar
 setTcTyVarDetails tv details = tv { tc_tv_details = details }
 
 -------------------------------------
-instance Outputable tv => Outputable (TyVarBndr tv ArgFlag) where
-  ppr (TvBndr v Required)  = ppr v
-  ppr (TvBndr v Specified) = char '@' <> ppr v
-  ppr (TvBndr v Inferred)  = braces (ppr v)
+instance Outputable tv => Outputable (VarBndr tv ArgFlag) where
+  ppr (Bndr v Required)  = ppr v
+  ppr (Bndr v Specified) = char '@' <> ppr v
+  ppr (Bndr v Inferred)  = braces (ppr v)
 
 instance Outputable ArgFlag where
   ppr Required  = text "[req]"
   ppr Specified = text "[spec]"
   ppr Inferred  = text "[infrd]"
 
-instance (Binary tv, Binary vis) => Binary (TyVarBndr tv vis) where
-  put_ bh (TvBndr tv vis) = do { put_ bh tv; put_ bh vis }
+instance (Binary tv, Binary vis) => Binary (VarBndr tv vis) where
+  put_ bh (Bndr tv vis) = do { put_ bh tv; put_ bh vis }
 
-  get bh = do { tv <- get bh; vis <- get bh; return (TvBndr tv vis) }
+  get bh = do { tv <- get bh; vis <- get bh; return (Bndr tv vis) }
 
 
 instance Binary ArgFlag where
