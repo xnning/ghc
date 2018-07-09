@@ -863,9 +863,6 @@ data Coercion
   -- These ones mirror the shape of types
   = -- Refl :: _ -> N
     Refl Type  -- See Note [Refl invariant]
-  -- GRefl :: "e" -> _ -> Maybe N -> e
-  -- See Note [Generalized reflexive coercion]
-  | GRefl Role Type MCoercionN  -- See Note [Refl invariant]
           -- Invariant: applications of (Refl T) to a bunch of identity coercions
           --            always show up as Refl.
           -- For example  (Refl T) (Refl a) (Refl b) shows up as (Refl (T a b)).
@@ -876,7 +873,13 @@ data Coercion
           -- ConAppCo coercions (like all coercions other than Refl)
           -- are NEVER the identity.
 
-          -- Use (Refl Representational _), not (SubCo (Refl Nominal _))
+          -- Use (GRefl Representational ty MRefl), not (SubCo (Refl ty))
+
+  -- GRefl :: "e" -> _ -> Maybe N -> e
+  -- See Note [Generalized reflexive coercion]
+  | GRefl Role Type MCoercionN  -- See Note [Refl invariant]
+          -- Use (Refl ty), not (GRefl Nominal ty MRefl)
+          -- Use (GRefl Representational _ _), not (SubCo (GRefl Nominal _ _))
 
   -- These ones simply lift the correspondingly-named
   -- Type constructors into Coercions
