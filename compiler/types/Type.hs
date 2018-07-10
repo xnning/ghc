@@ -15,7 +15,7 @@ module Type (
 
         -- $representation_types
         TyThing(..), Type, ArgFlag(..), KindOrType, PredType, ThetaType,
-        Var, TyVar, isTyVar, TyCoVar, TyBinder, TyVarBinder,
+        Var, TyVar, isTyVar, TyCoVar, TyBinder, TyCoVarBinder,
         KnotTied,
 
         -- ** Constructing and deconstructing types

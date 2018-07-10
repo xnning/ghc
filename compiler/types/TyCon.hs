@@ -391,7 +391,7 @@ See also:
 ************************************************************************
 -}
 
-type TyConBinder = TyVarBndr TyVar TyConBndrVis
+type TyConBinder = VarBndr TyCoVar TyConBndrVis
                    -- See also Note [TyBinders] in TyCoRep
 
 data TyConBndrVis
