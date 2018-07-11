@@ -47,7 +47,7 @@ module TyCoRep (
         sameVis,
 
         -- * Functions over binders
-        TyBinder(..), TyCoVarBinder,
+        TyCoBinder(..), TyCoVarBinder,
         binderVar, binderVars, binderKind, binderArgFlag,
         delBinderVar,
         isInvisibleArgFlag, isVisibleArgFlag,
@@ -58,7 +58,7 @@ module TyCoRep (
 
         -- * Pretty-printing
         pprType, pprParendType, pprPrecType,
-        pprTypeApp, pprTvBndr, pprTvBndrs,
+        pprTypeApp, pprTCvBndr, pprTCvBndrs,
         pprSigmaType,
         pprTheta, pprParendTheta, pprForAll, pprUserForAll,
         pprTyVar, pprTyVars,
@@ -125,7 +125,7 @@ module TyCoRep (
         tidyType,      tidyTypes,
         tidyOpenType,  tidyOpenTypes,
         tidyOpenKind,
-        tidyTyCoVarBndr, tidyTyCoVarBndrs, tidyFreeTyCoVars,
+        tidyVarBndr, tidyVarBndrs, tidyFreeTyCoVars,
         tidyOpenTyCoVar, tidyOpenTyCoVars,
         tidyTyVarOcc,
         tidyTopType,
@@ -476,7 +476,7 @@ type KnotTied ty = ty
 
 {- **********************************************************************
 *                                                                       *
-                  TyBinder and ArgFlag
+                  TyCoBinder and ArgFlag
 *                                                                       *
 ********************************************************************** -}
 
@@ -558,10 +558,10 @@ This table summarises the visibility rules:
 |  cvis :: TyConBndrVis
 |  cvis = AnonTCB:             T :: kind -> kind        Required:            T *
 |  cvis = NamedTCB Inferred:   T :: forall {k}. kind    Arg not allowed:     T
+|                              T :: forall {co}. kind   Arg not allowed:     T
 |  cvis = NamedTCB Specified:  T :: forall k. kind      Arg not allowed[1]:  T
 |  cvis = NamedTCB Required:   T :: forall k -> kind    Required:            T *
 ---------------------------------------------------------------------------------------
-TODO: note above
 
 [1] In types, in the Specified case, it would make sense to allow
     optional kind applications, thus (T @*), but we have not
@@ -672,7 +672,7 @@ synonyms and data constructors.  Why?  Because then an application
 would need a /compulsory/ type argument (possibly without an "@"?),
 thus (f Int); and we don't have concrete syntax for that.
 
-We could change this decision, but Required, Named TyBinders are rare
+We could change this decision, but Required, Named TyCoBinders are rare
 anyway.  (Most are Anons.)
 -}
 
@@ -743,13 +743,10 @@ mkTyVarTys = map mkTyVarTy -- a common use of mkTyVarTy
 infixr 3 `mkFunTy`      -- Associates to the right
 -- | Make an arrow type
 mkFunTy :: Type -> Type -> Type
-mkFunTy arg res
-  | isCoercionType arg -- TODO
-  = let in_scope = mkInScopeSet $ tyCoVarsOfType res
-        cv       = mkFreshCoVarOfType in_scope arg
-    in ForAllTy (Bndr cv Inferred)
-  | otherwise
-  = FunTy arg res
+mkFunTy arg res = FunTy arg res
+  -- Originally, if the arg was a coercion type, we would make a ForAllTy. Now
+  -- we don't need to do this because we consider co -> ty to be equivalent as
+  -- \/_ : co. ty
 
 mkFreshCoVarOfType :: InScopeSet -> Type -> CoVar
 mkFreshCoVarOfType in_scope ty
@@ -769,11 +766,11 @@ mkForAllTy tv vis ty = ForAllTy (Bndr tv vis) ty
 mkForAllTys :: [TyCoVarBinder] -> Type -> Type
 mkForAllTys tyvars ty = foldr ForAllTy ty tyvars
 
-mkPiTy :: TyBinder -> Type -> Type
+mkPiTy :: TyCoBinder -> Type -> Type
 mkPiTy (Anon ty1) ty2 = FunTy ty1 ty2
 mkPiTy (Named tvb) ty = ForAllTy tvb ty
 
-mkPiTys :: [TyBinder] -> Type -> Type
+mkPiTys :: [TyCoBinder] -> Type -> Type
 mkPiTys tbs ty = foldr mkPiTy ty tbs
 
 -- | Does this type classify a core (unlifted) Coercion?
@@ -1818,6 +1815,9 @@ noFreeVarsOfMCo :: MCoercion -> Bool
 noFreeVarsOfMCo MRefl    = True
 noFreeVarsOfMCo (MCo co) = noFreeVarsOfCo co
 
+noFreeVarsOfTypes :: [Type] -> Bool
+noFreeVarsOfTypes = all noFreeVarsOfType
+
 -- | Returns True if this coercion has no free variables. Should be the same as
 -- isEmptyVarSet . tyCoVarsOfCo, but faster in the non-forall case.
 noFreeVarsOfCo :: Coercion -> Bool
@@ -2250,7 +2250,6 @@ ForAllCo tv h' g' :
   (ForAllTy (tv : k2) (ty2[tv |-> tv |> h'])) ~#
   (ForAllTy (tv : k1) (ty1[tv |-> tv |> h'][tv |-> tv |> sym h']))
 
-
 We thus see that we want
 
 g' : ty2[tv |-> tv |> h'] ~# ty1[tv |-> tv |> h']
@@ -2471,7 +2470,7 @@ subst_ty subst ty
                            in  args `seqList` TyConApp tc args
     go (FunTy arg res)   = (FunTy $! go arg) $! go res
     go (ForAllTy (Bndr tv vis) ty)
-                         = case substTyVarBndrUnchecked subst tv of
+                         = case substVarBndrUnchecked subst tv of
                              (subst', tv') ->
                                (ForAllTy $! ((Bndr $! tv') vis)) $!
                                             (subst_ty subst' ty)
@@ -2539,8 +2538,9 @@ subst_co subst co
                                in  args' `seqList` mkTyConAppCo r tc args'
     go (AppCo co arg)        = (mkAppCo $! go co) $! go arg
     go (ForAllCo tv kind_co co)
-      = case substForAllCoBndrUnchecked subst tv kind_co of { (subst', tv', kind_co') ->
-          ((mkForAllCo $! tv') $! kind_co') $! subst_co subst' co }
+      = case substForAllCoBndrUnchecked subst tv kind_co of
+         (subst', tv', kind_co') ->
+          ((mkForAllCo $! tv') $! kind_co') $! subst_co subst' co
     go (FunCo r co1 co2)     = (mkFunCo r $! go co1) $! go co2
     go (CoVarCo cv)          = substCoVar subst cv
     go (AxiomInstCo con ind cos) = mkAxiomInstCo con ind $! map go cos
@@ -2566,7 +2566,8 @@ subst_co subst co
     go_hole h@(CoercionHole { ch_co_var = cv })
       = h { ch_co_var = updateVarType go_ty cv }
 
-substForAllCoBndr :: TCvSubst -> TyVar -> Coercion -> (TCvSubst, TyVar, Coercion)
+substForAllCoBndr :: TCvSubst -> TyCoVar -> KindCoercion
+                  -> (TCvSubst, TyCoVar, Coercion)
 substForAllCoBndr subst
   = substForAllCoBndrUsing False (substCo subst) subst
 
@@ -2575,17 +2576,25 @@ substForAllCoBndr subst
 -- Note [The substitution invariant].
 -- The goal of #11371 is to migrate all the calls of substCoUnchecked to
 -- substCo and remove this function. Please don't use in new code.
-substForAllCoBndrUnchecked :: TCvSubst -> TyVar -> Coercion -> (TCvSubst, TyVar, Coercion)
+substForAllCoBndrUnchecked :: TCvSubst -> TyCoVar -> KindCoercion
+                           -> (TCvSubst, TyCoVar, Coercion)
 substForAllCoBndrUnchecked subst
   = substForAllCoBndrUsing False (substCoUnchecked subst) subst
 
 -- See Note [Sym and ForAllCo]
 substForAllCoBndrUsing :: Bool  -- apply sym to binder?
-                          -> (Coercion -> Coercion)  -- transformation to kind co
-                          -> TCvSubst -> TyVar -> Coercion
-                          -> (TCvSubst, TyVar, Coercion)
-substForAllCoBndrUsing sym sco (TCvSubst in_scope tenv cenv)
-                          old_var old_kind_co
+                       -> (Coercion -> Coercion)  -- transformation to kind co
+                       -> TCvSubst -> TyCoVar -> KindCoercion
+                       -> (TCvSubst, TyCoVar, KindCoercion)
+substForAllCoBndrUsing sym sco subst old_var
+  | isTyVar old_var = substForAllCoTyVarBndrUsing sym sco subst old_var
+  | otherwise       = substForAllCoCoVarBndrUsing sym sco subst old_var
+
+substForAllCoTyVarBndrUsing :: Bool  -- apply sym to binder?
+                            -> (Coercion -> Coercion)  -- transformation to kind co
+                            -> TCvSubst -> TyVar -> KindCoercion
+                            -> (TCvSubst, TyVar, KindCoercion)
+substForAllCoTyVarBndrUsing sym sco (TCvSubst in_scope tenv cenv) old_var old_kind_co
   = ( TCvSubst (in_scope `extendInScopeSet` new_var) new_env cenv
     , new_var, new_kind_co )
   where
@@ -2604,6 +2613,35 @@ substForAllCoBndrUsing sym sco (TCvSubst in_scope tenv cenv)
 
     new_var  = uniqAway in_scope (setTyVarKind old_var new_ki1)
 
+substForAllCoCoVarBndrUsing :: Bool  -- apply sym to binder?
+                            -> (Coercion -> Coercion)  -- transformation to kind co
+                            -> TCvSubst -> CoVar -> KindCoercion
+                            -> (TCvSubst, CoVar, KindCoercion)
+substForAllCoCoVarBndrUsing sym sco (TCvSubst in_scope tenv cenv)
+                            old_var old_kind_co
+  = ( TCvSubst (in_scope `extendInScopeSet` new_var) tenv new_cenv
+    , new_var, new_kind_co )
+  where
+    new_cenv | no_change && not sym = delVarEnv cenv old_var
+             | otherwise = extendVarEnv cenv old_var new_co
+
+    new_co = mkCoVarCo new_var
+    no_kind_change = noFreeVarsOfCo old_kind_co
+    no_change = no_kind_change && (new_var == old_var)
+
+    new_kind_co | no_kind_change = old_kind_co
+                | otherwise      = sco old_kind_co
+
+    -- TODO: unsure
+    (Pair (CoercionTy k1) (CoercionTy k2), r) = coercionKindRole new_kind_co
+    Pair new_k1 new_k1' = coercionKind k1
+    Pair new_k2 new_k2' = coercionKind k2
+
+    new_var       = uniqAway in_scope subst_old_var
+    subst_old_var = mkCoVar (varName old_var) new_var_type
+    new_var_type  | sym       = mkCoercionType r new_k1' new_k2'
+                  | otherwise = mkCoercionType r new_k1  new_k2
+
 substCoVar :: TCvSubst -> CoVar -> Coercion
 substCoVar (TCvSubst _ _ cenv) cv
   = case lookupVarEnv cenv cv of
@@ -2613,7 +2651,7 @@ substCoVar (TCvSubst _ _ cenv) cv
 substCoVars :: TCvSubst -> [CoVar] -> [Coercion]
 substCoVars subst cvs = map (substCoVar subst) cvs
 
-lookupCoVar :: TCvSubst -> Var  -> Maybe Coercion
+lookupCoVar :: TCvSubst -> Var -> Maybe Coercion
 lookupCoVar (TCvSubst _ _ cenv) v = lookupVarEnv cenv v
 
 substTyVarBndr :: HasCallStack => TCvSubst -> TyVar -> (TCvSubst, TyVar)
@@ -2622,13 +2660,25 @@ substTyVarBndr = substTyVarBndrUsing substTy
 substTyVarBndrs :: HasCallStack => TCvSubst -> [TyVar] -> (TCvSubst, [TyVar])
 substTyVarBndrs = mapAccumL substTyVarBndr
 
--- | Like 'substTyVarBndr' but disables sanity checks.
+substCoVarBndr :: TCvSubst -> CoVar -> (TCvSubst, CoVar)
+substCoVarBndr = substCoVarBndrUsing substTy
+
+substVarBndr :: TCvSubst -> TyCoVar -> (TCvSubst, TyCoVar)
+substVarBndr = substVarBndrUsing substTy
+
+-- | Like 'substVarBndr', but disables sanity checks.
 -- The problems that the sanity checks in substTy catch are described in
 -- Note [The substitution invariant].
 -- The goal of #11371 is to migrate all the calls of substTyUnchecked to
 -- substTy and remove this function. Please don't use in new code.
-substTyVarBndrUnchecked :: TCvSubst -> TyVar -> (TCvSubst, TyVar)
-substTyVarBndrUnchecked = substTyVarBndrUsing substTyUnchecked
+substVarBndrUnchecked :: TCvSubst -> TyCoVar -> (TCvSubst, TyCoVar)
+substVarBndrUnchecked = substVarBndrUsing substTyUnchecked
+
+substVarBndrUsing :: (TCvSubst -> Type -> Type)
+                  -> TCvSubst -> TyCoVar -> (TCvSubst, TyCoVar)
+substVarBndrUsing subst_fn subst v
+  | isTyVar v = substTyVarBndrUsing subst_fn subst v
+  | otherwise = substCoVarBndrUsing subst_fn subst v
 
 -- | Substitute a tyvar in a binding position, returning an
 -- extended subst and a new tyvar.
@@ -2665,13 +2715,18 @@ substTyVarBndrUsing subst_fn subst@(TCvSubst in_scope tenv cenv) old_var
                           setTyVarKind old_var (subst_fn subst old_ki)
         -- The uniqAway part makes sure the new variable is not already in scope
 
-substCoVarBndr :: TCvSubst -> CoVar -> (TCvSubst, CoVar)
-substCoVarBndr subst@(TCvSubst in_scope tenv cenv) old_var
+-- | Substitute a covar in a binding position, returning an
+-- extended subst and a new covar.
+-- Use the supplied function to substitute in the kind
+substCoVarBndrUsing
+  :: (TCvSubst -> Type -> Type)
+  -> TCvSubst -> CoVar -> (TCvSubst, CoVar)
+substCoVarBndrUsing subst_fn subst@(TCvSubst in_scope tenv cenv) old_var
   = ASSERT( isCoVar old_var )
     (TCvSubst (in_scope `extendInScopeSet` new_var) tenv new_cenv, new_var)
   where
     new_co         = mkCoVarCo new_var
-    no_kind_change = all noFreeVarsOfType [t1, t2]
+    no_kind_change = noFreeVarsOfTypes [t1, t2]
     no_change      = new_var == old_var && no_kind_change
 
     new_cenv | no_change = delVarEnv cenv old_var
@@ -2681,8 +2736,8 @@ substCoVarBndr subst@(TCvSubst in_scope tenv cenv) old_var
     subst_old_var = mkCoVar (varName old_var) new_var_type
 
     (_, _, t1, t2, role) = coVarKindsTypesRole old_var
-    t1' = substTy subst t1
-    t2' = substTy subst t2
+    t1' = subst_fn subst t1
+    t2' = subst_fn subst t2
     new_var_type = mkCoercionType role t1' t2'
                   -- It's important to do the substitution for coercions,
                   -- because they can have free type variables
@@ -2826,11 +2881,11 @@ pprForAll tvs = pprIfaceForAll (map toIfaceForAllBndr tvs)
 pprUserForAll :: [TyCoVarBinder] -> SDoc
 pprUserForAll = pprUserIfaceForAll . map toIfaceForAllBndr
 
-pprTvBndrs :: [TyCoVarBinder] -> SDoc
-pprTvBndrs tvs = sep (map pprTvBndr tvs)
+pprTCvBndrs :: [TyCoVarBinder] -> SDoc
+pprTCvBndrs tvs = sep (map pprTCvBndr tvs)
 
-pprTvBndr :: TyCoVarBinder -> SDoc
-pprTvBndr = pprTyVar . binderVar
+pprTCvBndr :: TyCoVarBinder -> SDoc
+pprTCvBndr = pprTyVar . binderVar
 
 pprTyVars :: [TyVar] -> SDoc
 pprTyVars tvs = sep (map pprTyVar tvs)
@@ -2846,11 +2901,11 @@ pprTyVar tv
   where
     kind = tyVarKind tv
 
-instance Outputable TyBinder where
+instance Outputable TyCoBinder where
   ppr (Anon ty) = text "[anon]" <+> ppr ty
-  ppr (Named (TvBndr v Required))  = ppr v
-  ppr (Named (TvBndr v Specified)) = char '@' <> ppr v
-  ppr (Named (TvBndr v Inferred))  = braces (ppr v)
+  ppr (Named (Bndr v Required))  = ppr v
+  ppr (Named (Bndr v Specified)) = char '@' <> ppr v
+  ppr (Named (Bndr v Inferred))  = braces (ppr v)
 
 -----------------
 instance Outputable Coercion where -- defined here to avoid orphans
@@ -2924,7 +2979,7 @@ This catches common situations, such as a type siguature
 which means
       f :: forall k. forall (m :: k->*) (a :: k). m a
 We really want to see both the "forall k" and the kind signatures
-on m and a.  The latter comes from pprTvBndr.
+on m and a.  The latter comes from pprTCvBndr.
 
 Note [Infix type variables]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2954,7 +3009,7 @@ pprDataCons = sepWithVBars . fmap pprDataConWithArgs . tyConDataCons
 pprDataConWithArgs :: DataCon -> SDoc
 pprDataConWithArgs dc = sep [forAllDoc, thetaDoc, ppr dc <+> argsDoc]
   where
-    (_univ_tvs, _ex_tvs, _eq_spec, theta, arg_tys, _res_ty) = dataConFullSig dc
+    (_univ_tvs, _ex_tvs, _dep_eq_spec, _eq_spec, theta, arg_tys, _res_ty) = dataConFullSig dc
     user_bndrs = dataConUserTyCoVarBinders dc
     forAllDoc  = pprUserForAll user_bndrs
     thetaDoc   = pprThetaArrowTy theta
@@ -2988,32 +3043,32 @@ ppSuggestExplicitKinds
 -- an interface file.
 --
 -- It doesn't change the uniques at all, just the print names.
-tidyTyCoVarBndrs :: TidyEnv -> [TyCoVar] -> (TidyEnv, [TyCoVar])
-tidyTyCoVarBndrs (occ_env, subst) tvs
-    = mapAccumL tidyTyCoVarBndr tidy_env' tvs
+tidyVarBndrs :: TidyEnv -> [TyCoVar] -> (TidyEnv, [TyCoVar])
+tidyVarBndrs (occ_env, subst) tvs
+    = mapAccumL tidyVarBndr tidy_env' tvs
   where
     -- Seed the occ_env with clashes among the names, see
     -- Node [Tidying multiple names at once] in OccName
-    -- Se still go through tidyTyCoVarBndr so that each kind variable is tidied
+    -- Se still go through tidyVarBndr so that each kind variable is tidied
     -- with the correct tidy_env
     occs = map getHelpfulOccName tvs
     tidy_env' = (avoidClashesOccEnv occ_env occs, subst)
 
-tidyTyCoVarBndr :: TidyEnv -> TyCoVar -> (TidyEnv, TyCoVar)
-tidyTyCoVarBndr tidy_env@(occ_env, subst) tyvar
-  = case tidyOccName occ_env (getHelpfulOccName tyvar) of
-      (occ_env', occ') -> ((occ_env', subst'), tyvar')
+tidyVarBndr :: TidyEnv -> TyCoVar -> (TidyEnv, TyCoVar)
+tidyVarBndr tidy_env@(occ_env, subst) var
+  = case tidyOccName occ_env (getHelpfulOccName var) of
+      (occ_env', occ') -> ((occ_env', subst'), var')
         where
-          subst' = extendVarEnv subst tyvar tyvar'
-          tyvar' = setTyVarKind (setTyVarName tyvar name') kind'
-          kind'  = tidyKind tidy_env (tyVarKind tyvar)
+          subst' = extendVarEnv subst var var'
+          var'   = setVarType (setVarName var name') type'
+          type'  = tidyType tidy_env (varType var)
           name'  = tidyNameOcc name occ'
-          name   = tyVarName tyvar
+          name   = varName var
 
 getHelpfulOccName :: TyCoVar -> OccName
-getHelpfulOccName tyvar = occ1
+getHelpfulOccName var = occ1
   where
-    name = tyVarName tyvar
+    name = varName var
     occ  = getOccName name
     -- A TcTyVar with a System Name is probably a unification variable;
     -- when we tidy them we give them a trailing "0" (or 1 etc)
@@ -3021,20 +3076,20 @@ getHelpfulOccName tyvar = occ1
     -- Plus, indicating a unification variable in this way is a
     -- helpful clue for users
     occ1 | isSystemName name
-         , isTcTyVar tyvar
+         , isTcTyVar var
          = mkTyVarOcc (occNameString occ ++ "0")
          | otherwise
          = occ
 
-tidyTyCoVarBinder :: TidyEnv -> TyVarBndr TyVar vis
-                -> (TidyEnv, TyVarBndr TyVar vis)
-tidyTyCoVarBinder tidy_env (TvBndr tv vis)
-  = (tidy_env', TvBndr tv' vis)
+tidyTyCoVarBinder :: TidyEnv -> VarBndr TyCoVar vis
+                  -> (TidyEnv, VarBndr TyCoVar vis)
+tidyTyCoVarBinder tidy_env (Bndr tv vis)
+  = (tidy_env', Bndr tv' vis)
   where
-    (tidy_env', tv') = tidyTyCoVarBndr tidy_env tv
+    (tidy_env', tv') = tidyVarBndr tidy_env tv
 
-tidyTyCoVarBinders :: TidyEnv -> [TyVarBndr TyVar vis]
-                 -> (TidyEnv, [TyVarBndr TyVar vis])
+tidyTyCoVarBinders :: TidyEnv -> [VarBndr TyCoVar vis]
+                   -> (TidyEnv, [VarBndr TyCoVar vis])
 tidyTyCoVarBinders = mapAccumL tidyTyCoVarBinder
 
 ---------------
@@ -3044,7 +3099,7 @@ tidyFreeTyCoVars :: TidyEnv -> [TyCoVar] -> TidyEnv
 tidyFreeTyCoVars (full_occ_env, var_env) tyvars
   = fst (tidyOpenTyCoVars (full_occ_env, var_env) tyvars)
 
-        ---------------
+---------------
 tidyOpenTyCoVars :: TidyEnv -> [TyCoVar] -> (TidyEnv, [TyCoVar])
 tidyOpenTyCoVars env tyvars = mapAccumL tidyOpenTyCoVar env tyvars
 
@@ -3052,13 +3107,13 @@ tidyOpenTyCoVars env tyvars = mapAccumL tidyOpenTyCoVar env tyvars
 tidyOpenTyCoVar :: TidyEnv -> TyCoVar -> (TidyEnv, TyCoVar)
 -- ^ Treat a new 'TyCoVar' as a binder, and give it a fresh tidy name
 -- using the environment if one has not already been allocated. See
--- also 'tidyTyCoVarBndr'
+-- also 'tidyVarBndr'
 tidyOpenTyCoVar env@(_, subst) tyvar
   = case lookupVarEnv subst tyvar of
         Just tyvar' -> (env, tyvar')              -- Already substituted
         Nothing     ->
           let env' = tidyFreeTyCoVars env (tyCoVarsOfTypeList (tyVarKind tyvar))
-          in tidyTyCoVarBndr env' tyvar  -- Treat it as a binder
+          in tidyVarBndr env' tyvar  -- Treat it as a binder
 
 ---------------
 tidyTyVarOcc :: TidyEnv -> TyVar -> TyVar
@@ -3082,7 +3137,7 @@ tidyType env (FunTy fun arg)      = (FunTy $! (tidyType env fun)) $! (tidyType e
 tidyType env (ty@(ForAllTy{}))    = mkForAllTys' (zip tvs' vis) $! tidyType env' body_ty
   where
     (tvs, vis, body_ty) = splitForAllTys' ty
-    (env', tvs') = tidyTyCoVarBndrs env tvs
+    (env', tvs') = tidyVarBndrs env tvs
 tidyType env (CastTy ty co)       = (CastTy $! tidyType env ty) $! (tidyCo env co)
 tidyType env (CoercionTy co)      = CoercionTy $! (tidyCo env co)
 
@@ -3090,16 +3145,16 @@ tidyType env (CoercionTy co)      = CoercionTy $! (tidyCo env co)
 -- The following two functions differ from mkForAllTys and splitForAllTys in that
 -- they expect/preserve the ArgFlag argument. Thes belong to types/Type.hs, but
 -- how should they be named?
-mkForAllTys' :: [(TyVar, ArgFlag)] -> Type -> Type
+mkForAllTys' :: [(TyCoVar, ArgFlag)] -> Type -> Type
 mkForAllTys' tvvs ty = foldr strictMkForAllTy ty tvvs
   where
-    strictMkForAllTy (tv,vis) ty = (ForAllTy $! ((TvBndr $! tv) $! vis)) $! ty
+    strictMkForAllTy (tv,vis) ty = (ForAllTy $! ((Bndr $! tv) $! vis)) $! ty
 
-splitForAllTys' :: Type -> ([TyVar], [ArgFlag], Type)
+splitForAllTys' :: Type -> ([TyCoVar], [ArgFlag], Type)
 splitForAllTys' ty = go ty [] []
   where
-    go (ForAllTy (TvBndr tv vis) ty) tvs viss = go ty (tv:tvs) (vis:viss)
-    go ty                            tvs viss = (reverse tvs, reverse viss, ty)
+    go (ForAllTy (Bndr tv vis) ty) tvs viss = go ty (tv:tvs) (vis:viss)
+    go ty                          tvs viss = (reverse tvs, reverse viss, ty)
 
 
 ---------------
@@ -3147,7 +3202,7 @@ tidyCo env@(_, subst) co
                                in args `seqList` TyConAppCo r tc args
     go (AppCo co1 co2)       = (AppCo $! go co1) $! go co2
     go (ForAllCo tv h co)    = ((ForAllCo $! tvp) $! (go h)) $! (tidyCo envp co)
-                               where (envp, tvp) = tidyTyCoVarBndr env tv
+                               where (envp, tvp) = tidyVarBndr env tv
             -- the case above duplicates a bit of work in tidying h and the kind
             -- of tv. But the alternative is to use coercionKind, which seems worse.
     go (FunCo r co1 co2)     = (FunCo r $! go co1) $! go co2
