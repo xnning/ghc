@@ -395,7 +395,6 @@ See also:
 -- In the whole definition of @data TyCon@, only @PromotedDataCon@ will really
 -- contain CoVar.
 type TyConBinder = VarBndr TyCoVar TyConBndrVis
-                   -- See also Note [TyCoBinders] in TyCoRep
 
 data TyConBndrVis
   = NamedTCB ArgFlag
