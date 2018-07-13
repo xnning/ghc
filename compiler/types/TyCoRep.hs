@@ -2571,6 +2571,13 @@ substForAllCoTyVarBndrUsing sym sco (TCvSubst in_scope tenv cenv) old_var old_ki
                 | otherwise      = sco old_kind_co
 
     Pair new_ki1 _ = coercionKind new_kind_co
+    -- We could do substitution to (tyVarKind old_var). We don't do so because:
+    --   1. We already substituted new_kind_co, which contains the kind
+    --      information we want. We don't want to do substitution once more.
+    --   2. In most of the time, new_kind_co is a Refl, in which case coercionKind
+    --      is really fast.
+    --   3. RAE tested this line of code and figured out that using coercionKind
+    --      has better performance (July 2018).
 
     new_var  = uniqAway in_scope (setTyVarKind old_var new_ki1)
 
@@ -2593,10 +2600,13 @@ substForAllCoCoVarBndrUsing sym sco (TCvSubst in_scope tenv cenv)
     new_kind_co | no_kind_change = old_kind_co
                 | otherwise      = sco old_kind_co
 
-    -- TODO: unsure
     (Pair (CoercionTy k1) (CoercionTy k2), r) = coercionKindRole new_kind_co
     Pair new_k1 new_k1' = coercionKind k1
     Pair new_k2 new_k2' = coercionKind k2
+    -- This implementation might seem weird but it respects exactly the typing
+    -- rule. It could potentially be low-efficient, in which case we need to go
+    -- back to this piece of code and refactor it.
+    -- A potential improvement: when new_kind_co is a Refl.
 
     new_var       = uniqAway in_scope subst_old_var
     subst_old_var = mkCoVar (varName old_var) new_var_type
