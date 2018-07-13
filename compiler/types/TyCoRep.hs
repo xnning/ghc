@@ -748,13 +748,6 @@ mkFunTy arg res = FunTy arg res
   -- we don't need to do this because we consider co -> ty to be equivalent as
   -- \/_ : co. ty
 
-mkFreshCoVarOfType :: InScopeSet -> Type -> CoVar
-mkFreshCoVarOfType in_scope ty
-   = ASSERT( isCoercionType ty )
-     let cv_uniq = mkCoVarUnique 31 -- arbitrary number
-         cv_name = mkSystemVarName cv_uniq (fsLit "c") in
-     uniqAway in_scope $ mkCoVar cv_name ty
-
 -- | Make nested arrow types
 mkFunTys :: [Type] -> Type -> Type
 mkFunTys tys ty = foldr mkFunTy ty tys
