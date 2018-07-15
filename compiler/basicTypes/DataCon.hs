@@ -1284,12 +1284,12 @@ dataConInstOrigArgTys
 dataConInstOrigArgTys dc@(MkData {dcOrigArgTys = arg_tys,
                                   dcUnivTyVars = univ_tvs,
                                   dcExTyCoVars = ex_tvs}) inst_tys
-  = ASSERT2( (length univ_tvs + length ex_tvs) `equalLength` inst_tys
-           , text "dataConInstOrigArgTys" <+> ppr dc $$ ppr univ_tyv
-             $$ ppr ex_tvs $$ ppr inst_tys )
-    map (substTyWithCoVars ex_tvs cos . substTyWith univ_tvs tys) arg_tys
+  = ASSERT2( tyvars `equalLength` inst_tys
+           , text "dataConInstOrigArgTys" <+> ppr dc $$ ppr tyvars $$ ppr inst_tys )
+    map (substTy subst) arg_tys
   where
-    (tys, cos) = splitAt (length univ_tys) inst_tys
+    tyvars = univ_tvs ++ ex_tvs
+    subst  = zipTCvSubst tyvars inst_tys
 
 -- | Returns the argument types of the wrapper, excluding all dictionary arguments
 -- and without substituting for any type variables

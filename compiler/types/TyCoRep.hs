@@ -102,6 +102,7 @@ module TyCoRep (
         extendTvSubstList, extendTvSubstAndInScope,
         unionTCvSubst, zipTyEnv, zipCoEnv, mkTyCoInScopeSet,
         zipTvSubst, zipCvSubst,
+        zipTCvSubst,
         mkTvSubstPrs,
 
         substTyWith, substTyWithCoVars, substTysWith, substTysWithCoVars,
@@ -2164,6 +2165,17 @@ zipCvSubst cvs cos
   = TCvSubst (mkInScopeSet (tyCoVarsOfCos cos)) emptyTvSubstEnv cenv
   where
     cenv = zipCoEnv cvs cos
+
+zipTCvSubst :: [TyCoVar] -> [Type] -> TCvSubst
+zipTCvSubst tcvs tys
+  | debugIsOn
+  , neLength cvs cos
+  = pprTrace "zipTCvSubst" (ppr tcvs $$ ppr tys) emptyTCvSubst
+  | otherwise
+  = zip_tcvsubst tcvs tys (mkEmptyTCvSubst $ mkInScopeSet (tyCoVarsOfTypes tys))
+  where zip_tcvsubst :: [TyCoVar] -> [Type] -> TCvSubst -> TCvSubst
+        zip_tcvsubst (tv:tvs) (ty:tys) subst
+          = zip_tcvsubst tvs tys (extendTCvSubst subst tv ty)
 
 -- | Generates the in-scope set for the 'TCvSubst' from the types in the
 -- incoming environment. No CoVars, please!
