@@ -529,9 +529,9 @@ All TyCons have this group of fields
   tyConBinders   :: [TyConBinder]
   tyConResKind   :: Kind
   tyConTyVars    :: [TyVar]   -- Cached = binderVars tyConBinders
-                              --   NB: This field is included only when TyCons
-                              --       really only contain TyVar. Namely, not
-                              --       @PromotedDataCon@.
+                              --   NB: Currently (July 18), TyCon's that own this
+                              --   field really only contain TyVar. So it is
+                              --   [TyVar] instead of [TyCoVar].
   tyConKind      :: Kind      -- Cached = mkTyConKind tyConBinders tyConResKind
   tyConArity     :: Arity     -- Cached = length tyConBinders
 
