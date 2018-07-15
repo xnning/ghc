@@ -331,8 +331,8 @@ data DataCon
         -- INVARIANT: the UnivTyVars and ExTyCoVars all have distinct OccNames
         -- Reason: less confusing, and easier to generate IfaceSyn
 
-        -- The type vars in the order the user wrote them [c,y,x,b]
-        -- INVARIANT: the set of tyvars in dcUserTyCoVarBinders is exactly the
+        -- The type/coercion vars in the order the user wrote them [c,y,x,b]
+        -- INVARIANT: the set of tycovars in dcUserTyCoVarBinders is exactly the
         --            set of dcExTyCoVars unioned with the set of dcUnivTyVars
         --            whose tyvars do not appear in dcEqSpec
         -- See Note [DataCon user type variable binders]
@@ -340,6 +340,7 @@ data DataCon
 
         dcEqSpec :: [EqSpec],   -- Equalities derived from the result type,
                                 -- _as written by the programmer_
+                                -- Only non-dependent GADT equalities.
 
                 -- This field allows us to move conveniently between the two ways
                 -- of representing a GADT constructor's type:
@@ -403,7 +404,7 @@ data DataCon
         dcRep      :: DataConRep,
 
         -- Cached; see Note [DataCon arities]
-        -- INVARIANT: dcRepArity    == length dataConRepArgTys + isId (dcExTyCoVars)
+        -- INVARIANT: dcRepArity    == length dataConRepArgTys + count isId (dcExTyCoVars)
         -- INVARIANT: dcSourceArity == length dcOrigArgTys
         dcRepArity    :: Arity,
         dcSourceArity :: Arity,
@@ -441,7 +442,7 @@ For the TyCoVarBinders in a DataCon and PatSyn:
 
  * Each argument flag is Inferred or Specified.
    None are Required. (A DataCon is a term-level function; see
-   Note [No Required TyBinder in terms] in TyCoRep.)
+   Note [No Required TyCoBinder in terms] in TyCoRep.)
 
 Why do we need the TyCoVarBinders, rather than just the TyCoVars?  So that
 we can construct the right type for the DataCon with its foralls
@@ -508,13 +509,13 @@ FC demands the variables go in universal-then-existential order under the hood.
 Our solution is thus to equip DataCon with two different sets of type
 variables:
 
-* dcUnivTyVars and dcExTyVars, for the universal and existential type
+* dcUnivTyVars and dcExTyCoVars, for the universal and existential type/coercion
   variables, respectively. Their order is irrelevant for the purposes of
   TypeApplications, and as a consequence, they do not come equipped with
-  visibilities (that is, they are TyVars instead of TyVarBinders).
-* dcUserTyVarBinders, for the type variables binders in the order in which they
-  originally arose in the user-written type signature. Their order *does*
-  matter for TypeApplications, so they are full TyCoVarBinders, complete
+  visibilities (that is, they are TyVars/TyCoVars instead of TyCoVarBinders).
+* dcUserTyCoVarBinders, for the type/coercion variables binders in the order in
+  which they originally arose in the user-written type signature. Their order
+  *does* matter for TypeApplications, so they are full TyCoVarBinders, complete
   with visibilities.
 
 This encoding has some redundancy. The set of tycovars in dcUserTyCoVarBinders
@@ -640,7 +641,7 @@ data StrictnessMark = MarkedStrict | NotMarkedStrict
 data EqSpec = EqSpec TyVar
                      Type
 
--- | Make an 'EqSpec'
+-- | Make a non-dependent 'EqSpec'
 mkEqSpec :: TyVar -> Type -> EqSpec
 mkEqSpec tv ty = EqSpec tv ty
 
@@ -1001,12 +1002,12 @@ dataConIsInfix = dcInfix
 dataConUnivTyVars :: DataCon -> [TyVar]
 dataConUnivTyVars (MkData { dcUnivTyVars = tvbs }) = tvbs
 
--- | The existentially-quantified type variables of the constructor
+-- | The existentially-quantified type/coercion variables of the constructor
 -- including dependent (kind-) GADT equalities
 dataConExTyCoVars :: DataCon -> [TyCoVar]
 dataConExTyCoVars (MkData { dcExTyCoVars = tvbs }) = tvbs
 
--- | Both the universal and existential type variables of the constructor
+-- | Both the universal and existential type/coercion variables of the constructor
 dataConUnivAndExTyCoVars :: DataCon -> [TyCoVar]
 dataConUnivAndExTyCoVars (MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs })
   = univ_tvs ++ ex_tvs
@@ -1018,8 +1019,8 @@ dataConUserTyCoVars :: DataCon -> [TyCoVar]
 dataConUserTyCoVars (MkData { dcUserTyCoVarBinders = tvbs }) = binderVars tvbs
 
 -- See Note [DataCon user type variable binders]
--- | 'TyCoVarBinder's for the type variables of the constructor, in the order the
--- user wrote them
+-- | 'TyCoVarBinder's for the type/coercion variables of the constructor, in the
+-- order the user wrote them
 dataConUserTyCoVarBinders :: DataCon -> [TyCoVarBinder]
 dataConUserTyCoVarBinders = dcUserTyCoVarBinders
 
@@ -1058,7 +1059,8 @@ dataConKindEqSpec (MkData {dcExTyCoVars = ex_tcvs})
           tv        = getTyVar "dataConKindEqSpec" ty1
     ]
 
--- | The *full* constraints on the constructor type.
+-- | The *full* constraints on the constructor type, including dependent GADT
+-- equalities.
 dataConTheta :: DataCon -> ThetaType
 dataConTheta con@(MkData { dcEqSpec = eq_spec, dcOtherTheta = theta })
   = eqSpecPreds (dataConKindEqSpec con ++ eq_spec) ++ theta
@@ -1071,9 +1073,11 @@ dataConWorkId :: DataCon -> Id
 dataConWorkId dc = dcWorkId dc
 
 -- | Get the Id of the 'DataCon' wrapper: a function that wraps the "actual"
--- constructor so it has the type visible in the source program: c.f. 'dataConWorkId'.
--- Returns Nothing if there is no wrapper, which occurs for an algebraic data constructor
--- and also for a newtype (whose constructor is inlined compulsorily)
+-- constructor so it has the type visible in the source program: c.f.
+-- 'dataConWorkId'.
+-- Returns Nothing if there is no wrapper, which occurs for an algebraic data
+-- constructor and also for a newtype (whose constructor is inlined
+-- compulsorily)
 dataConWrapId_maybe :: DataCon -> Maybe Id
 dataConWrapId_maybe dc = case dcRep dc of
                            NoDataConRep -> Nothing
@@ -1192,8 +1196,7 @@ dataConInstSig con@(MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
     , substTys   subst arg_tys)
   where
     univ_subst = zipTvSubst univ_tvs univ_tys
-    -- TODO : substVarBndrs
-    (subst, ex_tvs') = Type.substTyVarBndrs univ_subst ex_tvs
+    (subst, ex_tvs') = Type.substVarBndrs univ_subst ex_tvs
 
 
 -- | The \"full signature\" of the 'DataCon' returns, in order:
@@ -1206,7 +1209,8 @@ dataConInstSig con@(MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
 --
 -- 4) The non-dependent GADT equalities
 --
--- 5) The result of 'dataConDictTheta'
+-- 5) The other constraints of the data constructor type, excluding GADT
+-- equalities
 --
 -- 6) The original argument types to the 'DataCon' (i.e. before
 --    any change of the representation of the type)
@@ -1251,7 +1255,8 @@ dataConUserType (MkData { dcUserTyCoVarBinders = user_tvbs,
     mkFunTys arg_tys $
     res_ty
 
--- | Finds the instantiated types of the arguments required to construct a 'DataCon' representation
+-- | Finds the instantiated types of the arguments required to construct a
+-- 'DataCon' representation
 -- NB: these INCLUDE any dictionary args
 --     but EXCLUDE the data-declaration context, which is discarded
 -- It's all post-flattening etc; this is a representation type
@@ -1279,12 +1284,12 @@ dataConInstOrigArgTys
 dataConInstOrigArgTys dc@(MkData {dcOrigArgTys = arg_tys,
                                   dcUnivTyVars = univ_tvs,
                                   dcExTyCoVars = ex_tvs}) inst_tys
-  = ASSERT2( tyvars `equalLength` inst_tys
-           , text "dataConInstOrigArgTys" <+> ppr dc $$ ppr tyvars $$ ppr inst_tys )
-    -- TODO: covar?
-    map (substTyWith tyvars inst_tys) arg_tys
+  = ASSERT2( (length univ_tvs + length ex_tvs) `equalLength` inst_tys
+           , text "dataConInstOrigArgTys" <+> ppr dc $$ ppr univ_tyv
+             $$ ppr ex_tvs $$ ppr inst_tys )
+    map (substTyWithCoVars ex_tvs cos . substTyWith univ_tvs tys) arg_tys
   where
-    tyvars = univ_tvs ++ ex_tvs
+    (tys, cos) = splitAt (length univ_tys) inst_tys
 
 -- | Returns the argument types of the wrapper, excluding all dictionary arguments
 -- and without substituting for any type variables
