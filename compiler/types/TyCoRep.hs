@@ -466,6 +466,8 @@ In sum, in order to uphold (EQ), we need the following three invariants:
         ForAllTy to a ForAllTy.
   (EQ2) No reflexive casts in CastTy.
   (EQ3) No nested CastTys.
+  (EQ4) No CastTy over (ForAllTy (Bndr tyvar vis) body).
+        See Note [Weird typing rule for ForAllTy] in Type.
 
 These invariants are all documented above, in the declaration for Type.
 
