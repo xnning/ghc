@@ -1207,6 +1207,20 @@ newTyConInstRhs tycon tys
                            ~~~~~~
 A casted type has its *kind* casted into something new.
 
+Note [Weird typing rule for ForAllTy]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Here is the (truncated) typing rule for the dependent ForAllTy:
+
+inner : kind
+------------------------------------
+ForAllTy (Bndr tyvar vis) inner : kind
+
+------------------------------------
+ForAllTy (Bndr covar vis) inner : TYPE
+
+Note that when inside the binder is a tyvar, neither the inner type nor for
+ForAllTy itself have to have kind *! But, it means that we should push any kind
+casts through the ForAllTy. The only trouble is avoiding capture.
 -}
 
 splitCastTy_maybe :: Type -> Maybe (Type, Coercion)
@@ -1225,8 +1239,21 @@ mkCastTy ty co | isReflexiveCo co = ty  -- (EQ2) from the Note
 -- fails under splitFunTy_maybe. This happened with the cheaper check
 -- in test dependent/should_compile/dynamic-paper.
 
-mkCastTy (CastTy ty co1) co2 = mkCastTy ty (co1 `mkTransCo` co2) -- (EQ3) from the Note
-                          -- call mkCastTy again for the reflexivity check
+mkCastTy (CastTy ty co1) co2
+  -- (EQ3) from the Note
+  = mkCastTy ty (co1 `mkTransCo` co2)
+      -- call mkCastTy again for the reflexivity check
+
+mkCastTy (ForAllTy (Bndr tv vis) inner_ty) co
+  -- (EQ4) from the Note
+  | isTyVar tv
+  = -- have to make sure that pushing the co in doesn't capture the bound var!
+  let fvs = tyCoVarsOfCo co
+      empty_subst = mkEmptyTCvSubst (mkInScopeSet fvs)
+      (subst, tv') = substVarBndr empty_subst tv
+    in
+    ForAllTy (Bndr tv' vis) (substTy subst inner_ty `mkCastTy` co)
+
 mkCastTy ty co = CastTy ty co
 
 tyConBindersTyCoBinders :: [TyConBinder] -> [TyCoBinder]
@@ -2447,9 +2474,9 @@ typeKind (TyVarTy tyvar)   = tyVarKind tyvar
 typeKind (CastTy _ty co)   = pSnd $ coercionKind co
 typeKind (CoercionTy co)   = coercionType co
 typeKind ty@(ForAllTy (Bnd tv _) _)
-  | isTyVar tv
-  = case occCheckExpand tvs k of
-      Just k' -> k'
+  | isTyVar tv                     -- See Note [Weired typing rule for ForAllTy].
+  = case occCheckExpand tvs k of   -- We must make sure tv does not occur in kind
+      Just k' -> k'                -- As it is already out of scope!
       Nothing -> pprPanic "typeKind"
                   (ppr ty $$ ppr k $$ ppr tvs $$ ppr body)
   where
