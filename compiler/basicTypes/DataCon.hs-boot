@@ -1,7 +1,7 @@
 module DataCon where
 
 import GhcPrelude
-import Var( TyVar, TyCoVarBinder )
+import Var( TyVar, TyCoVar, TyCoVarBinder )
 import Name( Name, NamedThing )
 import {-# SOURCE #-} TyCon( TyCon )
 import FieldLabel ( FieldLabel )
