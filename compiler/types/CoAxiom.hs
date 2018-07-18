@@ -18,7 +18,7 @@ module CoAxiom (
        coAxiomName, coAxiomArity, coAxiomBranches,
        coAxiomTyCon, isImplicitCoAxiom, coAxiomNumPats,
        coAxiomNthBranch, coAxiomSingleBranch_maybe, coAxiomRole,
-       coAxiomSingleBranch, coAxBranchTyVars, coAxBranchCoVars,
+       coAxiomSingleBranch, coAxBranchTyCoVars, coAxBranchCoVars,
        coAxBranchRoles,
        coAxBranchLHS, coAxBranchRHS, coAxBranchSpan, coAxBranchIncomps,
        placeHolderIncomps,
@@ -220,7 +220,7 @@ data CoAxBranch
   = CoAxBranch
     { cab_loc      :: SrcSpan       -- Location of the defining equation
                                     -- See Note [CoAxiom locations]
-    , cab_tvs      :: [TyVar]       -- Bound type variables; not necessarily fresh
+    , cab_tvs      :: [TyCoVar]     -- Bound type variables; not necessarily fresh
                                     -- See Note [CoAxBranch type variables]
     , cab_cvs      :: [CoVar]       -- Bound coercion variables
                                     -- Always empty, for now.
@@ -279,8 +279,8 @@ coAxiomSingleBranch (CoAxiom { co_ax_branches = MkBranches arr })
 coAxiomTyCon :: CoAxiom br -> TyCon
 coAxiomTyCon = co_ax_tc
 
-coAxBranchTyVars :: CoAxBranch -> [TyVar]
-coAxBranchTyVars = cab_tvs
+coAxBranchTyCoVars :: CoAxBranch -> [TyCoVar]
+coAxBranchTyCoVars = cab_tvs
 
 coAxBranchCoVars :: CoAxBranch -> [CoVar]
 coAxBranchCoVars = cab_cvs
