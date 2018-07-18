@@ -1108,7 +1108,7 @@ pprTyTcApp' ctxt_prec tc tys dflags style
 -- of   eqTyCon          (~)
 --      eqPrimTyCon      (~#)
 --      eqReprPrimTyCon  (~R#)
---      hEqTyCon         (~~)
+--      heqTyCon         (~~)
 --
 -- See Note [Equality predicates in IfaceType]
 -- and Note [The equality types story] in TysPrim

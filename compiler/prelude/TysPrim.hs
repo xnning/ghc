@@ -598,7 +598,7 @@ GHC sports a veritable menagerie of equality types:
          class?    L/U                        TyCon
 -----------------------------------------------------------------------------------------
 ~#         T        U      hetero   nominal   eqPrimTyCon      GHC.Prim
-~~         C        L      hetero   nominal   hEqTyCon         GHC.Types
+~~         C        L      hetero   nominal   heqTyCon         GHC.Types
 ~          C        L      homo     nominal   eqTyCon          GHC.Types
 :~:        T        L      homo     nominal   (not built-in)   Data.Type.Equality
 :~~:       T        L      hetero   nominal   (not built-in)   Data.Type.Equality
