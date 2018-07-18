@@ -38,6 +38,7 @@ module TyCoRep (
 
         -- * Functions over types
         mkTyConTy, mkTyVarTy, mkTyVarTys,
+        mkTyCoVarTy, mkTyCoVarTys,
         mkFunTy, mkFunTys, mkForAllTy, mkForAllTys,
         mkPiTy, mkPiTys,
         isTYPE,
@@ -100,6 +101,7 @@ module TyCoRep (
         extendCvSubst, extendCvSubstWithClone,
         extendTvSubst, extendTvSubstBinderAndInScope, extendTvSubstWithClone,
         extendTvSubstList, extendTvSubstAndInScope,
+        extendTCvSubstList,
         unionTCvSubst, zipTyEnv, zipCoEnv, mkTyCoInScopeSet,
         zipTvSubst, zipCvSubst,
         zipTCvSubst,
@@ -737,6 +739,16 @@ mkTyVarTy v = ASSERT2( isTyVar v, ppr v <+> dcolon <+> ppr (tyVarKind v) )
 
 mkTyVarTys :: [TyVar] -> [Type]
 mkTyVarTys = map mkTyVarTy -- a common use of mkTyVarTy
+
+mkTyCoVarTy :: TyCoVar -> Type
+mkTyCoVarTy v
+  | isTyVar v
+  = TyVarTy v
+  | otherwise
+  = CoercionTy (CoVarCo v)
+
+mkTyCoVarTys :: [TyCoVar] -> [Type]
+mkTyCoVarTys = map mkTyCoVarTy
 
 infixr 3 `mkFunTy`      -- Associates to the right
 -- | Make an arrow type
@@ -2130,6 +2142,10 @@ extendTvSubstAndInScope (TCvSubst in_scope tenv cenv) tv ty
 extendTvSubstList :: TCvSubst -> [Var] -> [Type] -> TCvSubst
 extendTvSubstList subst tvs tys
   = foldl2 extendTvSubst subst tvs tys
+
+extendTCvSubstList :: TCvSubst -> [Var] -> [Type] -> TCvSubst
+extendTCvSubstList subst tvs tys
+  = foldl2 extendTCvSubst subst tvs tys
 
 unionTCvSubst :: TCvSubst -> TCvSubst -> TCvSubst
 -- Works when the ranges are disjoint
