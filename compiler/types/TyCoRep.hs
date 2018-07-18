@@ -114,14 +114,13 @@ module TyCoRep (
         substCoUnchecked, substCoWithUnchecked,
         substTyWithInScope,
         substTys, substTheta,
-        lookupTyVar, substTyVarBndr, substTyVarBndrs,
+        lookupTyVar,
         substCo, substCos, substCoVar, substCoVars, lookupCoVar,
-        substCoVarBndr,
         cloneTyVarBndr, cloneTyVarBndrs,
         substVarBndr, substVarBndrs,
         substTyVar, substTyVars,
         substForAllCoBndr,
-        substTyVarBndrUsing, substForAllCoBndrUsing,
+        substForAllCoBndrUsing,
         checkValidSubst, isValidTCvSubst,
 
         -- * Tidying type related things up for printing
@@ -1098,6 +1097,7 @@ The typing rule is:
 First, the TyCoVar stored in a ForAllCo is really an optimisation: this field
 should be a Name, as its kind is redundant. Thinking of the field as a Name
 is helpful in understanding what a ForAllCo means.
+The kind of TyCoVar always matches the left-hand kind of the coercion.
 
 The idea is that kind_co gives the two kinds of the tyvar. See how, in the
 conclusion, tv1 is assigned kind k1 on the left but kind k2 on the right.
@@ -1962,7 +1962,7 @@ nevertheless we add 'b' to the TvSubstEnv, because b's kind does change
 
 This invariant has several crucial consequences:
 
-* In substTyVarBndr, we need extend the TvSubstEnv
+* In substVarBndr, we need extend the TvSubstEnv
         - if the unique has changed
         - or if the kind has changed
 
@@ -2678,18 +2678,6 @@ substCoVars subst cvs = map (substCoVar subst) cvs
 
 lookupCoVar :: TCvSubst -> Var -> Maybe Coercion
 lookupCoVar (TCvSubst _ _ cenv) v = lookupVarEnv cenv v
-
-substTyVarBndr :: HasCallStack => TCvSubst -> TyVar -> (TCvSubst, TyVar)
-substTyVarBndr = substTyVarBndrUsing substTy
-
-substTyVarBndrs :: HasCallStack => TCvSubst -> [TyVar] -> (TCvSubst, [TyVar])
-substTyVarBndrs = mapAccumL substTyVarBndr
-
-substCoVarBndr :: HasCallStack => TCvSubst -> CoVar -> (TCvSubst, CoVar)
-substCoVarBndr = substCoVarBndrUsing substTy
-
-substCoVarBndrs :: HasCallStack => TCvSubst -> CoVar -> (TCvSubst, CoVar)
-substCoVarBndrs = mapAccumL substCoVarBndr
 
 substVarBndr :: HasCallStack => TCvSubst -> TyCoVar -> (TCvSubst, TyCoVar)
 substVarBndr = substVarBndrUsing substTy
