@@ -758,15 +758,21 @@ mkFunTys :: [Type] -> Type -> Type
 mkFunTys tys ty = foldr mkFunTy ty tys
 
 mkForAllTy :: TyCoVar -> ArgFlag -> Type -> Type
-mkForAllTy tv vis ty = ForAllTy (Bndr tv vis) ty
+mkForAllTy tv vis ty
+  | isCoVar tv
+  , not (tv `elemVarSet` tyCoVarsOfType ty)
+  = ASSERT (vis == Inferred)
+    mkFunTy (varType tv) ty
+  | otherwise
+  = ForAllTy (Bndr tv vis) ty
 
 -- | Wraps foralls over the type using the provided 'TyCoVar's from left to right
 mkForAllTys :: [TyCoVarBinder] -> Type -> Type
 mkForAllTys tyvars ty = foldr ForAllTy ty tyvars
 
 mkPiTy :: TyCoBinder -> Type -> Type
-mkPiTy (Anon ty1) ty2 = FunTy ty1 ty2
-mkPiTy (Named tvb) ty = ForAllTy tvb ty
+mkPiTy (Anon ty1) ty2           = FunTy ty1 ty2
+mkPiTy (Named (Bndr tv vis)) ty = mkForAllTy tv vis ty
 
 mkPiTys :: [TyCoBinder] -> Type -> Type
 mkPiTys tbs ty = foldr mkPiTy ty tbs
