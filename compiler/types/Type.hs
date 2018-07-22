@@ -39,6 +39,7 @@ module Type (
 
         mkForAllTy, mkForAllTys, mkInvForAllTys, mkSpecForAllTys,
         mkVisForAllTys, mkInvForAllTy,
+        mkInvForAllTy_unchecked,
         splitForAllTys, splitForAllVarBndrs,
         splitForAllTy_maybe, splitForAllTy,
         splitPiTy_maybe, splitPiTy, splitPiTys,
@@ -1319,6 +1320,10 @@ mkInvForAllTy tv ty =
   = mkFunTy (varType tv) ty
   | otherwise
   ForAllTy (Bndr tv Inferred) ty
+
+-- | Like mkInvForAllTy, but does not check the occurrence of the covar.
+mkInvForAllTy_unchecked :: TyCoVar -> Type -> Type
+mkInvForAllTy_unchecked tv ty = ForAllTy (Bndr tv Inferred) ty
 
 -- | Like mkForAllTys, but assumes all variables are dependent and Inferred,
 -- a common case
