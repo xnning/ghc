@@ -81,7 +81,7 @@ data ClsInst
              , is_dfun_name :: Name
 
                 -- Used for "proper matching"; see Note [Proper-match fields]
-             , is_tvs  :: [TyCoVar]     -- Fresh template tycovars for full match
+             , is_tvs  :: [TyVar]       -- Fresh template tyvars for full match
                                         -- See Note [Template tyvars are fresh]
              , is_cls  :: Class         -- The real class
              , is_tys  :: [Type]        -- Full arg types (mentioning is_tvs)
@@ -127,7 +127,7 @@ We avoid this as follows:
   content.
 
 * Proper-match fields. is_dfun, and its related fields is_tvs, is_cls, is_tys
-  contain TyCoVars, Class, Type, Class etc, and so are all lazy thunks. When we
+  contain TyVars, Class, Type, Class etc, and so are all lazy thunks. When we
   poke any of these fields we'll typecheck the DFunId declaration, and hence
   pull in interfaces that it refers to. See Note [Proper-match fields].
 
@@ -156,7 +156,7 @@ We avoid this as follows:
 {-
 Note [Template tyvars are fresh]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The is_tvs field of a ClsInst has *completely fresh* tycovars.
+The is_tvs field of a ClsInst has *completely fresh* tyvars.
 That is, they are
   * distinct from any other ClsInst
   * distinct from any tyvars free in predicates that may
@@ -229,7 +229,7 @@ pprInstanceHdr (ClsInst { is_flag = flag, is_dfun = dfun })
 pprInstances :: [ClsInst] -> SDoc
 pprInstances ispecs = vcat (map pprInstance ispecs)
 
-instanceHead :: ClsInst -> ([TyCoVar], Class, [Type])
+instanceHead :: ClsInst -> ([TyVar], Class, [Type])
 -- Returns the head, using the fresh tyavs from the ClsInst
 instanceHead (ClsInst { is_tvs = tvs, is_tys = tys, is_dfun = dfun })
    = (tvs, cls, tys)
@@ -257,7 +257,7 @@ instanceSig :: ClsInst -> ([TyVar], [Type], Class, [Type])
 instanceSig ispec = tcSplitDFunTy (idType (is_dfun ispec))
 
 mkLocalInstance :: DFunId -> OverlapFlag
-                -> [TyCoVar] -> Class -> [Type]
+                -> [TyVar] -> Class -> [Type]
                 -> ClsInst
 -- Used for local instances, where we can safely pull on the DFunId.
 -- Consider using newClsInst instead; this will also warn if
@@ -803,7 +803,7 @@ lookupInstEnv' ie vis_mods cls tys
       = find ms us rest
 
       | Just subst <- tcMatchTys tpl_tys tys
-      = find ((item, map (lookupVarEnv subst) tpl_tvs) : ms) us rest
+      = find ((item, map (lookupTyVar subst) tpl_tvs) : ms) us rest
 
         -- Does not match, so next check whether the things unify
         -- See Note [Overlapping instances]
