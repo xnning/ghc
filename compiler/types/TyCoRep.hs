@@ -1515,7 +1515,7 @@ Here,
   co3 = UnivCo (ProofIrrelProv co5) Nominal (CoercionTy co1) (CoercionTy co2)
   where
     co5 :: (a1 ~ Bool) ~ (a2 ~ Bool)
-    co5 = TyConAppCo Nominal (~) [<*>, <*>, co4, <Bool>]
+    co5 = TyConAppCo Nominal (~#) [<*>, <*>, co4, <Bool>]
 
 
 %************************************************************************
@@ -2638,18 +2638,18 @@ substForAllCoCoVarBndrUsing sym sco (TCvSubst in_scope tenv cenv)
     new_kind_co | no_kind_change = old_kind_co
                 | otherwise      = sco old_kind_co
 
-    (Pair (CoercionTy k1) (CoercionTy k2), r) = coercionKindRole new_kind_co
-    Pair new_k1 new_k1' = coercionKind k1
-    Pair new_k2 new_k2' = coercionKind k2
+    (Pair (CoercionTy co1) (CoercionTy co2), r) = coercionKindRole new_kind_co
+    Pair k1 k1' = coercionKind co1 -- co1 :: k1 ~ k1'
+    Pair k2 k2' = coercionKind co2 -- co2 :: k2 ~ k2'
     -- This implementation might seem weird but it respects exactly the typing
     -- rule. It could potentially be low-efficient, in which case we need to go
     -- back to this piece of code and refactor it.
-    -- A potential improvement: when new_kind_co is a Refl.
+    -- A potential improvement: test whether new_kind_co is a GRefl.
 
     new_var       = uniqAway in_scope subst_old_var
     subst_old_var = mkCoVar (varName old_var) new_var_type
-    new_var_type  | sym       = mkCoercionType r new_k1' new_k2'
-                  | otherwise = mkCoercionType r new_k1  new_k2
+    new_var_type  | sym       = mkCoercionType r k2 k2'
+                  | otherwise = mkCoercionType r k1 k1'
 
 substCoVar :: TCvSubst -> CoVar -> Coercion
 substCoVar (TCvSubst _ _ cenv) cv
