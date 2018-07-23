@@ -205,7 +205,7 @@ module Type (
         tidyTyVarOcc,
         tidyTopType,
         tidyKind,
-        tidyTyVarBinder, tidyTyVarBinders
+        tidyTyCoVarBinder, tidyTyCoVarBinders
     ) where
 
 #include "HsVersions.h"
