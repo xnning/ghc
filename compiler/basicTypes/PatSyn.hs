@@ -66,13 +66,13 @@ data PatSyn
                                        -- psArgs
 
         -- Universally-quantified type variables
-        psUnivTyVars  :: [TyVarBinder],
+        psUnivTyVars  :: [TyCoVarBinder],
 
         -- Required dictionaries (may mention psUnivTyVars)
         psReqTheta    :: ThetaType,
 
         -- Existentially-quantified type vars
-        psExTyVars    :: [TyVarBinder],
+        psExTyVars    :: [TyCoVarBinder],
 
         -- Provided dictionaries (may mention psUnivTyVars or psExTyVars)
         psProvTheta   :: ThetaType,
@@ -339,10 +339,10 @@ instance Data.Data PatSyn where
 -- | Build a new pattern synonym
 mkPatSyn :: Name
          -> Bool                 -- ^ Is the pattern synonym declared infix?
-         -> ([TyVarBinder], ThetaType) -- ^ Universially-quantified type variables
-                                 --   and required dicts
-         -> ([TyVarBinder], ThetaType) -- ^ Existentially-quantified type variables
-                                 --   and provided dicts
+         -> ([TyCoVarBinder], ThetaType) -- ^ Universially-quantified type
+                                         -- variables and required dicts
+         -> ([TyCoVarBinder], ThetaType) -- ^ Existentially-quantified type
+                                         -- variables and provided dicts
          -> [Type]               -- ^ Original arguments
          -> Type                 -- ^ Original result type
          -> (Id, Bool)           -- ^ Name of matcher
@@ -396,13 +396,13 @@ patSynFieldType ps label
       Just (_, ty) -> ty
       Nothing -> pprPanic "dataConFieldType" (ppr ps <+> ppr label)
 
-patSynUnivTyVarBinders :: PatSyn -> [TyVarBinder]
+patSynUnivTyVarBinders :: PatSyn -> [TyCoVarBinder]
 patSynUnivTyVarBinders = psUnivTyVars
 
 patSynExTyVars :: PatSyn -> [TyVar]
 patSynExTyVars ps = binderVars (psExTyVars ps)
 
-patSynExTyVarBinders :: PatSyn -> [TyVarBinder]
+patSynExTyVarBinders :: PatSyn -> [TyCoVarBinder]
 patSynExTyVarBinders = psExTyVars
 
 patSynSig :: PatSyn -> ([TyVar], ThetaType, [TyVar], ThetaType, [Type], Type)
