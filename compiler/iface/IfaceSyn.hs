@@ -240,11 +240,11 @@ data IfaceConDecl
         -- but it's not so easy for the original TyCon/DataCon
         -- So this guarantee holds for IfaceConDecl, but *not* for DataCon
 
-        ifConExTvs   :: [IfaceTvBndr],  -- Existential tyvars
-        ifConUserTvBinders :: [IfaceForAllBndr],
-          -- The tyvars, in the order the user wrote them
-          -- INVARIANT: the set of tyvars in ifConUserTvBinders is exactly the
-          --            set of ifConExTvs, unioned with the set of ifBinders
+        ifConExTCvs   :: [IfaceBndr],  -- Existential tyvars
+        ifConUserTCvBinders :: [IfaceForAllBndr],
+          -- The ty/covars, in the order the user wrote them
+          -- INVARIANT: the set of ty/covars in ifConUserTCvBinders is exactly
+          --            the set of ifConExTCvs, unioned with the set of ifBinders
           --            (from the parent IfaceDecl) whose tyvars do not appear
           --            in ifConEqSpec
           -- See Note [DataCon user type variable binders] in DataCon
@@ -1287,7 +1287,7 @@ freeNamesIfDecl (IfaceId { ifType = t, ifIdDetails = d, ifIdInfo = i})
 
 freeNamesIfDecl (IfaceData { ifBinders = bndrs, ifResKind = res_k
                            , ifParent = p, ifCtxt = ctxt, ifCons = cons })
-  = freeNamesIfTyVarBndrs bndrs &&&
+  = freeNamesIfVarBndrs bndrs &&&
     freeNamesIfType res_k &&&
     freeNamesIfaceTyConParent p &&&
     freeNamesIfContext ctxt &&&
@@ -1295,18 +1295,18 @@ freeNamesIfDecl (IfaceData { ifBinders = bndrs, ifResKind = res_k
 
 freeNamesIfDecl (IfaceSynonym { ifBinders = bndrs, ifResKind = res_k
                               , ifSynRhs = rhs })
-  = freeNamesIfTyVarBndrs bndrs &&&
+  = freeNamesIfVarBndrs bndrs &&&
     freeNamesIfKind res_k &&&
     freeNamesIfType rhs
 
 freeNamesIfDecl (IfaceFamily { ifBinders = bndrs, ifResKind = res_k
                              , ifFamFlav = flav })
-  = freeNamesIfTyVarBndrs bndrs &&&
+  = freeNamesIfVarBndrs bndrs &&&
     freeNamesIfKind res_k &&&
     freeNamesIfFamFlav flav
 
 freeNamesIfDecl (IfaceClass{ ifBinders = bndrs, ifBody = cls_body })
-  = freeNamesIfTyVarBndrs bndrs &&&
+  = freeNamesIfVarBndrs bndrs &&&
     freeNamesIfClassBody cls_body
 
 freeNamesIfDecl (IfaceAxiom { ifTyCon = tc, ifAxBranches = branches })
@@ -1324,8 +1324,8 @@ freeNamesIfDecl (IfacePatSyn { ifPatMatcher = (matcher, _)
                              , ifFieldLabels = lbls })
   = unitNameSet matcher &&&
     maybe emptyNameSet (unitNameSet . fst) mb_builder &&&
-    freeNamesIfTyVarBndrs univ_bndrs &&&
-    freeNamesIfTyVarBndrs ex_bndrs &&&
+    freeNamesIfVarBndrs univ_bndrs &&&
+    freeNamesIfVarBndrs ex_bndrs &&&
     freeNamesIfContext prov_ctxt &&&
     freeNamesIfContext req_ctxt &&&
     fnList freeNamesIfType args &&&
@@ -1388,7 +1388,7 @@ freeNamesIfConDecls (IfNewTyCon  c) = freeNamesIfConDecl c
 freeNamesIfConDecls _                   = emptyNameSet
 
 freeNamesIfConDecl :: IfaceConDecl -> NameSet
-freeNamesIfConDecl (IfCon { ifConExTvs   = ex_tvs, ifConCtxt = ctxt
+freeNamesIfConDecl (IfCon { ifConExTCvs  = ex_tvs, ifConCtxt = ctxt
                           , ifConArgTys  = arg_tys
                           , ifConFields  = flds
                           , ifConEqSpec  = eq_spec
@@ -1419,7 +1419,7 @@ freeNamesIfType (IfaceAppTy s t)      = freeNamesIfType s &&& freeNamesIfAppArgs
 freeNamesIfType (IfaceTyConApp tc ts) = freeNamesIfTc tc &&& freeNamesIfAppArgs ts
 freeNamesIfType (IfaceTupleTy _ _ ts) = freeNamesIfAppArgs ts
 freeNamesIfType (IfaceLitTy _)        = emptyNameSet
-freeNamesIfType (IfaceForAllTy tv t)  = freeNamesIfTyVarBndr tv &&& freeNamesIfType t
+freeNamesIfType (IfaceForAllTy tv t)  = freeNamesIfVarBndr tv &&& freeNamesIfType t
 freeNamesIfType (IfaceFunTy s t)      = freeNamesIfType s &&& freeNamesIfType t
 freeNamesIfType (IfaceDFunTy s t)     = freeNamesIfType s &&& freeNamesIfType t
 freeNamesIfType (IfaceCastTy t c)     = freeNamesIfType t &&& freeNamesIfCoercion c
@@ -1472,11 +1472,11 @@ freeNamesIfProv (IfacePhantomProv co)    = freeNamesIfCoercion co
 freeNamesIfProv (IfaceProofIrrelProv co) = freeNamesIfCoercion co
 freeNamesIfProv (IfacePluginProv _)      = emptyNameSet
 
-freeNamesIfTyVarBndr :: TyVarBndr IfaceTvBndr vis -> NameSet
-freeNamesIfTyVarBndr (TvBndr tv _) = freeNamesIfTvBndr tv
+freeNamesIfVarBndr :: VarBndr IfaceBndr vis -> NameSet
+freeNamesIfVarBndr (Bndr bndr _) = freeNamesIfBndr bndr
 
-freeNamesIfTyVarBndrs :: [TyVarBndr IfaceTvBndr vis] -> NameSet
-freeNamesIfTyVarBndrs = fnList freeNamesIfTyVarBndr
+freeNamesIfVarBndrs :: [VarBndr IfaceBndr vis] -> NameSet
+freeNamesIfVarBndrs = fnList freeNamesIfVarBndr
 
 freeNamesIfBndr :: IfaceBndr -> NameSet
 freeNamesIfBndr (IfaceIdBndr b) = freeNamesIfIdBndr b
