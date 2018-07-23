@@ -772,7 +772,7 @@ mkForAllTy :: TyCoVar -> ArgFlag -> Type -> Type
 mkForAllTy tv vis ty
   | isCoVar tv
   , not (tv `elemVarSet` tyCoVarsOfType ty)
-  = ASSERT (vis == Inferred)
+  = ASSERT( vis == Inferred )
     mkFunTy (varType tv) ty
   | otherwise
   = ForAllTy (Bndr tv vis) ty
@@ -2112,7 +2112,7 @@ extendTvSubst (TCvSubst in_scope tenv cenv) tv ty
 
 extendTvSubstBinderAndInScope :: TCvSubst -> TyCoBinder -> Type -> TCvSubst
 extendTvSubstBinderAndInScope subst (Named (Bndr v _)) ty
-  = ASSERT (isTyVar v)
+  = ASSERT( isTyVar v )
     extendTvSubstAndInScope subst v ty
 extendTvSubstBinderAndInScope subst (Anon _)     _
   = subst
@@ -2199,7 +2199,7 @@ zipCvSubst cvs cos
 zipTCvSubst :: [TyCoVar] -> [Type] -> TCvSubst
 zipTCvSubst tcvs tys
   | debugIsOn
-  , neLength cvs cos
+  , neLength tcvs tys
   = pprTrace "zipTCvSubst" (ppr tcvs $$ ppr tys) emptyTCvSubst
   | otherwise
   = zip_tcvsubst tcvs tys (mkEmptyTCvSubst $ mkInScopeSet (tyCoVarsOfTypes tys))
@@ -2672,7 +2672,7 @@ lookupCoVar (TCvSubst _ _ cenv) v = lookupVarEnv cenv v
 substVarBndr :: HasCallStack => TCvSubst -> TyCoVar -> (TCvSubst, TyCoVar)
 substVarBndr = substVarBndrUsing substTy
 
-substVarBndrs :: HasCallStack => TCvSubst -> TyCoVar -> (TCvSubst, TyCoVar)
+substVarBndrs :: HasCallStack => TCvSubst -> [TyCoVar] -> (TCvSubst, [TyCoVar])
 substVarBndrs = mapAccumL substVarBndr
 
 -- | Like 'substVarBndr', but disables sanity checks.
@@ -3262,7 +3262,7 @@ typeSize (LitTy {})                 = 1
 typeSize (TyVarTy {})               = 1
 typeSize (AppTy t1 t2)              = typeSize t1 + typeSize t2
 typeSize (FunTy t1 t2)              = typeSize t1 + typeSize t2
-typeSize (ForAllTy (TvBndr tv _) t) = typeSize (tyVarKind tv) + typeSize t
+typeSize (ForAllTy (Bndr tv _) t)   = typeSize (varType tv) + typeSize t
 typeSize (TyConApp _ ts)            = 1 + sum (map typeSize ts)
 typeSize (CastTy ty co)             = typeSize ty + coercionSize co
 typeSize (CoercionTy co)            = coercionSize co
