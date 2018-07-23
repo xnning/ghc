@@ -121,7 +121,7 @@ module TyCoRep (
         substVarBndr, substVarBndrs,
         substTyVar, substTyVars,
         substForAllCoBndr,
-        substForAllCoBndrUsing,
+        substVarBndrUsing, substForAllCoBndrUsing,
         checkValidSubst, isValidTCvSubst,
 
         -- * Tidying type related things up for printing
@@ -2200,6 +2200,7 @@ zipTCvSubst tcvs tys
   where zip_tcvsubst :: [TyCoVar] -> [Type] -> TCvSubst -> TCvSubst
         zip_tcvsubst (tv:tvs) (ty:tys) subst
           = zip_tcvsubst tvs tys (extendTCvSubst subst tv ty)
+        zip_tcvsubst _ _ subst = subst -- empty case
 
 -- | Generates the in-scope set for the 'TCvSubst' from the types in the
 -- incoming environment. No CoVars, please!

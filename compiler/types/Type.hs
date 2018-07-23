@@ -91,9 +91,9 @@ module Type (
         sameVis,
         mkTyCoVarBinder, mkTyCoVarBinders,
         mkAnonBinder,
-        isAnonTyBinder, isNamedTyBinder,
+        isAnonTyCoBinder, isNamedTyCoBinder,
         binderVar, binderVars, binderKind, binderArgFlag,
-        tyBinderType, tyBinderVar_maybe,
+        tyCoBinderType, tyCoBinderVar_maybe,
         binderRelevantType_maybe, caseBinder,
         isVisibleArgFlag, isInvisibleArgFlag, isVisibleBinder, isInvisibleBinder,
         tyConBindersTyCoBinders,
@@ -179,14 +179,13 @@ module Type (
         substTyUnchecked, substTysUnchecked, substThetaUnchecked,
         substTyWithUnchecked,
         substCoUnchecked, substCoWithUnchecked,
-        substTyVarBndr, substTyVarBndrs, substTyVar, substTyVars,
-        substVarBndr, substVarBndrs,
+        substVarBndr, substVarBndrs, substTyVar, substTyVars,
         cloneTyVarBndr, cloneTyVarBndrs, lookupTyVar,
 
         -- * Pretty-printing
         pprType, pprParendType, pprPrecType,
         pprTypeApp, pprTyThingCategory, pprShortTyThing,
-        pprTvBndr, pprTvBndrs, pprForAll, pprUserForAll,
+        pprTCvBndr, pprTCvBndrs, pprForAll, pprUserForAll,
         pprSigmaType, ppSuggestExplicitKinds,
         pprTheta, pprThetaArrowTy, pprClassPred,
         pprKind, pprParendKind, pprSourceTyCon,
@@ -198,7 +197,7 @@ module Type (
         tidyType,      tidyTypes,
         tidyOpenType,  tidyOpenTypes,
         tidyOpenKind,
-        tidyTyCoVarBndr, tidyTyCoVarBndrs, tidyFreeTyCoVars,
+        tidyVarBndr, tidyVarBndrs, tidyFreeTyCoVars,
         tidyOpenTyCoVar, tidyOpenTyCoVars,
         tidyTyVarOcc,
         tidyTopType,
@@ -1017,7 +1016,7 @@ piResultTys ty orig_args@(arg:args)
   | otherwise
   = pprPanic "piResultTys1" (ppr ty $$ ppr orig_args)
   where
-    init_subst = mkEmptyTVcSubst $ mkInScopeSet (tyCoVarsOfTypes (ty:orig_args))
+    init_subst = mkEmptyTCvSubst $ mkInScopeSet (tyCoVarsOfTypes (ty:orig_args))
 
     go :: TCvSubst -> Type -> [Type] -> Type
     go subst ty [] = substTy subst ty
@@ -1302,12 +1301,12 @@ interfaces.  Notably this plays a role in tcTySigs in TcBinds.hs.
 -- | Make a dependent forall over an Inferred (as opposed to Specified)
 -- variable
 mkInvForAllTy :: TyCoVar -> Type -> Type
-mkInvForAllTy tv ty =
+mkInvForAllTy tv ty
   | isCoVar tv
   , not (tv `elemVarSet` tyCoVarsOfType ty)
   = mkFunTy (varType tv) ty
   | otherwise
-  ForAllTy (Bndr tv Inferred) ty
+  = ForAllTy (Bndr tv Inferred) ty
 
 -- | Like mkInvForAllTy, but does not check the occurrence of the covar.
 mkInvForAllTy_unchecked :: TyCoVar -> Type -> Type
@@ -1472,7 +1471,7 @@ splitPiTys ty = split ty ty
 
 -- Like splitPiTys, but returns only *invisible* binders, including constraints
 -- Stops at the first visible binder
-splitPiTysInvisible :: Type -> ([TyBinder], Type)
+splitPiTysInvisible :: Type -> ([TyCoBinder], Type)
 splitPiTysInvisible ty = split ty ty []
    where
     split orig_ty ty bs | Just ty' <- coreView ty = split orig_ty ty' bs
@@ -2465,7 +2464,7 @@ typeKind (FunTy {})        = liftedTypeKind
 typeKind (TyVarTy tyvar)   = tyVarKind tyvar
 typeKind (CastTy _ty co)   = pSnd $ coercionKind co
 typeKind (CoercionTy co)   = coercionType co
-typeKind ty@(ForAllTy (Bnd tv _) _)
+typeKind ty@(ForAllTy (Bndr tv _) _)
   | isTyVar tv                     -- See Note [Weired typing rule for ForAllTy].
   = case occCheckExpand tvs k of   -- We must make sure tv does not occur in kind
       Just k' -> k'                -- As it is already out of scope!
@@ -2633,7 +2632,7 @@ occCheckExpand vs_to_avoid ty
     go_co cxt@(as,env) (CoVarCo c)
       | c `elemVarSet` as               = Nothing
       | Just c' <- lookupVarEnv env c   = return (mkCoVarCo c')
-      | otherwise                       = do { c' <- go_var ctx c
+      | otherwise                       = do { c' <- go_var cxt c
                                              ; return (mkCoVarCo c') }
     go_co cxt (HoleCo h)                = do { c' <- go_var cxt (ch_co_var h)
                                              ; return (HoleCo (h { ch_co_var = c' })) }
