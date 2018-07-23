@@ -119,6 +119,7 @@ module TyCoRep (
         substCo, substCos, substCoVar, substCoVars, lookupCoVar,
         cloneTyVarBndr, cloneTyVarBndrs,
         substVarBndr, substVarBndrs,
+        substCoVarBndr,
         substTyVar, substTyVars,
         substForAllCoBndr,
         substVarBndrUsing, substForAllCoBndrUsing,
@@ -2669,6 +2670,9 @@ substVarBndr = substVarBndrUsing substTy
 
 substVarBndrs :: HasCallStack => TCvSubst -> [TyCoVar] -> (TCvSubst, [TyCoVar])
 substVarBndrs = mapAccumL substVarBndr
+
+substCoVarBndr :: HasCallStack => TCvSubst -> CoVar -> (TCvSubst, CoVar)
+substCoVarBndr = substCoVarBndrUsing substTy
 
 -- | Like 'substVarBndr', but disables sanity checks.
 -- The problems that the sanity checks in substTy catch are described in
