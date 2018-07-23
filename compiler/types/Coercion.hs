@@ -29,7 +29,7 @@ module Coercion (
         mkAxInstRHS, mkUnbranchedAxInstRHS,
         mkAxInstLHS, mkUnbranchedAxInstLHS,
         mkPiCo, mkPiCos, mkCoCast,
-        mkSymCo, mkTransCo, mkTransAppCo,
+        mkSymCo, mkTransCo,
         mkNthCo, nthCoRole, mkLRCo,
         mkInstCo, mkAppCo, mkAppCos, mkTyConAppCo, mkFunCo,
         mkForAllCo, mkForAllCos, mkHomoForAllCos, mkHomoForAllCos_NoRefl,
@@ -1266,7 +1266,7 @@ promoteCoercion co = case co of
       -> promoteCoercion g
 
     ForAllCo cv _ _
-      -> ASSERT (isCoVar cv)
+      -> ASSERT( isCoVar cv )
          mkNomReflCo liftedTypeKind
 
     FunCo _ _ _
@@ -1687,7 +1687,7 @@ extendLiftingContextEx lc@(LC subst env) ((v,ty):rest)
     -- lift_s1 :: s1 ~r s1'
     -- lift_s2 :: s2 ~r s2'
     -- kco     :: (s1 ~r s2) ~R (s1' ~ s2')
-    ASSERT (isCoVar v)
+    ASSERT( isCoVar v )
     let (_, _, s1, s2, r) = coVarKindsTypesRole v
         lift_s1 = ty_co_subst lc r s1
         lift_s2 = ty_co_subst lc r s2
@@ -1700,7 +1700,7 @@ extendLiftingContextEx lc@(LC subst env) ((v,ty):rest)
                           (mkSymCo lift_s1) `mkTransCo` co `mkTransCo` lift_s2))
     in extendLiftingContextEx lc' rest
   | otherwise
-  = pprPanic "extendLiftingContextEx" (ppr v <+> ptext (sLit "|->") <+> ppr ty)
+  = pprPanic "extendLiftingContextEx" (ppr v <+> text "|->" <+> ppr ty)
 
 
 -- | Erase the environments in a lifting context
@@ -1783,7 +1783,7 @@ liftCoSubstVarBndr lc tv
 liftCoSubstVarBndrUsing :: (LiftingContext -> Type -> (Coercion, a))
                            -> LiftingContext -> TyCoVar
                            -> (LiftingContext, TyCoVar, Coercion, a)
-liftCoSubstVarBndrUsing fun lc@(LC subst cenv) old_var
+liftCoSubstVarBndrUsing fun lc old_var
   | isTyVar old_var
   = liftCoSubstTyVarBndrUsing fun lc old_var
   | otherwise
@@ -1793,7 +1793,7 @@ liftCoSubstTyVarBndrUsing :: (LiftingContext -> Type -> (Coercion, a))
                            -> LiftingContext -> TyVar
                            -> (LiftingContext, TyVar, Coercion, a)
 liftCoSubstTyVarBndrUsing fun lc@(LC subst cenv) old_var
-  = ASSERT (isTyVar old_var)
+  = ASSERT( isTyVar old_var )
     ( LC (subst `extendTCvInScope` new_var) new_cenv
     , new_var, eta, stuff )
   where
@@ -1810,7 +1810,7 @@ liftCoSubstCoVarBndrUsing :: (LiftingContext -> Type -> (Coercion, a))
                            -> LiftingContext -> CoVar
                            -> (LiftingContext, CoVar, Coercion, a)
 liftCoSubstCoVarBndrUsing fun lc@(LC subst cenv) old_var
-  = ASSERT (isCoVar old_var)
+  = ASSERT( isCoVar old_var )
     ( LC (subst `extendTCvInScope` new_var) new_cenv
     , new_var, kind_co, stuff )
   where
@@ -2037,7 +2037,7 @@ coercionKind co =
                | otherwise      = extendTvSubst (extendTCvInScope subst tv2) tv1 $
                                   TyVarTy tv2 `mkCastTy` mkSymCo k_co
     go_forall subst (ForAllCo cv1 k_co co)
-      | isCoVar tv1
+      | isCoVar cv1
       = mkInvForAllTy <$> Pair cv1 cv2 <*> go_forall subst' co
       where
         Pair (CoercionTy k1) (CoercionTy k2) = go k_co
@@ -2045,9 +2045,9 @@ coercionKind co =
         Pair _ k2' = go k2
 
         r       = coercionRole co
-        cv2     = setVarType tv1 (substTy subst $ mkCoercionType r k1' k2')
+        cv2     = setVarType cv1 (substTy subst $ mkCoercionType r k1' k2')
         k_subst = k1 `mkTransCo` (mkCoVarCo cv2) `mkTransCo` k2
-        subst'  | isReflCo k_co = extendTVcInScope subst cv1
+        subst'  | isReflCo k_co = extendTCvInScope subst cv1
                 | otherwise     = extendCvSubst (extendTCvInScope subst cv2)
                                                 cv1 k_subst
 
@@ -2162,7 +2162,7 @@ buildCoercion orig_ty1 orig_ty2 = go orig_ty1 orig_ty2
 
     go (ForAllTy (Bndr tv1 _flag1) ty1) (ForAllTy (Bndr tv2 _flag2) ty2)
       | isTyVar tv1
-      = ASSERT (isTyVar tv2)
+      = ASSERT( isTyVar tv2 )
         mkForAllCo tv1 kind_co (go ty1 ty2')
       where kind_co  = go (tyVarKind tv1) (tyVarKind tv2)
             in_scope = mkInScopeSet $ tyCoVarsOfType ty2 `unionVarSet` tyCoVarsOfCo kind_co
@@ -2171,7 +2171,7 @@ buildCoercion orig_ty1 orig_ty2 = go orig_ty1 orig_ty2
                          ty2
 
     go (ForAllTy (Bndr cv1 _flag1) ty1) (ForAllTy (Bndr cv2 _flag2) ty2)
-      = ASSERT (isCoVar cv1 && isCoVar cv2)
+      = ASSERT( isCoVar cv1 && isCoVar cv2 )
         mkForAllCo cv1 kind_co (go ty1 ty2')
       where s1 = varType cv1     -- t1 ~ t2
             s2 = varType cv2     -- t3 ~ t4
