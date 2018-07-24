@@ -933,7 +933,7 @@ mkDataCon name declared_infix prom_info
                                        (prom_tv_bndrs ++ prom_arg_bndrs)
                                        prom_res_kind roles rep_info
 
-    roles = map (\tv -> if isTyVar ty then Nominal else Phantom)
+    roles = map (\tv -> if isTyVar tv then Nominal else Phantom)
                 (univ_tvs ++ ex_tvs)
             ++ map (const Representational) orig_arg_tys
 
@@ -1055,8 +1055,8 @@ dataConKindEqSpec (MkData {dcExTyCoVars = ex_tcvs})
   = [ EqSpec tv ty
     | cv <- ex_tcvs
     , isCoVar cv
-    , let (ty1, ty) = coVarTypes cv
-          tv        = getTyVar "dataConKindEqSpec" ty1
+    , let (_, _, ty1, ty, _) = coVarKindsTypesRole cv
+          tv = getTyVar "dataConKindEqSpec" ty1
     ]
 
 -- | The *full* constraints on the constructor type, including dependent GADT
