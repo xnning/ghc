@@ -995,8 +995,8 @@ unify_ty env ty1 (AppTy ty2a ty2b) _kco
 
 unify_ty _ (LitTy x) (LitTy y) _kco | x == y = return ()
 
-unify_ty env (ForAllTy (TvBndr tv1 _) ty1) (ForAllTy (TvBndr tv2 _) ty2) kco
-  = do { unify_ty env (tyVarKind tv1) (tyVarKind tv2) (mkNomReflCo liftedTypeKind)
+unify_ty env (ForAllTy (Bndr tv1 _) ty1) (ForAllTy (Bndr tv2 _) ty2) kco
+  = do { unify_ty env (varType tv1) (varType tv2) (mkNomReflCo liftedTypeKind)
        ; let env' = umRnBndr2 env tv1 tv2
        ; unify_ty env' ty1 ty2 kco }
 
@@ -1438,9 +1438,10 @@ ty_co_match menv subst (FunTy ty1 ty2) co _lkco _rkco
   = let Pair lkcos rkcos = traverse (fmap mkNomReflCo . coercionKind) [co1,co2]
     in ty_co_match_args menv subst [ty1, ty2] [co1, co2] lkcos rkcos
 
-ty_co_match menv subst (ForAllTy (TvBndr tv1 _) ty1)
+ty_co_match menv subst (ForAllTy (Bndr tv1 _) ty1)
                        (ForAllCo tv2 kind_co2 co2)
                        lkco rkco
+  | isTyVar tv1 && isTyVar tv2
   = do { subst1 <- ty_co_match menv subst (tyVarKind tv1) kind_co2
                                ki_ki_co ki_ki_co
        ; let rn_env0 = me_env menv
@@ -1449,6 +1450,29 @@ ty_co_match menv subst (ForAllTy (TvBndr tv1 _) ty1)
        ; ty_co_match menv' subst1 ty1 co2 lkco rkco }
   where
     ki_ki_co = mkNomReflCo liftedTypeKind
+
+-- ty_co_match menv subst (ForAllTy (Bndr cv1 _) ty1)
+--                        (ForAllCo cv2 kind_co2 co2)
+--                        lkco rkco
+--   | isCoVar cv1 && isCoVar cv2
+--   = do { -- cv1      :: s1 k1~k2 s2
+--          -- kind_co2 :: (s1' ~ s2') *~* (t1 ~ t2)
+--          -- eta1     :: s1' ~ t1
+--          -- eta2     :: s2' ~ t2
+--          -- wanted: ty_co_match s1 eta1
+--          --         ty_co_match s2 eta2
+--          --         ki_ki_co :: ???
+--          let (k1, k2, s1, s2, role) = coVarKindsTypesRole cv1
+--              eta1 = mkNthCo Nominal 2 kind_co2
+--              eta2 = mkNthCo Nominal 3 kind_co2
+--        ; subst1 <- ty_co_match menv subst s1 eta1 ki_ki_co1 ki_ki_co2
+--        ; subst2 <- ty_co_match menv subst1 s2 eta2 ki_ki_co3 ki_ki_co4
+--        ; let rn_env0 = me_env menv
+--              rn_env1 = rnBndr2 rn_env0 cv1 cv2
+--              menv'   = menv { me_env = rn_env1 }
+--        ; ty_co_match menv' subst1 ty1 co2 lkco rkco }
+--   where
+--     ki_ki_co = mkNomReflCo liftedTypeKind
 
 ty_co_match _ subst (CoercionTy {}) _ _ _
   = Just subst -- don't inspect coercions
@@ -1523,7 +1547,7 @@ pushRefl co =
                                        , mkReflCo r ty1,  mkReflCo r ty2 ])
     Just (TyConApp tc tys, r)
       -> Just (TyConAppCo r tc (zipWith mkReflCo (tyConRolesX r tc) tys))
-    Just (ForAllTy (TvBndr tv _) ty, r)
+    Just (ForAllTy (Bndr tv _) ty, r)
       -> Just (mkHomoForAllCos_NoRefl [tv] (mkReflCo r ty))
     -- NB: NoRefl variant. Otherwise, we get a loop!
     _ -> Nothing
