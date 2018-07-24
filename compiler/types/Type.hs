@@ -164,6 +164,7 @@ module Type (
         emptyTvSubstEnv, emptyTCvSubst, mkEmptyTCvSubst,
 
         mkTCvSubst, zipTvSubst, mkTvSubstPrs,
+        zipTCvSubst,
         notElemTCvSubst,
         getTvSubstEnv, setTvSubstEnv,
         zapTCvSubst, getTCvInScope, getTCvSubstRangeFVs,

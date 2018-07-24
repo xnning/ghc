@@ -1832,7 +1832,7 @@ liftCoSubstCoVarBndrUsing fun lc@(LC subst cenv) old_var
 
     co1     = mkCoVarCo new_var
     co2     = mkSymCo eta1 `mkTransCo` co1 `mkTransCo` eta2
-    kind_co = mkTyConAppCo Nominal (equalityTyCon role)
+    kind_co = mkTyConAppCo Representational (equalityTyCon role)
                            [ mkKindCo co1, mkKindCo co2
                            , co1         , co2          ]
     lifted  = mkProofIrrelCo Nominal kind_co co1 co2
@@ -2173,12 +2173,18 @@ buildCoercion orig_ty1 orig_ty2 = go orig_ty1 orig_ty2
     go (ForAllTy (Bndr cv1 _flag1) ty1) (ForAllTy (Bndr cv2 _flag2) ty2)
       = ASSERT( isCoVar cv1 && isCoVar cv2 )
         mkForAllCo cv1 kind_co (go ty1 ty2')
-      where s1 = varType cv1     -- t1 ~ t2
-            s2 = varType cv2     -- t3 ~ t4
-            kind_co = go s1 s2   -- :: (t1 ~ t2) ~n (t3 ~ t4)
+      where s1 = varType cv1
+            s2 = varType cv2
+            kind_co = go s1 s2
 
-            eta1 = mkNthCo Nominal 2 kind_co -- :: t1 ~n t3
-            eta2 = mkNthCo Nominal 3 kind_co -- :: t2 ~n t4
+            -- s1 = t1 ~ t2
+            -- s2 = t3 ~ t4
+            -- kind_co :: (t1 ~ t2) ~n (t3 ~ t4)
+            -- eta1 :: t1 ~n t3
+            -- eta2 :: t2 ~n t4
+
+            eta1 = mkNthCo Nominal 2 kind_co
+            eta2 = mkNthCo Nominal 3 kind_co
 
             subst = mkEmptyTCvSubst $ mkInScopeSet $
                       tyCoVarsOfType ty2 `unionVarSet` tyCoVarsOfCo kind_co
