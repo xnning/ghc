@@ -97,7 +97,7 @@ module TyCoRep (
         isInScope, notElemTCvSubst,
         setTvSubstEnv, setCvSubstEnv, zapTCvSubst,
         extendTCvInScope, extendTCvInScopeList, extendTCvInScopeSet,
-        extendTCvSubst,
+        extendTCvSubst, extendTCvSubstWithClone,
         extendCvSubst, extendCvSubstWithClone,
         extendTvSubst, extendTvSubstBinderAndInScope, extendTvSubstWithClone,
         extendTvSubstList, extendTvSubstAndInScope,
@@ -2100,6 +2100,11 @@ extendTCvSubst subst v ty
   = extendCvSubst subst v co
   | otherwise
   = pprPanic "extendTCvSubst" (ppr v <+> text "|->" <+> ppr ty)
+
+extendTCvSubstWithClone :: TCvSubst -> TyCoVar -> TyCoVar -> TCvSubst
+extendTCvSubstWithClone subst tcv
+  | isTyVar tcv = extendTvSubstWithClone subst tcv
+  | otherwise   = extendCvSubstWithClone subst tcv
 
 extendTvSubst :: TCvSubst -> TyVar -> Type -> TCvSubst
 extendTvSubst (TCvSubst in_scope tenv cenv) tv ty
