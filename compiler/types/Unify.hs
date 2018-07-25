@@ -1455,24 +1455,24 @@ ty_co_match menv subst (ForAllTy (Bndr tv1 _) ty1)
 --                        (ForAllCo cv2 kind_co2 co2)
 --                        lkco rkco
 --   | isCoVar cv1 && isCoVar cv2
---   = do { -- cv1      :: s1 k1~k2 s2
---          -- kind_co2 :: (s1' ~ s2') *~* (t1 ~ t2)
---          -- eta1     :: s1' ~ t1
---          -- eta2     :: s2' ~ t2
---          -- wanted: ty_co_match s1 eta1
---          --         ty_co_match s2 eta2
---          --         ki_ki_co :: ???
---          let (k1, k2, s1, s2, role) = coVarKindsTypesRole cv1
---              eta1 = mkNthCo Nominal 2 kind_co2
---              eta2 = mkNthCo Nominal 3 kind_co2
---        ; subst1 <- ty_co_match menv subst s1 eta1 ki_ki_co1 ki_ki_co2
---        ; subst2 <- ty_co_match menv subst1 s2 eta2 ki_ki_co3 ki_ki_co4
---        ; let rn_env0 = me_env menv
---              rn_env1 = rnBndr2 rn_env0 cv1 cv2
---              menv'   = menv { me_env = rn_env1 }
---        ; ty_co_match menv' subst1 ty1 co2 lkco rkco }
---   where
---     ki_ki_co = mkNomReflCo liftedTypeKind
+--   We seems not to have enough information for this case
+--   1. Given:
+--        cv1      :: (s1 :: k1) ~r (s2 :: k2)
+--        kind_co2 :: (s1' ~ s2') ~N (t1 ~ t2)
+--        eta1      = mkNthCo role 2 (downgradeRole r Nominal kind_co2)
+--                 :: s1' ~ t1
+--        eta2      = mkNthCo role 3 (downgradeRole r Nominal kind_co2)
+--                 :: s2' ~ t2
+--      Wanted:
+--        subst1 <- ty_co_match menv subst  s1 eta1 kco1 kco2
+--        subst2 <- ty_co_match menv subst1 s2 eta2 kco3 kco4
+--      Question: How do we get kcoi?
+--   2. Given:
+--        lkco :: <*>    -- See Note [Weird typing rule for ForAllTy] in Type
+--        rkco :: <*>
+--      Wanted:
+--        ty_co_match menv' subst2 ty1 co2 lkco' rkco'
+--      Question: How do we get lkco' and rkco'?
 
 ty_co_match _ subst (CoercionTy {}) _ _ _
   = Just subst -- don't inspect coercions
