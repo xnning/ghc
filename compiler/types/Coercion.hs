@@ -1691,7 +1691,7 @@ extendLiftingContextEx lc@(LC subst env) ((v,ty):rest)
     let (_, _, s1, s2, r) = coVarKindsTypesRole v
         lift_s1 = ty_co_subst lc r s1
         lift_s2 = ty_co_subst lc r s2
-        kco     = mkTyConAppCo Representational (equalityTyCon r)
+        kco     = mkTyConAppCo Nominal (equalityTyCon r)
                                [ mkKindCo lift_s1, mkKindCo lift_s2
                                , lift_s1         , lift_s2          ]
         lc'     = LC (subst `extendTCvInScopeSet` tyCoVarsOfCo co)
@@ -1778,11 +1778,15 @@ liftCoSubstVarBndr lc tv
     (lc', tv', h)
   where
     callback lc' ty' = (ty_co_subst lc' Nominal ty', ())
+    -- the callback must produce a nominal coercion
 
--- the callback must produce a nominal coercion
+-- We want to reuse @liftCoSubstVarBndrUsing@ in FamInstEnv, therefore
+-- @fun@ returns a pair with @a@ polymorphic.
+-- In @liftCoSubstVarBndr@, we don't really need the @a@. Thus we use
+-- unit and ignore the fourth component of the return value.
 liftCoSubstVarBndrUsing :: (LiftingContext -> Type -> (Coercion, a))
                            -> LiftingContext -> TyCoVar
-                           -> (LiftingContext, TyCoVar, Coercion, a)
+                           -> (LiftingContext, TyCoVar, Coercion, [a])
 liftCoSubstVarBndrUsing fun lc old_var
   | isTyVar old_var
   = liftCoSubstTyVarBndrUsing fun lc old_var
@@ -1791,11 +1795,11 @@ liftCoSubstVarBndrUsing fun lc old_var
 
 liftCoSubstTyVarBndrUsing :: (LiftingContext -> Type -> (Coercion, a))
                            -> LiftingContext -> TyVar
-                           -> (LiftingContext, TyVar, Coercion, a)
+                           -> (LiftingContext, TyVar, Coercion, [a])
 liftCoSubstTyVarBndrUsing fun lc@(LC subst cenv) old_var
   = ASSERT( isTyVar old_var )
     ( LC (subst `extendTCvInScope` new_var) new_cenv
-    , new_var, eta, stuff )
+    , new_var, eta, [stuff] )
   where
     old_kind     = varType old_var
     (eta, stuff) = fun lc old_kind
@@ -1808,22 +1812,23 @@ liftCoSubstTyVarBndrUsing fun lc@(LC subst cenv) old_var
 
 liftCoSubstCoVarBndrUsing :: (LiftingContext -> Type -> (Coercion, a))
                            -> LiftingContext -> CoVar
-                           -> (LiftingContext, CoVar, Coercion, a)
+                           -> (LiftingContext, CoVar, Coercion, [a])
 liftCoSubstCoVarBndrUsing fun lc@(LC subst cenv) old_var
   = ASSERT( isCoVar old_var )
     ( LC (subst `extendTCvInScope` new_var) new_cenv
-    , new_var, kind_co, stuff )
+    , new_var, kind_co, [stuff1, stuff2] )
   where
     (_, _, s1, s2, role) = coVarKindsTypesRole old_var
-    (eta1, stuff) = fun lc s1
-    (eta2, _)     = fun lc s2
-    Pair s1' _    = coercionKind eta1
-    Pair s2' _    = coercionKind eta2
+    (eta1, stuff1) = fun lc s1
+    (eta2, stuff2) = fun lc s2
+    Pair s1' _     = coercionKind eta1
+    Pair s2' _     = coercionKind eta2
 
-    -- eta1 :: s1' ~ t1
-    -- eta2 :: s2' ~ t2
-    -- co1  :: s1' ~ s2'
-    -- co2  :: t1  ~ t2
+    -- old_var :: s1  ~ s2
+    -- eta1    :: s1' ~ t1
+    -- eta2    :: s2' ~ t2
+    -- co1     :: s1' ~ s2'
+    -- co2     :: t1  ~ t2
     -- kind_co :: (s1' ~ s2') ~ (t1 ~ t2)
     -- lifted  :: co1 ~ co2
 
@@ -1832,7 +1837,7 @@ liftCoSubstCoVarBndrUsing fun lc@(LC subst cenv) old_var
 
     co1     = mkCoVarCo new_var
     co2     = mkSymCo eta1 `mkTransCo` co1 `mkTransCo` eta2
-    kind_co = mkTyConAppCo Representational (equalityTyCon role)
+    kind_co = mkTyConAppCo Nominal (equalityTyCon role)
                            [ mkKindCo co1, mkKindCo co2
                            , co1         , co2          ]
     lifted  = mkProofIrrelCo Nominal kind_co co1 co2
