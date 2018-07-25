@@ -1366,11 +1366,11 @@ normalise_type ty
            ; (co2, nty2) <- go ty2
            ; r <- getRole
            ; return (mkFunCo r co1 co2, mkFunTy nty1 nty2) }
-    go (ForAllTy (TvBndr tyvar vis) ty)
-      = do { (lc', tv', h, ki') <- normalise_tyvar_bndr tyvar
+    go (ForAllTy (Bndr tcvar vis) ty)
+      = do { (lc', tv', h, ki') <- normalise_bndr tcvar
            ; (co, nty)          <- withLC lc' $ normalise_type ty
            ; let tv2 = setTyVarKind tv' ki'
-           ; return (mkForAllCo tv' h co, ForAllTy (TvBndr tv2 vis) nty) }
+           ; return (mkForAllCo tv' h co, ForAllTy (Bndr tv2 vis) nty) }
     go (TyVarTy tv)    = normalise_tyvar tv
     go (CastTy ty co)
       = do { (nco, nty) <- go ty
@@ -1397,12 +1397,28 @@ normalise_tyvar tv
            Nothing -> (mkReflCo r ty, ty) }
   where ty = mkTyVarTy tv
 
+normlise_var_bndr :: TyCoVar -> NormM (LiftingContext, TyCoVar, Coercion, Kind)
+normlise_var_bndr tcvar
+  | isTyVar tcvar = normalise_tyvar_bndr tcvar
+  | otherwise     = normalise_covar_bndr tcvar
+
 normalise_tyvar_bndr :: TyVar -> NormM (LiftingContext, TyVar, Coercion, Kind)
 normalise_tyvar_bndr tv
-  = do { lc1 <- getLC
+  = ASSERT( isTyVar tv)
+    do { lc1 <- getLC
        ; env <- getEnv
        ; let callback lc ki = runNormM (normalise_type ki) env lc Nominal
-       ; return $ liftCoSubstVarBndrUsing callback lc1 tv }
+             (lc, nvar, nco, [ki]) = liftCoSubstTyVarBndrUsing callback lc1 tv
+       ; return $ (lc, nvar, nco, ki) }
+
+normalise_covar_bndr :: CoVar -> NormM (LiftingContext, CoVar, Coercion, Kind)
+normalise_covar_bndr cv
+  = ASSERT( isCoVar cv)
+    do { lc1 <- getLC
+       ; env <- getEnv
+       ; let callback lc ki = runNormM (normalise_type ki) env lc Nominal
+             (lc, nvar, nco, [k1, k2]) = liftCoSubstVarBndrUsing callback lc1 cv
+       ; return $ (lc, nvar, nco, mkCoercionType (coVarRole nvar) k1 k2) }
 
 -- | a monad for the normalisation functions, reading 'FamInstEnvs',
 -- a 'LiftingContext', and a 'Role'.
