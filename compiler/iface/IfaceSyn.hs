@@ -64,7 +64,7 @@ import SrcLoc
 import Fingerprint
 import Binary
 import BooleanFormula ( BooleanFormula, pprBooleanFormula, isTrue )
-import Var( TyVarBndr(..) )
+import Var( VarBndr(..) )
 import TyCon ( Role (..), Injectivity(..) )
 import Util( dropList, filterByList )
 import DataCon (SrcStrictness(..), SrcUnpackedness(..))
@@ -976,7 +976,7 @@ pprIfaceConDecl :: ShowSub -> Bool
                 -> IfaceConDecl -> SDoc
 pprIfaceConDecl ss gadt_style tycon tc_binders parent
         (IfCon { ifConName = name, ifConInfix = is_infix,
-                 ifConUserTvBinders = user_tvbs,
+                 ifConUserTCvBinders = user_tvbs,
                  ifConEqSpec = eq_spec, ifConCtxt = ctxt, ifConArgTys = arg_tys,
                  ifConStricts = stricts, ifConFields = fields })
   | gadt_style = pp_prefix_con <+> dcolon <+> ppr_gadt_ty
@@ -1062,8 +1062,11 @@ pprIfaceConDecl ss gadt_style tycon tc_binders parent
     ppr_tc_app gadt_subst dflags
        = pprPrefixIfDeclBndr how_much (occName tycon)
          <+> sep [ pprParendIfaceType (substIfaceTyVar gadt_subst tv)
-                 | (tv,_kind)
-                     <- map ifTyConBinderTyVar $
+                 | IfaceTvBndr (tv,_kind)
+                   -- Coercions variables are invisible, see Note
+                   -- [VarBndrs, TyCoVarBinders, TyConBinders, and visibility]
+                   -- in TyCoRep
+                     <- map (ifTyConBinderVar) $
                         suppressIfaceInvisibles dflags tc_binders tc_binders ]
 
 instance Outputable IfaceRule where
@@ -1396,7 +1399,7 @@ freeNamesIfConDecl (IfCon { ifConExTCvs  = ex_tvs, ifConCtxt = ctxt
                           , ifConFields  = flds
                           , ifConEqSpec  = eq_spec
                           , ifConStricts = bangs })
-  = fnList freeNamesIfTvBndr ex_tvs &&&
+  = fnList freeNamesIfBndr ex_tvs &&&
     freeNamesIfContext ctxt &&&
     fnList freeNamesIfType arg_tys &&&
     mkNameSet (map flSelector flds) &&&
