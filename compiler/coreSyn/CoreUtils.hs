@@ -1932,7 +1932,7 @@ dataConInstPat fss uniqs con inst_tys
                                      , new_tv)
       where
         new_tv
-          | isTyVar rv
+          | isTyVar tv
           = mkTyVar (mkSysTvName uniq fs) kind
           | otherwise
           = mkCoVar (mkSystemVarName uniq fs) kind
