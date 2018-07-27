@@ -1433,7 +1433,7 @@ isPiTy (FunTy {})    = True
 isPiTy _             = False
 
 -- | Take a forall type apart, or panics if that is not possible.
-splitForAllTy :: Type -> (TyVar, Type)
+splitForAllTy :: Type -> (TyCoVar, Type)
 splitForAllTy ty
   | Just answer <- splitForAllTy_maybe ty = answer
   | otherwise                             = pprPanic "splitForAllTy" (ppr ty)
