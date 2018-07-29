@@ -378,8 +378,6 @@ opt_co4 env sym rep r (InstCo co1 arg)
   | Just (tv, kind_co, co_body) <- splitForAllCo_ty_maybe co1
   = opt_co4_wrap (extendLiftingContext env tv
                     (mkCoherenceRightCo Nominal t2 (mkSymCo kind_co) arg'))
-                    -- arg' :: t1 ~ t2
-                    -- mkCoherenceRightCo ...  :: t1 ~ (t2 |> sym kind_co)
                  sym rep r co_body
 
     -- forall over coercion...
@@ -394,21 +392,6 @@ opt_co4 env sym rep r (InstCo co1 arg)
         Pair s1 s2    = coercionKind h1
         l_co = h1
         r_co = n1 `mkTransCo` h2 `mkTransCo` (mkSymCo n2)
-        -- arg     :: h1 ~ h2
-        -- args'   :: h1' ~ h2'
-        -- h1      :: t1 ~ t2
-        -- h1'     :: s1 ~ s2
-        -- h2      :: t3 ~ t4
-        -- h2'     :: s3 ~ s4
-        -- kind_co :: (t1 ~ t2) ~ (t3 ~ t4)
-        -- kind_co':: (s1 ~ s2) ~ (s3 ~ s4)
-        -- n1      :: s1 ~ s3
-        -- n2      :: s2 ~ s4
-        -- t1, h1  :: s1 ~ s2
-        -- t2, h2  :: s3 ~ s4
-        -- l_co    :: s1 ~ s2
-        -- r_co    :: s1 ~ s2
-        -- k_co    :: (s1 ~r s2) ~N (s1 ~r s2)
         k_co = Refl (mkTyConApp (equalityTyCon r2) [s1, s2])
         new_co = mkProofIrrelCo Nominal k_co l_co r_co
     in
@@ -540,8 +523,8 @@ opt_univ env sym prov role oty1 oty2
   | Just (cv1, ty1) <- splitForAllTy_co_maybe oty1
   , Just (cv2, ty2) <- splitForAllTy_co_maybe oty2
       -- NB: prov isn't interesting here either
-  = let k1    = varType tv1
-        k2    = varType tv2
+  = let k1    = varType cv1
+        k2    = varType cv2
         r'    = coVarRole cv1
         eta   = mkUnivCo prov' Nominal k1 k2
         eta_d = downgradeRole r' Nominal eta
@@ -551,7 +534,7 @@ opt_univ env sym prov role oty1 oty2
                 (mkNthCo r' 3 eta_d)
         ty2'  = substTyWithCoVars [cv2] [n_co] ty2
 
-        (env', tv1', eta') = optForAllCoBndr env sym cv1 eta
+        (env', cv1', eta') = optForAllCoBndr env sym cv1 eta
     in
     mkForAllCo cv1' eta' (opt_univ env' sym prov' role ty1 ty2')
 
@@ -735,9 +718,9 @@ opt_trans_rule is co1 co2
     --   n2 = nth 3 eta1
     --   nco = \/ cv1 : (eta1;eta2). (r1; r2[cv2 |-> (sym n1);cv1;n2])
     = fireTransRule "EtaAllTy_co" co1 co2 $
-      mkForAllCo tv1 (opt_trans is eta1 eta2) (opt_trans is' r1 r2')
+      mkForAllCo cv1 (opt_trans is eta1 eta2) (opt_trans is' r1 r2')
     where
-      is'  = is `extendInScopeSet` tv1
+      is'  = is `extendInScopeSet` cv1
       role = coVarRole cv1
       n1   = mkNthCo role 2 (downgradeRole role Nominal eta1)
       n2   = mkNthCo role 3 (downgradeRole role Nominal eta1)
@@ -1135,8 +1118,8 @@ etaForAllCo_co_maybe co
         r_co     = (mkSymCo (mkNthCo r 2 kind_co')) `mkTransCo`
                    l_co `mkTransCo`
                    (mkNthCo r 3 kind_co')
-    Just ( cv1, kind_co
-         , mkInstCo co (mkProofIrrelCo Nominal kind_co l_co r_co))
+    in Just ( cv1, kind_co
+            , mkInstCo co (mkProofIrrelCo Nominal kind_co l_co r_co))
 
   | otherwise
   = Nothing
