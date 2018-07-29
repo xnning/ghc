@@ -1038,9 +1038,12 @@ mkEtaWW orig_n orig_expr in_scope orig_ty
        = (getTCvInScope subst, reverse eis)
 
        | Just (tv,ty') <- splitForAllTy_maybe ty
-       , let (subst', tv') = Type.substTyVarBndr subst tv
+       , let (subst', tv') = Type.substVarBndr subst tv
+       = let ((n_subst, n_tv), n_n)
+               | isTyVar tv = ((subst', tv'), n)
+               | otherwise  = (freshEtaId n subst' (varType tv'), n-1)
            -- Avoid free vars of the original expression
-       = go n subst' ty' (EtaVar tv' : eis)
+         in go n_n n_subst ty' (EtaVar n_tv : eis)
 
        | Just (arg_ty, res_ty) <- splitFunTy_maybe ty
        , not (isTypeLevPoly arg_ty)
@@ -1123,8 +1126,8 @@ etaBodyForJoinPoint need_args body
       = (reverse rev_bs, e)
     go n ty subst rev_bs e
       | Just (tv, res_ty) <- splitForAllTy_maybe ty
-      , let (subst', tv') = Type.substTyVarBndr subst tv
-      = go (n-1) res_ty subst' (tv' : rev_bs) (e `App` Type (mkTyVarTy tv'))
+      , let (subst', tv') = Type.substVarBndr subst tv
+      = go (n-1) res_ty subst' (tv' : rev_bs) (e `App` varToCoreExpr tv')
       | Just (arg_ty, res_ty) <- splitFunTy_maybe ty
       , let (subst', b) = freshEtaId n subst arg_ty
       = go (n-1) res_ty subst' (b : rev_bs) (e `App` Var b)
