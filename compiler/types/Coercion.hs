@@ -54,6 +54,7 @@ module Coercion (
         splitAppCo_maybe,
         splitFunCo_maybe,
         splitForAllCo_maybe,
+        splitForAllCo_ty_maybe, splitForAllCo_co_maybe,
 
         nthRole, tyConRolesX, tyConRolesRepresentational, setNominalRole_maybe,
 
@@ -404,6 +405,16 @@ splitFunCo_maybe _ = Nothing
 splitForAllCo_maybe :: Coercion -> Maybe (TyCoVar, Coercion, Coercion)
 splitForAllCo_maybe (ForAllCo tv k_co co) = Just (tv, k_co, co)
 splitForAllCo_maybe _                     = Nothing
+
+splitForAllCo_ty_maybe :: Coercion -> Maybe (TyVar, Coercion, Coercion)
+splitForAllCo_ty_maybe (ForAllCo tv k_co co)
+  | isTyVar tv = Just (tv, k_co, co)
+splitForAllCo_ty_maybe _ = Nothing
+
+splitForAllCo_co_maybe :: Coercion -> Maybe (CoVar, Coercion, Coercion)
+splitForAllCo_co_maybe (ForAllCo cv k_co co)
+  | isCoVar cv = Just (cv, k_co, co)
+splitForAllCo_co_maybe _ = Nothing
 
 -------------------------------------------------------
 -- and some coercion kind stuff
@@ -891,8 +902,9 @@ mkNthCo r n co
     go r 0 co
       | Just (ty, _) <- isReflCo_maybe co
       , Just (tv, _) <- splitForAllTy_maybe ty
-      = ASSERT( r == Nominal )
-        mkReflCo r (tyVarKind tv)
+      = -- works for both tyvar and covar
+        ASSERT( r == Nominal )
+        mkNomReflCo (varType tv)
 
     go r n co
       | Just (ty, r0) <- isReflCo_maybe co
@@ -914,6 +926,8 @@ mkNthCo r n co
         kind_co
       -- If co :: (forall a1:k1. t1) ~ (forall a2:k2. t2)
       -- then (nth 0 co :: k1 ~N k2)
+      -- If co :: (forall a1:t1 ~ t2. t1) ~ (forall a2:t3 ~ t4. t2)
+      -- then (nth 0 co :: (t1 ~ t2) ~N (t3 ~ t4))
 
     go r n co@(FunCo r0 arg res)
       -- See Note [Function coercions]
@@ -1011,7 +1025,8 @@ mkLRCo lr co
 mkInstCo :: Coercion -> Coercion -> Coercion
 mkInstCo (ForAllCo tv _kind_co body_co) co
   | Just (arg, _) <- isReflCo_maybe co
-  = substCoWithUnchecked [tv] [arg] body_co
+      -- works for both tyvar and covar
+  = substCoUnchecked (zipTCvSubst [tv] [arg]) body_co
 mkInstCo co arg = InstCo co arg
 
 -- | Given @ty :: k1@, @co :: k1 ~ k2@,
@@ -1032,7 +1047,7 @@ mkGReflLeftCo r ty co
     -- instead of @isReflCo@
   | otherwise    = mkSymCo $ GRefl r ty (MCo co)
 
--- | Given @ty :: k2@, @co :: k1 ~ k2@, @co2:: ty ~ ty'@,
+-- | Given @ty :: k1@, @co :: k1 ~ k2@, @co2:: ty ~ ty'@,
 -- produces @co' :: (ty |> co) ~r ty'
 -- It is not only a utility function, but it saves allocation when co
 -- is a GRefl coercion.
@@ -1041,7 +1056,7 @@ mkCoherenceLeftCo r ty co co2
   | isGReflCo co = co2
   | otherwise = (mkSymCo $ GRefl r ty (MCo co)) `mkTransCo` co2
 
--- | Given @ty :: k2@, @co :: k1 ~ k2@, @co2:: ty' ~ ty@,
+-- | Given @ty :: k1@, @co :: k1 ~ k2@, @co2:: ty' ~ ty@,
 -- produces @co' :: ty' ~r (ty |> co)
 -- It is not only a utility function, but it saves allocation when co
 -- is a GRefl coercion.
@@ -1310,7 +1325,10 @@ promoteCoercion co = case co of
       -> mkKindCo co
 
     InstCo g _
+      | isForAllTy_ty ty1
       -> promoteCoercion g
+      | otherwise
+      -> mkKindCo co
 
     KindCo _
       -> ASSERT( False )
@@ -1640,22 +1658,21 @@ mkLiftingContext pairs
 mkSubstLiftingContext :: TCvSubst -> LiftingContext
 mkSubstLiftingContext subst = LC subst emptyVarEnv
 
--- | Extend a lifting context with a new /type/ mapping.
+-- | Extend a lifting context with a new mapping.
 extendLiftingContext :: LiftingContext  -- ^ original LC
-                     -> TyVar           -- ^ new variable to map...
+                     -> TyCoVar         -- ^ new variable to map...
                      -> Coercion        -- ^ ...to this lifted version
                      -> LiftingContext
     -- mappings to reflexive coercions are just substitutions
 extendLiftingContext (LC subst env) tv arg
   | Just (ty, _) <- isReflCo_maybe arg
-  = LC (extendTvSubst subst tv ty) env
+  = LC (extendTCvSubst subst tv ty) env
   | otherwise
-  = ASSERT( isTyVar tv )
-    LC subst (extendVarEnv env tv arg)
+  = LC subst (extendVarEnv env tv arg)
 
 -- | Extend a lifting context with a new mapping, and extend the in-scope set
 extendLiftingContextAndInScope :: LiftingContext  -- ^ Original LC
-                               -> TyVar           -- ^ new variable to map...
+                               -> TyCoVar         -- ^ new variable to map...
                                -> Coercion        -- ^ to this coercion
                                -> LiftingContext
 extendLiftingContextAndInScope (LC subst env) tv co
@@ -1686,7 +1703,7 @@ extendLiftingContextEx lc@(LC subst env) ((v,ty):rest)
   = -- co      :: s1 ~r s2
     -- lift_s1 :: s1 ~r s1'
     -- lift_s2 :: s2 ~r s2'
-    -- kco     :: (s1 ~r s2) ~R (s1' ~ s2')
+    -- kco     :: (s1 ~r s2) ~N (s1' ~r s2')
     ASSERT( isCoVar v )
     let (_, _, s1, s2, r) = coVarKindsTypesRole v
         lift_s1 = ty_co_subst lc r s1
