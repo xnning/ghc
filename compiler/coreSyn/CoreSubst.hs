@@ -47,7 +47,7 @@ import qualified Coercion
 
         -- We are defining local versions
 import Type     hiding ( substTy, extendTvSubst, extendCvSubst, extendTvSubstList
-                       , isInScope, substTyVarBndr, cloneTyVarBndr )
+                       , isInScope, cloneTyVarBndr )
 import Coercion hiding ( substCo, substCoVarBndr )
 
 import PrelNames
