@@ -101,8 +101,8 @@ buildDataCon :: FamInstEnvs
                 -- See Note [Bangs on imported data constructors] in MkId
            -> [FieldLabel]             -- Field labels
            -> [TyVar]                  -- Universals
-           -> [TyVar]                  -- Existentials
-           -> [TyVarBinder]            -- User-written 'TyVarBinder's
+           -> [TyCoVar]                -- Existentials
+           -> [TyCoVarBinder]          -- User-written 'TyVarBinder's
            -> [EqSpec]                 -- Equality spec
            -> ThetaType                -- Does not include the "stupid theta"
                                        -- or the GADT equalities
@@ -166,8 +166,8 @@ mkDataConStupidTheta tycon arg_tys univ_tvs
 ------------------------------------------------------
 buildPatSyn :: Name -> Bool
             -> (Id,Bool) -> Maybe (Id, Bool)
-            -> ([TyVarBinder], ThetaType) -- ^ Univ and req
-            -> ([TyVarBinder], ThetaType) -- ^ Ex and prov
+            -> ([TyCoVarBinder], ThetaType) -- ^ Univ and req
+            -> ([TyCoVarBinder], ThetaType) -- ^ Ex and prov
             -> [Type]               -- ^ Argument types
             -> Type                 -- ^ Result type
             -> [FieldLabel]         -- ^ Field labels for
@@ -201,8 +201,8 @@ buildPatSyn src_name declared_infix matcher@(matcher_id,_) builder
     (ex_tvs1, prov_theta1, cont_tau)   = tcSplitSigmaTy cont_sigma
     (arg_tys1, _) = (tcSplitFunTys cont_tau)
     twiddle = char '~'
-    subst = zipTvSubst (univ_tvs1 ++ ex_tvs1)
-                       (mkTyVarTys (binderVars (univ_tvs ++ ex_tvs)))
+    subst = zipTCvSubst (univ_tvs1 ++ ex_tvs1)
+                        (mkTyCoVarTys (binderVars (univ_tvs ++ ex_tvs)))
 
     -- For a nullary pattern synonym we add a single void argument to the
     -- matcher to preserve laziness in the case of unlifted types.
@@ -245,7 +245,7 @@ buildClass tycon_name binders roles fds Nothing
     do  { traceIf (text "buildClass")
 
         ; tc_rep_name  <- newTyConRepName tycon_name
-        ; let univ_bndrs = tyConTyVarBinders binders
+        ; let univ_bndrs = tyConTyCoVarBinders binders
               univ_tvs   = binderVars univ_bndrs
               tycon = mkClassTyCon tycon_name binders roles
                                    AbstractTyCon rec_clas tc_rep_name
@@ -294,7 +294,7 @@ buildClass tycon_name binders roles fds
               op_names   = [op | (op,_,_) <- sig_stuff]
               arg_tys    = sc_theta ++ op_tys
               rec_tycon  = classTyCon rec_clas
-              univ_bndrs = tyConTyVarBinders binders
+              univ_bndrs = tyConTyCoVarBinders binders
               univ_tvs   = binderVars univ_bndrs
 
         ; rep_nm   <- newTyConRepName datacon_name
