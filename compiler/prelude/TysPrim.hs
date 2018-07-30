@@ -96,7 +96,7 @@ import {-# SOURCE #-} TysWiredIn
   , doubleElemRepDataConTy
   , mkPromotedListTy )
 
-import Var              ( TyVar, TyVarBndr(TvBndr), mkTyVar )
+import Var              ( TyVar, VarBndr(Bndr), mkTyVar )
 import Name
 import TyCon
 import SrcLoc
@@ -351,8 +351,8 @@ funTyConName = mkPrimTyConName (fsLit "->") funTyConKey funTyCon
 funTyCon :: TyCon
 funTyCon = mkFunTyCon funTyConName tc_bndrs tc_rep_nm
   where
-    tc_bndrs = [ TvBndr runtimeRep1TyVar (NamedTCB Inferred)
-               , TvBndr runtimeRep2TyVar (NamedTCB Inferred)
+    tc_bndrs = [ Bndr runtimeRep1TyVar (NamedTCB Inferred)
+               , Bndr runtimeRep2TyVar (NamedTCB Inferred)
                ]
                ++ mkTemplateAnonTyConBinders [ tYPE runtimeRep1Ty
                                              , tYPE runtimeRep2Ty
