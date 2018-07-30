@@ -1624,7 +1624,7 @@ type LiftCoEnv = VarEnv Coercion
 
 -- like liftCoSubstWith, but allows for existentially-bound types as well
 liftCoSubstWithEx :: Role          -- desired role for output coercion
-                  -> [TyCoVar]     -- universally quantified tycovars
+                  -> [TyVar]       -- universally quantified tyvars
                   -> [Coercion]    -- coercions to substitute for those
                   -> [TyCoVar]     -- existentially quantified tycovars
                   -> [Type]        -- types and coercions to be bound to ex vars

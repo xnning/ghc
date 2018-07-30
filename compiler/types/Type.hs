@@ -175,6 +175,7 @@ module Type (
         extendTCvSubst, extendCvSubst,
         extendTvSubst, extendTvSubstBinderAndInScope,
         extendTvSubstList, extendTvSubstAndInScope,
+        extendTCvSubstList,
         extendTvSubstWithClone,
         extendTCvSubstWithClone,
         isInScope, composeTCvSubstEnv, composeTCvSubst, zipTyEnv, zipCoEnv,

@@ -1140,7 +1140,7 @@ mkFCallId dflags uniq fcall ty
            `setLevityInfoWithType` ty
 
     (bndrs, _) = tcSplitPiTys ty
-    arity      = count isAnonTyBinder bndrs
+    arity      = count isAnonTyCoBinder bndrs
     strict_sig = mkClosedStrictSig (replicate arity topDmd) topRes
     -- the call does not claim to be strict in its arguments, since they
     -- may be lifted (foreign import prim) and the called code doesn't

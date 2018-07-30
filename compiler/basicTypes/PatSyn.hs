@@ -80,7 +80,7 @@ data PatSyn
 
         -- Result type
         psResultTy   :: Type,  -- Mentions only psUnivTyVars
-                                -- See Note [Pattern synonym result type]
+                               -- See Note [Pattern synonym result type]
 
         -- See Note [Matchers and builders for pattern synonyms]
         psMatcher     :: (Id, Bool),
