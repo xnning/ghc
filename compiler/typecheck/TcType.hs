@@ -136,8 +136,8 @@ module TcType (
   mkForAllTy, mkForAllTys, mkInvForAllTys, mkSpecForAllTys, mkInvForAllTy,
   mkFunTy, mkFunTys,
   mkTyConApp, mkAppTy, mkAppTys,
-  mkTyConTy, mkTyVarTy,
-  mkTyVarTys,
+  mkTyConTy, mkTyVarTy, mkTyVarTys,
+  mkTyCoVarTy, mkTyCoVarTys,
 
   isClassPred, isEqPred, isNomEqPred, isIPPred,
   mkClassPred,
