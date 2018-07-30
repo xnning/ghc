@@ -21,7 +21,7 @@ module Type (
 
         -- ** Constructing and deconstructing types
         mkTyVarTy, mkTyVarTys, getTyVar, getTyVar_maybe, repGetTyVar_maybe,
-        getCastedTyVar_maybe, tyVarKind,
+        getCastedTyVar_maybe, tyVarKind, varType,
 
         mkAppTy, mkAppTys, splitAppTy, splitAppTys, repSplitAppTys,
         splitAppTy_maybe, repSplitAppTy_maybe, tcRepSplitAppTy_maybe,
@@ -42,6 +42,7 @@ module Type (
         mkInvForAllTy_unchecked,
         splitForAllTys, splitForAllVarBndrs,
         splitForAllTy_maybe, splitForAllTy,
+        splitForAllTy_ty_maybe, splitForAllTy_co_maybe,
         splitPiTy_maybe, splitPiTy, splitPiTys,
         mkPiTy, mkPiTys, mkTyConBindersPreferAnon,
         mkLamType, mkLamTypes,
@@ -106,6 +107,7 @@ module Type (
         -- ** Predicates on types
         isTyVarTy, isFunTy, isDictTy, isPredTy, isCoercionTy,
         isCoercionTy_maybe, isCoercionType, isForAllTy,
+        isForAllTy_ty, isForAllTy_co,
         isPiTy, isTauTy, isFamFreeTy,
 
         isValidJoinPointType,
@@ -1425,6 +1427,18 @@ isForAllTy ty | Just ty' <- coreView ty = isForAllTy ty'
 isForAllTy (ForAllTy {}) = True
 isForAllTy _             = False
 
+-- | Like `isForAllTy`, but returns True only if it is a tyvar binder
+isForAllTy_ty :: Type -> Bool
+isForAllTy_ty ty | Just ty' <- coreView ty = isForAllTy_ty ty'
+isForAllTy_ty (ForAllTy (Bndr tv _) _) | isTyVar tv = True
+isForAllTy_ty _             = False
+
+-- | Like `isForAllTy`, but returns True only if it is a covar binder
+isForAllTy_co :: Type -> Bool
+isForAllTy_co ty | Just ty' <- coreView ty = isForAllTy_co ty'
+isForAllTy_co (ForAllTy (Bndr tv _) _) | isCoVar tv = True
+isForAllTy_co _             = False
+
 -- | Is this a function or forall?
 isPiTy :: Type -> Bool
 isPiTy ty | Just ty' <- coreView ty = isForAllTy ty'
@@ -1453,6 +1467,22 @@ splitForAllTy_maybe ty = go ty
   where
     go ty | Just ty' <- coreView ty = go ty'
     go (ForAllTy (Bndr tv _) ty)    = Just (tv, ty)
+    go _                            = Nothing
+
+-- | Like splitForAllTy_maybe, but only returns Just if it is a tyvar binder.
+splitForAllTy_ty_maybe :: Type -> Maybe (TyCoVar, Type)
+splitForAllTy_ty_maybe ty = go ty
+  where
+    go ty | Just ty' <- coreView ty = go ty'
+    go (ForAllTy (Bndr tv _) ty) | isTyVar tv = Just (tv, ty)
+    go _                            = Nothing
+
+-- | Like splitForAllTy_maybe, but only returns Just if it is a covar binder.
+splitForAllTy_co_maybe :: Type -> Maybe (TyCoVar, Type)
+splitForAllTy_co_maybe ty = go ty
+  where
+    go ty | Just ty' <- coreView ty = go ty'
+    go (ForAllTy (Bndr tv _) ty) | isCoVar tv = Just (tv, ty)
     go _                            = Nothing
 
 -- | Attempts to take a forall type apart; works with proper foralls and
