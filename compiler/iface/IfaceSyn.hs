@@ -243,7 +243,7 @@ data IfaceConDecl
         -- but it's not so easy for the original TyCon/DataCon
         -- So this guarantee holds for IfaceConDecl, but *not* for DataCon
 
-        ifConExTCvs   :: [IfaceBndr],  -- Existential tyvars
+        ifConExTCvs   :: [IfaceBndr],  -- Existential ty/covars
         ifConUserTCvBinders :: [IfaceForAllBndr],
           -- The ty/covars, in the order the user wrote them
           -- INVARIANT: the set of ty/covars in ifConUserTCvBinders is exactly
