@@ -8,7 +8,7 @@ module ToIface
     , toIfaceIdBndr
     , toIfaceBndr
     , toIfaceForAllBndr
-    , toIfaceTyVarBinders
+    , toIfaceTyCoVarBinders
     , toIfaceTyVar
       -- * Types
     , toIfaceType, toIfaceTypeX
