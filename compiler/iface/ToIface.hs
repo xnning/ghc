@@ -85,11 +85,11 @@ toIfaceTvBndrs :: [TyVar] -> [IfaceTvBndr]
 toIfaceTvBndrs = map toIfaceTvBndr
 
 toIfaceIdBndr :: Id -> IfaceIdBndr
-toIfaceIdBndr id      = toIfaceIdBndrX emptyVarSet
+toIfaceIdBndr = toIfaceIdBndrX emptyVarSet
 
 toIfaceIdBndrX :: VarSet -> CoVar -> IfaceIdBndr
 toIfaceIdBndrX fr covar = ( occNameFS (getOccName covar)
-                          , toIfaceTypeX fr (varType tyvar)
+                          , toIfaceTypeX fr (varType covar)
                           )
 
 toIfaceBndr :: Var -> IfaceBndr
@@ -353,7 +353,7 @@ patSynToIfaceDecl ps
   where
     (_univ_tvs, req_theta, _ex_tvs, prov_theta, args, rhs_ty) = patSynSig ps
     univ_bndrs = patSynUnivTyVarBinders ps
-    ex_bndrs   = patSynExTyVarBinders ps
+    ex_bndrs   = patSynExTyCoVarBinders ps
     (env1, univ_bndrs') = tidyTyCoVarBinders emptyTidyEnv univ_bndrs
     (env2, ex_bndrs')   = tidyTyCoVarBinders env1 ex_bndrs
     to_if_pr (id, needs_dummy) = (idName id, needs_dummy)
