@@ -91,7 +91,7 @@ module TyCoRep (
         TCvSubst(..), TvSubstEnv, CvSubstEnv,
         emptyTvSubstEnv, emptyCvSubstEnv, composeTCvSubstEnv, composeTCvSubst,
         emptyTCvSubst, mkEmptyTCvSubst, isEmptyTCvSubst,
-        mkTCvSubst, mkTvSubst,
+        mkTCvSubst, mkTvSubst, mkCvSubst,
         getTvSubstEnv,
         getCvSubstEnv, getTCvInScope, getTCvSubstRangeFVs,
         isInScope, notElemTCvSubst,
@@ -2042,6 +2042,10 @@ mkTCvSubst in_scope (tenv, cenv) = TCvSubst in_scope tenv cenv
 mkTvSubst :: InScopeSet -> TvSubstEnv -> TCvSubst
 -- ^ Make a TCvSubst with specified tyvar subst and empty covar subst
 mkTvSubst in_scope tenv = TCvSubst in_scope tenv emptyCvSubstEnv
+
+mkCvSubst :: InScopeSet -> CvSubstEnv -> TCvSubst
+-- ^ Make a TCvSubst with specified covar subst and empty tyvar subst
+mkCvSubst in_scope cenv = TCvSubst in_scope emptyTvSubstEnv cenv
 
 getTvSubstEnv :: TCvSubst -> TvSubstEnv
 getTvSubstEnv (TCvSubst _ env _) = env
