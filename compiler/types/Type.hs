@@ -207,7 +207,7 @@ module Type (
         tidyOpenKind,
         tidyVarBndr, tidyVarBndrs, tidyFreeTyCoVars,
         tidyOpenTyCoVar, tidyOpenTyCoVars,
-        tidyTyVarOcc,
+        tidyTyCoVarOcc,
         tidyTopType,
         tidyKind,
         tidyTyCoVarBinder, tidyTyCoVarBinders
