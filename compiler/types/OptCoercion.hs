@@ -15,7 +15,7 @@ import GhcPrelude
 import DynFlags
 import TyCoRep
 import Coercion
-import Type hiding( substTyVarBndr, substTy )
+import Type hiding( substTy )
 import TcType       ( exactTyCoVarsOfType )
 import TyCon
 import CoAxiom
@@ -389,10 +389,9 @@ opt_co4 env sym rep r (InstCo co1 arg)
         n2 = mkNthCo r2 3 kind_co''
         CoercionTy h1 = t1
         CoercionTy h2 = t2
-        Pair s1 s2    = coercionKind h1
         l_co = h1
         r_co = n1 `mkTransCo` h2 `mkTransCo` (mkSymCo n2)
-        k_co = Refl (mkTyConApp (equalityTyCon r2) [s1, s2])
+        k_co = Refl (coercionType h1)
         new_co = mkProofIrrelCo Nominal k_co l_co r_co
     in
     opt_co4_wrap (extendLiftingContext env cv new_co) sym rep r co_body
@@ -414,10 +413,9 @@ opt_co4 env sym rep r (InstCo co1 arg)
         n2 = mkNthCo r2 3 kind_co''
         CoercionTy h1 = t1
         CoercionTy h2 = t2
-        Pair s1 s2    = coercionKind h1
         l_co = h1
         r_co = n1 `mkTransCo` h2 `mkTransCo` (mkSymCo n2)
-        k_co = Refl (mkTyConApp (equalityTyCon r2) [s1, s2])
+        k_co = Refl (coercionType h1)
         new_co = mkProofIrrelCo Nominal k_co l_co r_co
     in
     opt_co4_wrap (extendLiftingContext (zapLiftingContext env) cv' new_co)
