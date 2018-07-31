@@ -1692,7 +1692,7 @@ tidySigSkol :: TidyEnv -> UserTypeCtxt
 tidySigSkol env cx ty tv_prs
   = SigSkol cx (tidy_ty env ty) tv_prs'
   where
-    tv_prs' = mapSnd (tidyTyVarOcc env) tv_prs
+    tv_prs' = mapSnd (tidyTyCoVarOcc env) tv_prs
     inst_env = mkNameEnv tv_prs'
 
     tidy_ty env (ForAllTy (Bndr tv vis) ty)

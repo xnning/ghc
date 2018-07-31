@@ -132,7 +132,7 @@ module TyCoRep (
         tidyOpenKind,
         tidyVarBndr, tidyVarBndrs, tidyFreeTyCoVars,
         tidyOpenTyCoVar, tidyOpenTyCoVars,
-        tidyTyVarOcc,
+        tidyTyCoVarOcc,
         tidyTopType,
         tidyKind,
         tidyCo, tidyCos,
@@ -3131,10 +3131,10 @@ tidyOpenTyCoVar env@(_, subst) tyvar
           in tidyVarBndr env' tyvar  -- Treat it as a binder
 
 ---------------
-tidyTyVarOcc :: TidyEnv -> TyVar -> TyVar
-tidyTyVarOcc env@(_, subst) tv
+tidyTyCoVarOcc :: TidyEnv -> TyCoVar -> TyCoVar
+tidyTyCoVarOcc env@(_, subst) tv
   = case lookupVarEnv subst tv of
-        Nothing  -> updateTyVarKind (tidyType env) tv
+        Nothing  -> updateVarType (tidyType env) tv
         Just tv' -> tv'
 
 ---------------
@@ -3144,7 +3144,7 @@ tidyTypes env tys = map (tidyType env) tys
 ---------------
 tidyType :: TidyEnv -> Type -> Type
 tidyType _   (LitTy n)            = LitTy n
-tidyType env (TyVarTy tv)         = TyVarTy (tidyTyVarOcc env tv)
+tidyType env (TyVarTy tv)         = TyVarTy (tidyTyCoVarOcc env tv)
 tidyType env (TyConApp tycon tys) = let args = tidyTypes env tys
                                     in args `seqList` TyConApp tycon args
 tidyType env (AppTy fun arg)      = (AppTy $! (tidyType env fun)) $! (tidyType env arg)
