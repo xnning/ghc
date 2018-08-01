@@ -86,17 +86,17 @@ an ambient substitution, which is why a LiftingContext stores a TCvSubst.
 Now consider we have (InstCo (ForAllCo cv h g) g2), we want to optimise.
 
 h : (t1 ~r t2) ~N (t3 ~r t4)
-cv : t1 ~ t2 |- g : t1' ~r2 t2'
+cv : t1 ~r t2 |- g : t1' ~r2 t2'
 n1 = nth r 2 (downgradeRole r N h) :: t1 ~r t3
 n2 = nth r 3 (downgradeRole r N h) :: t2 ~r t4
 ------------------------------------------------
 ForAllCo cv h g : (all cv:t1 ~r t2. t1') ~r2
                   (all cv:t3 ~r t4. t2'[cv |-> n1 ; cv ; sym n2])
 
-g1 : (all cv:t1 ~ t2. t1') ~ (all cv: t3 ~ t4. t2')
-g2 : h1 ~ h2
-h1 : t1 ~ t2
-h2 : t3 ~ t4
+g1 : (all cv:t1 ~r t2. t1') ~ (all cv: t3 ~r t4. t2')
+g2 : h1 ~N h2
+h1 : t1 ~r t2
+h2 : t3 ~r t4
 ------------------------------------------------
 InstCo g1 g2 : t1'[cv |-> h1] ~ t2'[cv |-> h2]
 
@@ -105,7 +105,7 @@ We thus want some coercion proving this:
   t1'[cv |-> h1] ~ t2'[cv |-> n1 ; h2; sym n2]
 
 So we substitute the coercion variable c for the coercion
-(h1 ~ n1; h2; sym n2) in g.
+(h1 ~N (n1; h2; sym n2)) in g.
 -}
 
 optCoercion :: DynFlags -> TCvSubst -> Coercion -> NormalCo
@@ -720,8 +720,9 @@ opt_trans_rule is co1 co2
     where
       is'  = is `extendInScopeSet` cv1
       role = coVarRole cv1
-      n1   = mkNthCo role 2 (downgradeRole role Nominal eta1)
-      n2   = mkNthCo role 3 (downgradeRole role Nominal eta1)
+      eta1' = downgradeRole role Nominal eta1
+      n1   = mkNthCo role 2 eta1'
+      n2   = mkNthCo role 3 eta1'
       r2'  = substCo (zipCvSubst [cv2] [(mkSymCo n1) `mkTransCo`
                                         (mkCoVarCo cv1) `mkTransCo` n2])
                     r2
