@@ -2062,16 +2062,25 @@ coercionKind co =
       | isCoVar cv1
       = mkInvForAllTy <$> Pair cv1 cv2 <*> go_forall subst' co
       where
-        Pair (CoercionTy k1) (CoercionTy k2) = go k_co
-        Pair _ k1' = go k1
-        Pair _ k2' = go k2
+        Pair _ k2 = go k_co
+        r         = coVarRole cv1
+        eta1      = mkNthCo r 2 (downgradeRole r Nominal k_co)
+        eta2      = mkNthCo r 3 (downgradeRole r Nominal k_co)
 
-        r       = coercionRole co
-        cv2     = setVarType cv1 (substTy subst $ mkCoercionType r k1' k2')
-        k_subst = k1 `mkTransCo` (mkCoVarCo cv2) `mkTransCo` k2
+        -- k_co :: (t1 ~ t2) ~ (s1 ~ s2)
+        -- k1    = t1 ~ t2
+        -- k2    = s1 ~ s2
+        -- cv1  :: t1 ~ t2
+        -- cv2  :: s1 ~ s2
+        -- eta1 :: t1 ~ s1
+        -- eta2 :: t2 ~ s2
+        -- n_subst  = (eta1 ; cv2 ; sym eta2) :: t1 ~ t2
+
+        cv2     = setVarType cv1 (substTy subst $ k2)
+        n_subst = eta1 `mkTransCo` (mkCoVarCo cv2) `mkTransCo` (mkSymCo eta2)
         subst'  | isReflCo k_co = extendTCvInScope subst cv1
                 | otherwise     = extendCvSubst (extendTCvInScope subst cv2)
-                                                cv1 k_subst
+                                                cv1 n_subst
 
     go_forall subst other_co
       = substTy subst `pLiftSnd` go other_co
@@ -2202,17 +2211,19 @@ buildCoercion orig_ty1 orig_ty2 = go orig_ty1 orig_ty2
             -- s1 = t1 ~ t2
             -- s2 = t3 ~ t4
             -- kind_co :: (t1 ~ t2) ~n (t3 ~ t4)
-            -- eta1 :: t1 ~n t3
-            -- eta2 :: t2 ~n t4
+            -- eta1 :: t1 ~r t3
+            -- eta2 :: t2 ~r t4
 
-            eta1 = mkNthCo Nominal 2 kind_co
-            eta2 = mkNthCo Nominal 3 kind_co
+            r    = coVarRole cv1
+            kind_co' = downgradeRole r Nominal kind_co
+            eta1 = mkNthCo r 2 kind_co'
+            eta2 = mkNthCo r 3 kind_co'
 
             subst = mkEmptyTCvSubst $ mkInScopeSet $
                       tyCoVarsOfType ty2 `unionVarSet` tyCoVarsOfCo kind_co
             ty2'  = substTy
                       (extendCvSubst subst cv2 $
-                         mkSymCo eta1 `mkTransCo` mkCoVarCo cv1 `mkTransCo` eta2)
+                         (mkSymCo eta1) `mkTransCo` (mkCoVarCo cv1) `mkTransCo` eta2)
                       ty2
 
     go ty1@(LitTy lit1) _lit2
