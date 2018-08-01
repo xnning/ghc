@@ -120,7 +120,7 @@ module TyCoRep (
         cloneTyVarBndr, cloneTyVarBndrs,
         substVarBndr, substVarBndrs,
         substCoVarBndr,
-        substTyVar, substTyVars,
+        substTyVar, substTyVars, substTyCoVars,
         substForAllCoBndr,
         substVarBndrUsing, substForAllCoBndrUsing,
         checkValidSubst, isValidTCvSubst,
@@ -2495,6 +2495,14 @@ substTyVar (TCvSubst _ tenv _) tv
 
 substTyVars :: TCvSubst -> [TyVar] -> [Type]
 substTyVars subst = map $ substTyVar subst
+
+substTyCoVars :: TCvSubst -> [TyCoVar] -> [Type]
+substTyCoVars subst = map $ substTyCoVar subst
+
+substTyCoVar :: TCvSubst -> TyCoVar -> Type
+substTyCoVar subst tv
+  | isTyVar tv = substTyVar subst tv
+  | otherwise = CoercionTy $ substCoVar subst tv
 
 lookupTyVar :: TCvSubst -> TyVar  -> Maybe Type
         -- See Note [Extending the TCvSubst]
