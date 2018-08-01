@@ -758,7 +758,7 @@ canForAll ev pend_sc
            _  -> pprPanic "canForAll" (ppr new_ev)
     } }
 
-solveForAll :: CtEvidence -> [TyVarBinder] -> TcThetaType -> PredType -> Bool
+solveForAll :: CtEvidence -> [TyCoVarBinder] -> TcThetaType -> PredType -> Bool
             -> TcS (StopOrContinue Ct)
 solveForAll ev tv_bndrs theta pred pend_sc
   | CtWanted { ctev_dest = dest } <- ev
@@ -995,8 +995,8 @@ can_eq_nc_forall :: CtEvidence -> EqRel
 can_eq_nc_forall ev eq_rel s1 s2
  | CtWanted { ctev_loc = loc, ctev_dest = orig_dest } <- ev
  = do { let free_tvs       = tyCoVarsOfTypes [s1,s2]
-            (bndrs1, phi1) = tcSplitForAllTyVarBndrs s1
-            (bndrs2, phi2) = tcSplitForAllTyVarBndrs s2
+            (bndrs1, phi1) = tcSplitForAllVarBndrs s1
+            (bndrs2, phi2) = tcSplitForAllVarBndrs s2
       ; if not (equalLength bndrs1 bndrs2)
         then do { traceTcS "Forall failure" $
                      vcat [ ppr s1, ppr s2, ppr bndrs1, ppr bndrs2
@@ -1013,7 +1013,7 @@ can_eq_nc_forall ev eq_rel s1 s2
             phi1' = substTy subst1 phi1
 
             -- Unify the kinds, extend the substitution
-            go :: [TcTyVar] -> TCvSubst -> [TyVarBinder]
+            go :: [TcTyVar] -> TCvSubst -> [TyCoVarBinder]
                -> TcS (TcCoercion, Cts)
             go (skol_tv:skol_tvs) subst (bndr2:bndrs2)
               = do { let tv2 = binderVar bndr2

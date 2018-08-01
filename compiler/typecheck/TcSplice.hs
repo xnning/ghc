@@ -1480,8 +1480,8 @@ reifyDataCon isGadtDataCon tys dc
              (ex_tvs, theta, arg_tys)
                  = dataConInstSig dc tys
              -- used for GADTs data constructors
-             g_user_tvs' = dataConUserTyVars dc
-             (g_univ_tvs, _, g_eq_spec, g_theta', g_arg_tys', g_res_ty')
+             g_user_tvs' = dataConUserTyCoVars dc
+             (g_univ_tvs, _, _, g_eq_spec, g_theta', g_arg_tys', g_res_ty')
                  = dataConFullSig dc
              (srcUnpks, srcStricts)
                  = mapAndUnzip reifySourceBang (dataConSrcBangs dc)
@@ -1496,7 +1496,7 @@ reifyDataCon isGadtDataCon tys dc
               -- See Note [Freshen reified GADT constructors' universal tyvars]
            <- freshenTyVarBndrs $
               filterOut (`elemVarSet` eq_spec_tvs) g_univ_tvs
-       ; let (tvb_subst, g_user_tvs) = substTyVarBndrs univ_subst g_user_tvs'
+       ; let (tvb_subst, g_user_tvs) = substVarBndrs univ_subst g_user_tvs'
              g_theta   = substTys tvb_subst g_theta'
              g_arg_tys = substTys tvb_subst g_arg_tys'
              g_res_ty  = substTy  tvb_subst g_res_ty'

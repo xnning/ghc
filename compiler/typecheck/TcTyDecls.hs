@@ -579,7 +579,7 @@ irDataCon datacon
           (map tyVarKind ex_tvs ++ eqSpecPreds eq_spec ++ theta ++ arg_tys)
       -- See Note [Role-checking data constructor arguments]
   where
-    (univ_tvs, ex_tvs, eq_spec, theta, arg_tys, _res_ty)
+    (univ_tvs, ex_tvs, _, eq_spec, theta, arg_tys, _res_ty)
       = dataConFullSig datacon
 
 irType :: VarSet -> Type -> RoleM ()
@@ -783,7 +783,7 @@ mkDefaultMethodType cls _   (GenericDM dm_ty) = mkSigmaTy tv_bndrs [pred] dm_ty
    where
      pred      = mkClassPred cls (mkTyVarTys (binderVars cls_bndrs))
      cls_bndrs = tyConBinders (classTyCon cls)
-     tv_bndrs  = tyConTyVarBinders cls_bndrs
+     tv_bndrs  = tyConTyCoVarBinders cls_bndrs
      -- NB: the Class doesn't have TyConBinders; we reach into its
      --     TyCon to get those.  We /do/ need the TyConBinders because
      --     we need the correct visibility: these default methods are

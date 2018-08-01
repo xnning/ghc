@@ -1010,7 +1010,7 @@ getDataConArgTys dc con_app_ty
        ; return con_arg_tys }
   where
     univ_tvs = dataConUnivTyVars dc
-    ex_tvs   = dataConExTyVars dc
+    ex_tvs   = dataConExTyCoVars dc
 
 {- Note [Constructor arg types]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

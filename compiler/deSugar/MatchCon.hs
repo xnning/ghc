@@ -169,7 +169,7 @@ matchOneConLike vars ty (eqn1 : eqns)   -- All eqns for a single constructor
               = firstPat eqn1
     fields1 = map flSelector (conLikeFieldLabels con1)
 
-    ex_tvs = conLikeExTyVars con1
+    ex_tvs = conLikeExTyCoVars con1
 
     -- Choose the right arg_vars in the right order for this group
     -- Note [Record patterns]
