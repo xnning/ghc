@@ -1919,10 +1919,10 @@ tcConDecl rep_tycon tag_map tmpl_bndrs res_tmpl
        -- Can't print univ_tvs, arg_tys etc, because we are inside the knot here
        ; traceTc "tcConDecl 2" (ppr name $$ ppr field_lbls)
        ; let
-           univ_tvbs = tyConTyVarBinders tmpl_bndrs
+           univ_tvbs = tyConTyCoVarBinders tmpl_bndrs
            univ_tvs  = binderVars univ_tvbs
-           ex_tvbs   = mkTyVarBinders Inferred qkvs ++
-                       mkTyVarBinders Specified user_qtvs
+           ex_tvbs   = mkTyCoVarBinders Inferred qkvs ++
+                       mkTyCoVarBinders Specified user_qtvs
            ex_tvs    = qkvs ++ user_qtvs
            -- For H98 datatypes, the user-written tyvar binders are precisely
            -- the universals followed by the existentials.
@@ -1993,8 +1993,8 @@ tcConDecl rep_tycon tag_map tmpl_bndrs res_tmpl
              -- Compute the user-written tyvar binders. These have the same
              -- tyvars as univ_tvs/ex_tvs, but perhaps in a different order.
              -- See Note [DataCon user type variable binders] in DataCon.
-             tkv_bndrs      = mkTyVarBinders Inferred  tkvs'
-             user_tv_bndrs  = mkTyVarBinders Specified user_tvs'
+             tkv_bndrs      = mkTyCoVarBinders Inferred  tkvs'
+             user_tv_bndrs  = mkTyCoVarBinders Specified user_tvs'
              all_user_bndrs = tkv_bndrs ++ user_tv_bndrs
 
              ctxt'      = substTys arg_subst ctxt
@@ -2179,7 +2179,7 @@ rejigConRes tmpl_bndrs res_tmpl dc_inferred_tvs dc_specified_tvs res_ty
                   tcMatchTy res_tmpl res_ty
   = let (univ_tvs, raw_eqs, kind_subst) = mkGADTVars tmpl_tvs dc_tvs subst
         raw_ex_tvs = dc_tvs `minusList` univ_tvs
-        (arg_subst, substed_ex_tvs) = substTyVarBndrs kind_subst raw_ex_tvs
+        (arg_subst, substed_ex_tvs) = substVarBndrs kind_subst raw_ex_tvs
 
         -- After rejigging the existential tyvars, the resulting substitution
         -- gives us exactly what we need to rejig the user-written tyvars,
@@ -2666,7 +2666,7 @@ checkPartialRecordField all_cons fld
     is_exhaustive = all (dataConCannotMatch inst_tys) cons_without_field
 
     con1 = ASSERT( not (null cons_with_field) ) head cons_with_field
-    (univ_tvs, _, eq_spec, _, _, _) = dataConFullSig con1
+    (univ_tvs, _, _, eq_spec, _, _, _) = dataConFullSig con1
     eq_subst = mkTvSubstPrs (map eqSpecPair eq_spec)
     inst_tys = substTyVars eq_subst univ_tvs
 
@@ -2735,8 +2735,8 @@ checkValidDataCon dflags existential_ok tc con
           -- checked here because we sometimes build invalid DataCons before
           -- erroring above here
         ; when debugIsOn $
-          do { let (univs, exs, eq_spec, _, _, _) = dataConFullSig con
-                   user_tvs                       = dataConUserTyVars con
+          do { let (univs, exs, _, eq_spec, _, _, _) = dataConFullSig con
+                   user_tvs                       = dataConUserTyCoVars con
                    user_tvbs_invariant
                      =    Set.fromList (filterEqSpec eq_spec univs ++ exs)
                        == Set.fromList user_tvs
@@ -2818,7 +2818,7 @@ checkNewDataCon con
                 -- No strictness annotations
     }
   where
-    (_univ_tvs, ex_tvs, eq_spec, theta, arg_tys, _res_ty)
+    (_univ_tvs, ex_tvs, _, eq_spec, theta, arg_tys, _res_ty)
       = dataConFullSig con
     check_con what msg
        = checkTc what (msg $$ ppr con <+> dcolon <+> ppr (dataConUserType con))
@@ -3338,7 +3338,7 @@ checkValidRoles tc
                     eqSpecPreds eq_spec ++ theta ++ arg_tys }
                     -- See Note [Role-checking data constructor arguments] in TcTyDecls
       where
-        (univ_tvs, ex_tvs, eq_spec, theta, arg_tys, _res_ty)
+        (univ_tvs, ex_tvs, _, eq_spec, theta, arg_tys, _res_ty)
           = dataConFullSig datacon
         univ_roles = zipVarEnv univ_tvs (tyConRoles tc)
               -- zipVarEnv uses zipEqual, but we don't want that for ex_tvs
@@ -3376,7 +3376,7 @@ checkValidRoles tc
       =  check_ty_roles env role ty1
       >> check_ty_roles env role ty2
 
-    check_ty_roles env role (ForAllTy (TvBndr tv _) ty)
+    check_ty_roles env role (ForAllTy (Bndr tv _) ty)
       =  check_ty_roles env Nominal (tyVarKind tv)
       >> check_ty_roles (extendVarEnv env tv Nominal) role ty
 
@@ -3530,7 +3530,7 @@ badDataConTyCon data_con res_ty_tmpl actual_res_ty
     --    underneath the nested foralls and contexts.
     -- 3) Smash together the type variables and class predicates from 1) and
     --    2), and prepend them to the rho type from 2).
-    actual_ex_tvs = dataConExTyVars data_con
+    actual_ex_tvs = dataConExTyCoVars data_con
     actual_theta  = dataConTheta data_con
     (actual_res_tvs, actual_res_theta, actual_res_rho)
       = tcSplitNestedSigmaTys actual_res_ty

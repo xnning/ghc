@@ -50,7 +50,7 @@ import Name
 import VarEnv
 import VarSet
 import Id          ( idType, idName )
-import Var         ( TyVarBndr(..), mkTyVar )
+import Var         ( VarBndr(..), mkTyVar )
 import ErrUtils
 import DynFlags
 import Util
@@ -481,11 +481,11 @@ check_type env ctxt rank ty
                    (forAllEscapeErr env' ty tau_kind)
         }
   where
-    (tvbs, phi)  = tcSplitForAllTyVarBndrs ty
+    (tvbs, phi)  = tcSplitForAllVarBndrs ty
     (theta, tau) = tcSplitPhiTy phi
 
     tvs          = binderVars tvbs
-    (env', _)    = tidyTyCoVarBndrs env tvs
+    (env', _)    = tidyVarBndrs env tvs
 
     tau_kind              = typeKind tau
     phi_kind | null theta = tau_kind
@@ -1283,7 +1283,7 @@ dropCasts (TyConApp tc tys) = mkTyConApp tc (map dropCasts tys)
 dropCasts (ForAllTy b ty)   = ForAllTy (dropCastsB b) (dropCasts ty)
 dropCasts ty                = ty  -- LitTy, TyVarTy, CoercionTy
 
-dropCastsB :: TyVarBinder -> TyVarBinder
+dropCastsB :: TyCoVarBinder -> TyCoVarBinder
 dropCastsB b = b   -- Don't bother in the kind of a forall
 
 instTypeErr :: Class -> [Type] -> SDoc -> SDoc
@@ -2064,7 +2064,7 @@ checkValidTelescope :: [TyConBinder]   -- explicit vars (zonked)
 checkValidTelescope tvbs user_tyvars extra
   = do { let tvs      = binderVars tvbs
 
-             (_, sorted_tidied_tvs) = tidyTyCoVarBndrs emptyTidyEnv $
+             (_, sorted_tidied_tvs) = tidyVarBndrs emptyTidyEnv $
                                       toposortTyVars tvs
        ; unless (go [] emptyVarSet (binderVars tvbs)) $
          addErr $
@@ -2102,7 +2102,7 @@ fvType (TyConApp _ tys)      = fvTypes tys
 fvType (LitTy {})            = []
 fvType (AppTy fun arg)       = fvType fun ++ fvType arg
 fvType (FunTy arg res)       = fvType arg ++ fvType res
-fvType (ForAllTy (TvBndr tv _) ty)
+fvType (ForAllTy (Bndr tv _) ty)
   = fvType (tyVarKind tv) ++
     filter (/= tv) (fvType ty)
 fvType (CastTy ty co)        = fvType ty ++ fvCo co

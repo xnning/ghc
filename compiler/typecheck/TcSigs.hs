@@ -38,7 +38,7 @@ import TcUnify( tcSkolemise, unifyType )
 import Inst( topInstantiate )
 import TcEnv( tcLookupId )
 import TcEvidence( HsWrapper, (<.>) )
-import Type( mkTyVarBinders )
+import Type( mkTyCoVarBinders )
 
 import DynFlags
 import Var      ( TyVar, tyVarKind )
@@ -366,8 +366,8 @@ tcPatSynSig name sig_ty
               , text "prov" <+> ppr prov'
               , text "body_ty" <+> ppr body_ty' ]
        ; return (TPSI { patsig_name = name
-                      , patsig_implicit_bndrs = mkTyVarBinders Inferred  kvs ++
-                                                mkTyVarBinders Specified implicit_tvs'
+                      , patsig_implicit_bndrs = mkTyCoVarBinders Inferred  kvs ++
+                                                mkTyCoVarBinders Specified implicit_tvs'
                       , patsig_univ_bndrs     = univ_tvs'
                       , patsig_req            = req'
                       , patsig_ex_bndrs       = ex_tvs'
