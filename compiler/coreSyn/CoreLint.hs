@@ -1206,7 +1206,7 @@ lintTyBndr tv thing_inside
 lintCoBndr :: InCoVar -> (OutCoVar -> LintM a) -> LintM a
 lintCoBndr cv thing_inside
   = do { subst <- getTCvSubst
-       ; let (subst', cv') = substTyVarBndr subst cv
+       ; let (subst', cv') = substCoVarBndr subst cv
        ; lintKind (varType cv')
        ; lintL (isCoercionType (varType cv'))
                (text "CoVar with non-coercion type:" <+> pprTyVar cv)
