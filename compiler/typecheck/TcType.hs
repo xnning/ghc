@@ -22,7 +22,6 @@ module TcType (
   -- Types
   TcType, TcSigmaType, TcRhoType, TcTauType, TcPredType, TcThetaType,
   TcTyVar, TcTyVarSet, TcDTyVarSet, TcTyCoVarSet, TcDTyCoVarSet,
-  TcKind, TcCoVar, TcTyCoVar, TcTyVarBinder, TcTyCon,
   TcKind, TcCoVar, TcTyCoVar, TcTyCoVarBinder, TcTyCon,
   KnotTied,
 

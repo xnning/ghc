@@ -858,7 +858,7 @@ mkDataCon :: Name
           -> [EqSpec]         -- ^ GADT equalities
           -> KnotTied ThetaType -- ^ Theta-type occurring before the arguments proper
           -> [KnotTied Type]    -- ^ Original argument types
-          -> KnotTie Type       -- ^ Original result type
+          -> KnotTied Type      -- ^ Original result type
           -> RuntimeRepInfo   -- ^ See comments on 'TyCon.RuntimeRepInfo'
           -> KnotTied TyCon   -- ^ Representation type constructor
           -> ConTag           -- ^ Constructor tag
