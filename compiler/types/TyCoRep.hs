@@ -2689,18 +2689,12 @@ substForAllCoCoVarBndrUsing sym sco (TCvSubst in_scope tenv cenv)
     new_kind_co | no_kind_change = old_kind_co
                 | otherwise      = sco old_kind_co
 
-    (Pair (CoercionTy co1) (CoercionTy co2), r) = coercionKindRole new_kind_co
-    Pair k1 k1' = coercionKind co1 -- co1 :: k1 ~ k1'
-    Pair k2 k2' = coercionKind co2 -- co2 :: k2 ~ k2'
-    -- This implementation might seem weird but it respects exactly the typing
-    -- rule. It could potentially be low-efficient, in which case we need to go
-    -- back to this piece of code and refactor it.
-    -- A potential improvement: test whether new_kind_co is a GRefl.
+    (Pair h1 h2, _) = coercionKindRole new_kind_co
 
     new_var       = uniqAway in_scope subst_old_var
     subst_old_var = mkCoVar (varName old_var) new_var_type
-    new_var_type  | sym       = mkCoercionType r k2 k2'
-                  | otherwise = mkCoercionType r k1 k1'
+    new_var_type  | sym       = h2
+                  | otherwise = h1
 
 substCoVar :: TCvSubst -> CoVar -> Coercion
 substCoVar (TCvSubst _ _ cenv) cv
