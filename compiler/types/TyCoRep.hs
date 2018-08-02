@@ -115,14 +115,14 @@ module TyCoRep (
         substCoUnchecked, substCoWithUnchecked,
         substTyWithInScope,
         substTys, substTheta,
-        lookupTyVar,
+        lookupTyVar, substTyVarBndr, substTyVarBndrs,
         substCo, substCos, substCoVar, substCoVars, lookupCoVar,
         cloneTyVarBndr, cloneTyVarBndrs,
-        substVarBndr, substVarBndrs,
+        -- substVarBndr, substVarBndrs,
         substCoVarBndr,
         substTyVar, substTyVars, substTyCoVars,
         substForAllCoBndr,
-        substVarBndrUsing, substForAllCoBndrUsing,
+        substTyVarBndrUsing, substForAllCoBndrUsing,
         checkValidSubst, isValidTCvSubst,
 
         -- * Tidying type related things up for printing
@@ -2679,11 +2679,11 @@ substCoVars subst cvs = map (substCoVar subst) cvs
 lookupCoVar :: TCvSubst -> Var -> Maybe Coercion
 lookupCoVar (TCvSubst _ _ cenv) v = lookupVarEnv cenv v
 
-substVarBndr :: HasCallStack => TCvSubst -> TyCoVar -> (TCvSubst, TyCoVar)
-substVarBndr = substVarBndrUsing substTy
+substTyVarBndr :: HasCallStack => TCvSubst -> TyCoVar -> (TCvSubst, TyCoVar)
+substTyVarBndr = substTyVarBndrUsing substTy
 
-substVarBndrs :: HasCallStack => TCvSubst -> [TyCoVar] -> (TCvSubst, [TyCoVar])
-substVarBndrs = mapAccumL substVarBndr
+substTyVarBndrs :: HasCallStack => TCvSubst -> [TyCoVar] -> (TCvSubst, [TyCoVar])
+substTyVarBndrs = mapAccumL substTyVarBndr
 
 substCoVarBndr :: HasCallStack => TCvSubst -> CoVar -> (TCvSubst, CoVar)
 substCoVarBndr = substCoVarBndrUsing substTy

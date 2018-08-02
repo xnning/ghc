@@ -184,7 +184,8 @@ module Type (
         substTyUnchecked, substTysUnchecked, substThetaUnchecked,
         substTyWithUnchecked,
         substCoUnchecked, substCoWithUnchecked,
-        substVarBndr, substVarBndrs, substTyVar, substTyVars,
+        substTyVarBndr, substTyVarBndrs,
+        substTyVar, substTyVars,
         cloneTyVarBndr, cloneTyVarBndrs, lookupTyVar,
 
         -- * Pretty-printing
@@ -409,7 +410,7 @@ expandTypeSynonyms ty
     go subst (FunTy arg res)
       = mkFunTy (go subst arg) (go subst res)
     go subst (ForAllTy (Bndr tv vis) t)
-      = let (subst', tv') = substVarBndrUsing go subst tv in
+      = let (subst', tv') = substTyVarBndrUsing go subst tv in
         ForAllTy (Bndr tv' vis) (go subst' t)
     go subst (CastTy ty co)  = mkCastTy (go subst ty) (go_co subst co)
     go subst (CoercionTy co) = mkCoercionTy (go_co subst co)

@@ -643,7 +643,7 @@ deriveStandalone (L loc (DerivDecl _ deriv_ty mbl_deriv_strat overlap_mode))
                    unmapped_tkvs = filter (\v -> v `notElemTCvSubst` kind_subst
                                         && not (v `elemVarSet` ki_subst_range))
                                           tvs'
-                   (subst, _)    = substVarBndrs kind_subst unmapped_tkvs
+                   (subst, _)    = substTyVarBndrs kind_subst unmapped_tkvs
                    (final_deriv_ctxt, final_deriv_ctxt_tys)
                      = case deriv_ctxt' of
                          InferContext wc -> (InferContext wc, [])
@@ -812,7 +812,7 @@ deriveTyData tvs tc tc_args mb_deriv_strat deriv_pred
                   unmapped_tkvs   = filter (\v -> v `notElemTCvSubst` kind_subst
                                          && not (v `elemVarSet` ki_subst_range))
                                            tkvs'
-                  (subst, _)      = substVarBndrs kind_subst unmapped_tkvs
+                  (subst, _)      = substTyVarBndrs kind_subst unmapped_tkvs
                   final_tc_args   = substTys subst tc_args'
                   final_cls_tys   = substTys subst cls_tys'
                   final_tkvs      = tyCoVarsOfTypesWellScoped $

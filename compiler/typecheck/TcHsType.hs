@@ -2272,7 +2272,7 @@ tcDataKindSig tc_bndrs kind
           Just (Named (Bndr tv vis), kind')
             -> go loc occs uniqs subst' (tcb : acc) kind'
             where
-              (subst', tv') = substVarBndr subst tv
+              (subst', tv') = substTyVarBndr subst tv
               tcb = Bndr tv' (NamedTCB vis)
 
 badKindSig :: Bool -> Kind -> SDoc
