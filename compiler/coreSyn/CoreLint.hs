@@ -1199,14 +1199,14 @@ lintBinder site var linterF
 lintTyBndr :: InTyVar -> (OutTyVar -> LintM a) -> LintM a
 lintTyBndr tv thing_inside
   = do { subst <- getTCvSubst
-       ; let (subst', tv') = substVarBndr subst tv
+       ; let (subst', tv') = substTyVarBndr subst tv
        ; lintKind (varType tv')
        ; updateTCvSubst subst' (thing_inside tv') }
 
 lintCoBndr :: InCoVar -> (OutCoVar -> LintM a) -> LintM a
 lintCoBndr cv thing_inside
   = do { subst <- getTCvSubst
-       ; let (subst', cv') = substVarBndr subst cv
+       ; let (subst', cv') = substTyVarBndr subst cv
        ; lintKind (varType cv')
        ; lintL (isCoercionType (varType cv'))
                (text "CoVar with non-coercion type:" <+> pprTyVar cv)
@@ -1804,10 +1804,12 @@ lintCoercion the_co@(NthCo r0 n co)
          { (Just (tv_s, _ty_s), Just (tv_t, _ty_t))
              |  n == 0
              -> do { lintRole the_co Nominal r0
-                   ; return (liftedTypeKind, liftedTypeKind, ts, tt, r0) }
+                   ; return (ks, kt, ts, tt, r0) }
              where
                ts = tyVarKind tv_s
                tt = tyVarKind tv_t
+               ks = typeKind ts
+               kt = typeKind tt
 
          ; _ -> case (splitTyConApp_maybe s, splitTyConApp_maybe t) of
          { (Just (tc_s, tys_s), Just (tc_t, tys_t))

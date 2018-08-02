@@ -2194,7 +2194,7 @@ tcDataKindSig tc_bndrs kind
             -> go loc occs uniqs subst' (tcb : acc) kind'
             where
               (subst', tv') = substTyVarBndr subst tv
-              tcb = TvBndr tv' (NamedTCB vis)
+              tcb = Bndr tv' (NamedTCB vis)
 
 badKindSig :: Bool -> Kind -> SDoc
 badKindSig check_for_type kind

@@ -1195,7 +1195,7 @@ dataConInstSig con@(MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
     , substTys   subst arg_tys)
   where
     univ_subst = zipTvSubst univ_tvs univ_tys
-    (subst, ex_tvs') = Type.substVarBndrs univ_subst ex_tvs
+    (subst, ex_tvs') = Type.substTyVarBndrs univ_subst ex_tvs
 
 
 -- | The \"full signature\" of the 'DataCon' returns, in order:
