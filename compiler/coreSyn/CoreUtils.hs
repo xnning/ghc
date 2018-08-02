@@ -1932,10 +1932,10 @@ dataConInstPat fss uniqs con inst_tys
                                      , new_tv)
       where
         new_tv
-          | isTyVar tv
+          -- | isTyVar tv
           = mkTyVar (mkSysTvName uniq fs) kind
-          | otherwise
-          = mkCoVar (mkSystemVarName uniq fs) kind
+          -- | otherwise
+          -- = mkCoVar (mkSystemVarName uniq fs) kind
         kind   = Type.substTyUnchecked subst (varType tv)
 
       -- Make value vars, instantiating types

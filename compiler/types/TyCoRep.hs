@@ -749,10 +749,10 @@ mkTyVarTys = map mkTyVarTy -- a common use of mkTyVarTy
 
 mkTyCoVarTy :: TyCoVar -> Type
 mkTyCoVarTy v
-  | isTyVar v
+  -- | isTyVar v
   = TyVarTy v
-  | otherwise
-  = CoercionTy (CoVarCo v)
+  -- | otherwise
+  -- = CoercionTy (CoVarCo v)
 
 mkTyCoVarTys :: [TyCoVar] -> [Type]
 mkTyCoVarTys = map mkTyCoVarTy
@@ -771,11 +771,11 @@ mkFunTys tys ty = foldr mkFunTy ty tys
 
 mkForAllTy :: TyCoVar -> ArgFlag -> Type -> Type
 mkForAllTy tv vis ty
-  | isCoVar tv
-  , not (tv `elemVarSet` tyCoVarsOfType ty)
-  = ASSERT( vis == Inferred )
-    mkFunTy (varType tv) ty
-  | otherwise
+  -- | isCoVar tv
+  -- , not (tv `elemVarSet` tyCoVarsOfType ty)
+  -- = ASSERT( vis == Inferred )
+  --   mkFunTy (varType tv) ty
+  -- | otherwise
   = ForAllTy (Bndr tv vis) ty
 
 -- | Wraps foralls over the type using the provided 'TyCoVar's from left to right
@@ -2113,8 +2113,9 @@ extendTCvSubst subst v ty
 
 extendTCvSubstWithClone :: TCvSubst -> TyCoVar -> TyCoVar -> TCvSubst
 extendTCvSubstWithClone subst tcv
-  | isTyVar tcv = extendTvSubstWithClone subst tcv
-  | otherwise   = extendCvSubstWithClone subst tcv
+  -- | isTyVar tcv
+  = extendTvSubstWithClone subst tcv
+  -- | otherwise   = extendCvSubstWithClone subst tcv
 
 extendTvSubst :: TCvSubst -> TyVar -> Type -> TCvSubst
 extendTvSubst (TCvSubst in_scope tenv cenv) tv ty
@@ -2507,8 +2508,9 @@ substTyCoVars subst = map $ substTyCoVar subst
 
 substTyCoVar :: TCvSubst -> TyCoVar -> Type
 substTyCoVar subst tv
-  | isTyVar tv = substTyVar subst tv
-  | otherwise = CoercionTy $ substCoVar subst tv
+  -- | isTyVar tv
+  = substTyVar subst tv
+  -- | otherwise = CoercionTy $ substCoVar subst tv
 
 lookupTyVar :: TCvSubst -> TyVar  -> Maybe Type
         -- See Note [Extending the TCvSubst]
@@ -2611,8 +2613,9 @@ substForAllCoBndrUsing :: Bool  -- apply sym to binder?
                        -> TCvSubst -> TyCoVar -> KindCoercion
                        -> (TCvSubst, TyCoVar, KindCoercion)
 substForAllCoBndrUsing sym sco subst old_var
-  | isTyVar old_var = substForAllCoTyVarBndrUsing sym sco subst old_var
-  | otherwise       = substForAllCoCoVarBndrUsing sym sco subst old_var
+  -- | isTyVar old_var
+  = substForAllCoTyVarBndrUsing sym sco subst old_var
+  -- | otherwise       = substForAllCoCoVarBndrUsing sym sco subst old_var
 
 substForAllCoTyVarBndrUsing :: Bool  -- apply sym to binder?
                             -> (Coercion -> Coercion)  -- transformation to kind co
@@ -2644,31 +2647,31 @@ substForAllCoTyVarBndrUsing sym sco (TCvSubst in_scope tenv cenv) old_var old_ki
 
     new_var  = uniqAway in_scope (setTyVarKind old_var new_ki1)
 
-substForAllCoCoVarBndrUsing :: Bool  -- apply sym to binder?
-                            -> (Coercion -> Coercion)  -- transformation to kind co
-                            -> TCvSubst -> CoVar -> KindCoercion
-                            -> (TCvSubst, CoVar, KindCoercion)
-substForAllCoCoVarBndrUsing sym sco (TCvSubst in_scope tenv cenv)
-                            old_var old_kind_co
-  = ( TCvSubst (in_scope `extendInScopeSet` new_var) tenv new_cenv
-    , new_var, new_kind_co )
-  where
-    new_cenv | no_change && not sym = delVarEnv cenv old_var
-             | otherwise = extendVarEnv cenv old_var new_co
+-- substForAllCoCoVarBndrUsing :: Bool  -- apply sym to binder?
+--                             -> (Coercion -> Coercion)  -- transformation to kind co
+--                             -> TCvSubst -> CoVar -> KindCoercion
+--                             -> (TCvSubst, CoVar, KindCoercion)
+-- substForAllCoCoVarBndrUsing sym sco (TCvSubst in_scope tenv cenv)
+--                             old_var old_kind_co
+--   = ( TCvSubst (in_scope `extendInScopeSet` new_var) tenv new_cenv
+--     , new_var, new_kind_co )
+--   where
+--     new_cenv | no_change && not sym = delVarEnv cenv old_var
+--              | otherwise = extendVarEnv cenv old_var new_co
 
-    new_co = mkCoVarCo new_var
-    no_kind_change = noFreeVarsOfCo old_kind_co
-    no_change = no_kind_change && (new_var == old_var)
+--     new_co = mkCoVarCo new_var
+--     no_kind_change = noFreeVarsOfCo old_kind_co
+--     no_change = no_kind_change && (new_var == old_var)
 
-    new_kind_co | no_kind_change = old_kind_co
-                | otherwise      = sco old_kind_co
+--     new_kind_co | no_kind_change = old_kind_co
+--                 | otherwise      = sco old_kind_co
 
-    (Pair h1 h2, _) = coercionKindRole new_kind_co
+--     (Pair h1 h2, _) = coercionKindRole new_kind_co
 
-    new_var       = uniqAway in_scope subst_old_var
-    subst_old_var = mkCoVar (varName old_var) new_var_type
-    new_var_type  | sym       = h2
-                  | otherwise = h1
+--     new_var       = uniqAway in_scope subst_old_var
+--     subst_old_var = mkCoVar (varName old_var) new_var_type
+--     new_var_type  | sym       = h2
+--                   | otherwise = h1
 
 substCoVar :: TCvSubst -> CoVar -> Coercion
 substCoVar (TCvSubst _ _ cenv) cv
@@ -2702,8 +2705,9 @@ substVarBndrUnchecked = substVarBndrUsing substTyUnchecked
 substVarBndrUsing :: (TCvSubst -> Type -> Type)
                   -> TCvSubst -> TyCoVar -> (TCvSubst, TyCoVar)
 substVarBndrUsing subst_fn subst v
-  | isTyVar v = substTyVarBndrUsing subst_fn subst v
-  | otherwise = substCoVarBndrUsing subst_fn subst v
+  -- | isTyVar v
+  = substTyVarBndrUsing subst_fn subst v
+  -- | otherwise = substCoVarBndrUsing subst_fn subst v
 
 -- | Substitute a tyvar in a binding position, returning an
 -- extended subst and a new tyvar.

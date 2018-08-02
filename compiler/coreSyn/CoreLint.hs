@@ -1347,28 +1347,13 @@ lintType ty@(FunTy t1 t2)
        ; lintArrow (text "type or kind" <+> quotes (ppr ty)) k1 k2 }
 
 lintType t@(ForAllTy (Bndr tv _vis) ty)
-  -- forall over types
-  | isTyVar tv
-  = do { lintTyBndr tv $ \tv' ->
+  = do { lintL (isTyVar tv) (text "Covar bound in type:" <+> ppr t)
+       ; lintTyBndr tv $ \tv' ->
     do { k <- lintType ty
        ; checkValueKind k (text "the body of forall:" <+> ppr t)
        ; case occCheckExpand [tv'] k of  -- See Note [Stupid type synonyms]
            Just k' -> return k'
-           Nothing -> failWithL (hang (text "Variable escape in forall-ty:")
-                                    2 (vcat [ text "type:" <+> ppr t
-                                            , text "kind:" <+> ppr k ]))
-    }}
-
-lintType t@(ForAllTy (Bndr cv _vis) ty)
-  -- forall over coercions
-  = do { lintL (isCoVar cv) (text "Non-Tyvar or Non-Covar bound in type:" <+> ppr t)
-       ; lintCoBndr cv $ \cv' ->
-    do { k <- lintType ty
-       ; checkValueKind k (text "the body of forall:" <+> ppr t)
-       ; case occCheckExpand [cv'] k of  -- See Note [Stupid type synonyms]
-           Just _ -> return liftedTypeKind
-             -- See Note [Weird typing rule for ForAllTy] in Type
-           Nothing -> failWithL (hang (text "Variable escape in forall-co:")
+           Nothing -> failWithL (hang (text "Variable escape in forall:")
                                     2 (vcat [ text "type:" <+> ppr t
                                             , text "kind:" <+> ppr k ]))
     }}
@@ -1501,10 +1486,10 @@ lint_app doc kfn kas
            ; return kfb }
 
     go_app in_scope (ForAllTy (Bndr kv _vis) kfn) tka@(ta,ka)
-      = do { let kv_kind = varType kv
+      = do { let kv_kind = tyVarKind kv
            ; unless (ka `eqType` kv_kind) $
              addErrL (fail_msg (text "Forall:" <+> (ppr kv $$ ppr kv_kind $$ ppr tka)))
-           ; return $ substTy (extendTCvSubst (mkEmptyTCvSubst in_scope) kv ta) kfn }
+           ; return (substTyWithInScope in_scope [kv] [ta] kfn) }
 
     go_app _ kfn ka
        = failWithL (fail_msg (text "Not a fun:" <+> (ppr kfn $$ ppr ka)))
@@ -1690,10 +1675,11 @@ lintCoercion co@(AppCo co1 co2)
 
 ----------
 lintCoercion (ForAllCo tv1 kind_co co)
-  -- forall over types
-  | isTyVar tv1
   = do { (_, k2) <- lintStarCoercion kind_co
        ; let tv2 = setTyVarKind tv1 k2
+       -- ; ensureEqTys (tyVarKind tv1) k1 $ (vcat [ text "lhs kind mistach in ForallCo"
+       --                                          , text "lhs kind:" <+> ppr (tyVarKind tv1)
+       --                                          , text "rhs kind:" <+> ppr k1 ])
        ; addInScopeVar tv1 $
     do {
        ; (k3, k4, t1, t2, r) <- lintCoercion co
@@ -1710,33 +1696,6 @@ lintCoercion (ForAllCo tv1 kind_co co)
              tyr = mkInvForAllTy tv2 $
                    substTy subst t2
        ; return (k3, k4, tyl, tyr, r) } }
-
-lintCoercion (ForAllCo cv1 kind_co co)
-  -- forall over coercions
-  = do { (_, _, _, k2, r) <- lintCoercion kind_co
-       ; lintRole kind_co Nominal r
-       ; let cv2 = setVarType cv1 k2
-       ; addInScopeVar cv1 $
-    do {
-       ; (_, _, t1, t2, r) <- lintCoercion co
-       ; in_scope <- getInScope
-       ; let tyl   = mkInvForAllTy cv1 t1
-             r2    = coVarRole cv1
-             eta1  = mkNthCo r2 2 (downgradeRole r2 Nominal kind_co)
-             eta2  = mkNthCo r2 3 (downgradeRole r2 Nominal kind_co)
-             subst = mkCvSubst in_scope $
-                     -- We need both the free vars of the `t2` and the
-                     -- free vars of the range of the substitution in
-                     -- scope. All the free vars of `t2` and `kind_co` should
-                     -- already be in `in_scope`, because they've been
-                     -- linted and `tv2` has the same unique as `tv1`.
-                     -- See Note [The substitution invariant]
-                     unitVarEnv cv1 (eta1 `mkTransCo` (mkCoVarCo cv2)
-                                          `mkTransCo` (mkSymCo eta2))
-             tyr = mkInvForAllTy cv2 $
-                   substTy subst t2
-       ; return (liftedTypeKind, liftedTypeKind, tyl, tyr, r) } }
-                   -- See Note [Weird typing rule for ForAllTy] in Type
 
 lintCoercion co@(FunCo r co1 co2)
   = do { (k1,k'1,s1,t1,r1) <- lintCoercion co1
@@ -1841,27 +1800,14 @@ lintCoercion co@(TransCo co1 co2)
 
 lintCoercion the_co@(NthCo r0 n co)
   = do { (_, _, s, t, r) <- lintCoercion co
-       ; case (splitForAllTy_ty_maybe s, splitForAllTy_ty_maybe t) of
+       ; case (splitForAllTy_maybe s, splitForAllTy_maybe t) of
          { (Just (tv_s, _ty_s), Just (tv_t, _ty_t))
              |  n == 0
              -> do { lintRole the_co Nominal r0
-                   ; return (ks, kt, ts, tt, r0) }
+                   ; return (liftedTypeKind, liftedTypeKind, ts, tt, r0) }
              where
                ts = tyVarKind tv_s
                tt = tyVarKind tv_t
-               ks = typeKind ts
-               kt = typeKind tt
-
-         ; _ -> case (splitForAllTy_co_maybe s, splitForAllTy_co_maybe t) of
-         { (Just (cv_s, _ty_s), Just (cv_t, _ty_t))
-             | n == 0
-             -> do {lintRole the_co Nominal r0
-                   ; return (ks, kt, ts, tt, r0) }
-             where
-               ts = varType cv_s
-               tt = varType cv_t
-               ks = typeKind ts
-               kt = typeKind tt
 
          ; _ -> case (splitTyConApp_maybe s, splitTyConApp_maybe t) of
          { (Just (tc_s, tys_s), Just (tc_t, tys_t))
@@ -1880,7 +1826,7 @@ lintCoercion the_co@(NthCo r0 n co)
                kt = typeKind tt
 
          ; _ -> failWithL (hang (text "Bad getNth:")
-                              2 (ppr the_co $$ ppr s $$ ppr t)) }}}}
+                              2 (ppr the_co $$ ppr s $$ ppr t)) }}}
 
 lintCoercion the_co@(LRCo lr co)
   = do { (_,_,s,t,r) <- lintCoercion co
@@ -1899,7 +1845,7 @@ lintCoercion the_co@(LRCo lr co)
 
 lintCoercion (InstCo co arg)
   = do { (k3, k4, t1',t2', r) <- lintCoercion co
-       ; (k1',k2', s1, s2, r') <- lintCoercion arg
+       ; (k1',k2',s1,s2, r') <- lintCoercion arg
        ; lintRole arg Nominal r'
        ; in_scope <- getInScope
        ; case (splitForAllTy_ty_maybe t1', splitForAllTy_ty_maybe t2') of
@@ -1911,21 +1857,7 @@ lintCoercion (InstCo co arg)
                        substTyWithInScope in_scope [tv2] [s2] t2, r)
             | otherwise
             -> failWithL (text "Kind mis-match in inst coercion")
-          _ -> case (splitForAllTy_co_maybe t1', splitForAllTy_co_maybe t2') of
-                 (Just (cv1, t1), Just (cv2, t2))
-                   | k1' `eqType` varType cv1
-                   , k2' `eqType` varType cv2
-                   -- k3/k4 *?
-                   , let CoercionTy s1' = s1
-                   , let CoercionTy s2' = s2
-                   , let subst1 = mkCvSubst in_scope $ unitVarEnv cv1 s1'
-                   , let subst2 = mkCvSubst in_scope $ unitVarEnv cv2 s2'
-                   -> return (k3, k4, -- TODO
-                             substTy subst1 t1, substTy subst2 t2, r)
-                     -- See Note [Weird typing rule for ForAllTy] in Type
-                   | otherwise
-                   -> failWithL (text "Kind mis-match in inst coercion")
-                 _ -> failWithL (text "Bad argument of inst") }
+          _ -> failWithL (text "Bad argument of inst") }
 
 lintCoercion co@(AxiomInstCo con ind cos)
   = do { unless (0 <= ind && ind < numBranches (coAxiomBranches con))
