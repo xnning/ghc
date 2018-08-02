@@ -872,7 +872,7 @@ substTyVar env tv = Type.substTyVar (getTCvSubst env) tv
 
 substTyVarBndr :: SimplEnv -> TyVar -> (SimplEnv, TyVar)
 substTyVarBndr env tv
-  = case substVarBndr (getTCvSubst env) tv of
+  = case Type.substVarBndr (getTCvSubst env) tv of
         (TCvSubst in_scope' tv_env' cv_env', tv')
            -> (env { seInScope = in_scope', seTvSubst = tv_env', seCvSubst = cv_env' }, tv')
 

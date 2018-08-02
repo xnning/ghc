@@ -1039,9 +1039,7 @@ mkEtaWW orig_n orig_expr in_scope orig_ty
 
        | Just (tv,ty') <- splitForAllTy_maybe ty
        , let (subst', tv') = Type.substVarBndr subst tv
-       = let ((n_subst, n_tv), n_n)
-               | isTyVar tv = ((subst', tv'), n)
-               | otherwise  = (freshEtaId n subst' (varType tv'), n-1)
+       = let ((n_subst, n_tv), n_n) = ((subst', tv'), n)
            -- Avoid free vars of the original expression
          in go n_n n_subst ty' (EtaVar n_tv : eis)
 

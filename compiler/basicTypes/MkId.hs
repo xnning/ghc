@@ -632,7 +632,7 @@ mkDataConRep dflags fam_envs wrap_name mb_bangs data_con
     orig_bangs   = dataConSrcBangs data_con
 
     wrap_arg_tys = theta ++ orig_arg_tys
-    wrap_arity   = count isId ex_tvs + length wrap_arg_tys
+    wrap_arity   = count isId ex_tvs
              -- TODO: should we include this @count@?
              -- The wrap_args are the arguments *other than* the eq_spec
              -- Because we are going to apply the eq_spec args manually in the
@@ -674,7 +674,7 @@ mkDataConRep dflags fam_envs wrap_name mb_bangs data_con
     mk_boxer boxers = DCB (\ ty_args src_vars ->
                       do { let (ex_vars, term_vars) = splitAtList ex_tvs src_vars
                                subst1 = zipTvSubst univ_tvs ty_args
-                               subst2 = extendTCvSubstList subst1 ex_tvs
+                               subst2 = extendTvSubstList subst1 ex_tvs
                                                            (mkTyCoVarTys ex_vars)
                          ; (rep_ids, binds) <- go subst2 boxers term_vars
                          ; return (ex_vars ++ rep_ids, binds) } )

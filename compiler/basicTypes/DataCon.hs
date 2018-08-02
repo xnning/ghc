@@ -903,7 +903,7 @@ mkDataCon name declared_infix prom_info
                   dcWorkId = work_id,
                   dcRep = rep,
                   dcSourceArity = length orig_arg_tys,
-                  dcRepArity = length rep_arg_tys + count isId ex_tvs,
+                  dcRepArity = length rep_arg_tys,
                   dcPromoted = promoted }
 
         -- The 'arg_stricts' passed to mkDataCon are simply those for the
@@ -933,7 +933,7 @@ mkDataCon name declared_infix prom_info
                                        (prom_tv_bndrs ++ prom_arg_bndrs)
                                        prom_res_kind roles rep_info
 
-    roles = map (\tv -> if isTyVar tv then Nominal else Phantom)
+    roles = map (const Nominal)
                 (univ_tvs ++ ex_tvs)
             ++ map (const Representational) orig_arg_tys
 
@@ -1029,8 +1029,7 @@ dataConUserTyCoVarBinders = dcUserTyCoVarBinders
 -- equalities, including those written in by hand by the programmer.
 dataConEqSpec :: DataCon -> [EqSpec]
 dataConEqSpec con@(MkData { dcEqSpec = eq_spec, dcOtherTheta = theta })
-  = dataConKindEqSpec con
-    ++ eq_spec ++
+  = eq_spec ++
     [ spec   -- heterogeneous equality
     | Just (tc, [_k1, _k2, ty1, ty2]) <- map splitTyConApp_maybe theta
     , tc `hasKey` heqTyConKey
@@ -1048,22 +1047,22 @@ dataConEqSpec con@(MkData { dcEqSpec = eq_spec, dcOtherTheta = theta })
                     _             -> []
     ]
 
--- | Dependent (kind-level) equalities in a constructor.
--- There are extracted from the existential variables.
-dataConKindEqSpec :: DataCon -> [EqSpec]
-dataConKindEqSpec (MkData {dcExTyCoVars = ex_tcvs})
-  = [ EqSpec tv ty
-    | cv <- ex_tcvs
-    , isCoVar cv
-    , let (_, _, ty1, ty, _) = coVarKindsTypesRole cv
-          tv = getTyVar "dataConKindEqSpec" ty1
-    ]
+-- -- | Dependent (kind-level) equalities in a constructor.
+-- -- There are extracted from the existential variables.
+-- dataConKindEqSpec :: DataCon -> [EqSpec]
+-- dataConKindEqSpec (MkData {dcExTyCoVars = ex_tcvs})
+--   = [ EqSpec tv ty
+--     | cv <- ex_tcvs
+--     , isCoVar cv
+--     , let (_, _, ty1, ty, _) = coVarKindsTypesRole cv
+--           tv = getTyVar "dataConKindEqSpec" ty1
+--     ]
 
 -- | The *full* constraints on the constructor type, including dependent GADT
 -- equalities.
 dataConTheta :: DataCon -> ThetaType
 dataConTheta con@(MkData { dcEqSpec = eq_spec, dcOtherTheta = theta })
-  = eqSpecPreds (dataConKindEqSpec con ++ eq_spec) ++ theta
+  = eqSpecPreds (eq_spec) ++ theta
 
 -- | Get the Id of the 'DataCon' worker: a function that is the "actual"
 -- constructor and has no top level binding in the program. The type may
@@ -1192,7 +1191,7 @@ dataConInstSig con@(MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
                            , dcOrigArgTys = arg_tys })
                univ_tys
   = ( ex_tvs'
-    , substTheta subst (eqSpecPreds (dataConKindEqSpec con ++ eq_spec) ++ theta)
+    , substTheta subst (eqSpecPreds (eq_spec) ++ theta)
     , substTys   subst arg_tys)
   where
     univ_subst = zipTvSubst univ_tvs univ_tys
@@ -1221,7 +1220,7 @@ dataConFullSig :: DataCon
 dataConFullSig con@(MkData {dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs,
                             dcEqSpec = eq_spec, dcOtherTheta = theta,
                             dcOrigArgTys = arg_tys, dcOrigResTy = res_ty})
-  = (univ_tvs, ex_tvs, dataConKindEqSpec con, eq_spec, theta, arg_tys, res_ty)
+  = (univ_tvs, ex_tvs, [], eq_spec, theta, arg_tys, res_ty)
 
 dataConOrigResTy :: DataCon -> Type
 dataConOrigResTy dc = dcOrigResTy dc
@@ -1289,7 +1288,7 @@ dataConInstOrigArgTys dc@(MkData {dcOrigArgTys = arg_tys,
     map (substTy subst) arg_tys
   where
     tyvars = univ_tvs ++ ex_tvs
-    subst  = zipTCvSubst tyvars inst_tys
+    subst  = zipTvSubst tyvars inst_tys
 
 -- | Returns the argument types of the wrapper, excluding all dictionary arguments
 -- and without substituting for any type variables

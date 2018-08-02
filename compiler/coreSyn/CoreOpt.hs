@@ -1151,15 +1151,15 @@ collectBindersPushingCo e
       , isReflCo (mkNthCo Nominal 0 co)  -- See Note [collectBindersPushingCo]
       = go_c (b:bs) e (mkInstCo co (mkNomReflCo (mkTyVarTy b)))
 
-      | isCoVar b
-      , let Pair tyL tyR = coercionKind co
-      , ASSERT( isForAllTy_co tyL )
-        isForAllTy_co tyR
-      , isReflCo (mkNthCo Nominal 0 co)  -- See Note [collectBindersPushingCo]
-      , let cov = mkCoVarCo b
-      = go_c (b:bs) e (mkInstCo co (mkProofIrrelCo Nominal
-                                                   (mkNomReflCo (varType b))
-                                                   cov cov))
+      -- | isCoVar b
+      -- , let Pair tyL tyR = coercionKind co
+      -- , ASSERT( isForAllTy_co tyL )
+      --   isForAllTy_co tyR
+      -- , isReflCo (mkNthCo Nominal 0 co)  -- See Note [collectBindersPushingCo]
+      -- , let cov = mkCoVarCo b
+      -- = go_c (b:bs) e (mkInstCo co (mkProofIrrelCo Nominal
+      --                                              (mkNomReflCo (varType b))
+      --                                              cov cov))
 
       | isId b
       , let Pair tyL tyR = coercionKind co
