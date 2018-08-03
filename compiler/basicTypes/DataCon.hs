@@ -1047,16 +1047,16 @@ dataConEqSpec (MkData { dcEqSpec = eq_spec, dcOtherTheta = theta })
                     _             -> []
     ]
 
--- -- | Dependent (kind-level) equalities in a constructor.
--- -- There are extracted from the existential variables.
--- dataConKindEqSpec :: DataCon -> [EqSpec]
--- dataConKindEqSpec (MkData {dcExTyCoVars = ex_tcvs})
---   = [ EqSpec tv ty
---     | cv <- ex_tcvs
---     , isCoVar cv
---     , let (_, _, ty1, ty, _) = coVarKindsTypesRole cv
---           tv = getTyVar "dataConKindEqSpec" ty1
---     ]
+-- | Dependent (kind-level) equalities in a constructor.
+-- There are extracted from the existential variables.
+dataConKindEqSpec :: DataCon -> [EqSpec]
+dataConKindEqSpec (MkData {dcExTyCoVars = ex_tcvs})
+  = [ EqSpec tv ty
+    | cv <- ex_tcvs
+    , isCoVar cv
+    , let (_, _, ty1, ty, _) = coVarKindsTypesRole cv
+          tv = getTyVar "dataConKindEqSpec" ty1
+    ]
 
 -- | The *full* constraints on the constructor type, including dependent GADT
 -- equalities.
@@ -1186,12 +1186,12 @@ dataConInstSig
                                      -- theta and arg tys
 -- ^ Instantiate the universal tyvars of a data con,
 --   returning the instantiated existentials, constraints, and args
-dataConInstSig (MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
+dataConInstSig con@(MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
                            , dcEqSpec = eq_spec, dcOtherTheta  = theta
                            , dcOrigArgTys = arg_tys })
                univ_tys
   = ( ex_tvs'
-    , substTheta subst (eqSpecPreds (eq_spec) ++ theta)
+    , substTheta subst (eqSpecPreds (dataConKindEqSpec con ++ eq_spec) ++ theta)
     , substTys   subst arg_tys)
   where
     univ_subst = zipTvSubst univ_tvs univ_tys
@@ -1217,10 +1217,10 @@ dataConInstSig (MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
 -- 7) The original result type of the 'DataCon'
 dataConFullSig :: DataCon
                -> ([TyVar], [TyCoVar], [EqSpec], [EqSpec], ThetaType, [Type], Type)
-dataConFullSig (MkData {dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs,
+dataConFullSig con@(MkData {dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs,
                             dcEqSpec = eq_spec, dcOtherTheta = theta,
                             dcOrigArgTys = arg_tys, dcOrigResTy = res_ty})
-  = (univ_tvs, ex_tvs, [], eq_spec, theta, arg_tys, res_ty)
+  = (univ_tvs, ex_tvs, dataConKindEqSpec con, eq_spec, theta, arg_tys, res_ty)
 
 dataConOrigResTy :: DataCon -> Type
 dataConOrigResTy dc = dcOrigResTy dc
