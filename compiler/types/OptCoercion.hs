@@ -93,7 +93,8 @@ optCoercion dflags env co
 optCoercion' :: TCvSubst -> Coercion -> NormalCo
 optCoercion' env co
   | debugIsOn
-  = let out_co = opt_co1 lc False co
+  = -- pprTrace "optCoercion" (ppr co) $
+    let out_co = opt_co1 lc False co
         (Pair in_ty1  in_ty2,  in_role)  = coercionKindRole co
         (Pair out_ty1 out_ty2, out_role) = coercionKindRole out_co
     in
@@ -157,21 +158,25 @@ opt_co3 env sym _                       r co = opt_co4_wrap env sym False r co
 opt_co4, opt_co4_wrap :: LiftingContext -> SymFlag -> ReprFlag -> Role -> Coercion -> NormalCo
 
 opt_co4_wrap = opt_co4
-{-
-opt_co4_wrap env sym rep r co
-  = pprTrace "opt_co4_wrap {"
-    ( vcat [ text "Sym:" <+> ppr sym
-           , text "Rep:" <+> ppr rep
-           , text "Role:" <+> ppr r
-           , text "Co:" <+> ppr co ]) $
-    ASSERT( r == coercionRole co )
-    let result = opt_co4 env sym rep r co in
-    pprTrace "opt_co4_wrap }" (ppr co $$ text "---" $$ ppr result) $
-    result
--}
+-- opt_co4_wrap env sym rep r co
+--   = pprTrace "opt_co4_wrap {"
+--     ( vcat [ text "Sym:" <+> ppr sym
+--            , text "Rep:" <+> ppr rep
+--            , text "Role:" <+> ppr r
+--            , text "Co:" <+> ppr co ]) $
+--     ASSERT2( r == coercionRole co,
+--             ( vcat [ text "Sym:" <+> ppr sym
+--            , text "Rep:" <+> ppr rep
+--            , text "Role:" <+> ppr r
+--            , text "Co:" <+> ppr co ])
+--            )
+--     let result = opt_co4 env sym rep r co in
+--     pprTrace "opt_co4_wrap }" (ppr co $$ text "---" $$ ppr result) $
+--     result
 
 opt_co4 env _   rep r (Refl ty)
-  = ASSERT2( r == Nominal, text "Expected role:" <+> ppr r    $$
+  =
+  ASSERT2( r == Nominal, text "Expected role:" <+> ppr r    $$
                            text "Found role:" <+> ppr Nominal $$
                            text "Type:" <+> ppr ty )
     liftCoSubst (chooseRole rep r) env ty
@@ -192,7 +197,7 @@ opt_co4 env sym  rep r (GRefl _r ty (MCo co))
   where
     r'  = chooseRole rep r
     ty' = substTy (lcSubstLeft env) ty
-    co' = opt_co4 env False False Nominal co
+    co' = opt_co4_wrap env False False Nominal co
 
 opt_co4 env sym rep r (SymCo co)  = opt_co4_wrap env (not sym) rep r co
   -- surprisingly, we don't have to do anything to the env here. This is
@@ -348,7 +353,7 @@ opt_co4 env sym rep r (LRCo lr co)
 -- See Note [Optimising InstCo]
 opt_co4 env sym rep r (InstCo co1 arg)
     -- forall over type...
-  | Just (tv, kind_co, co_body) <- splitForAllCo_maybe co1
+  | Just (tv, kind_co, co_body) <- splitForAllCo_ty_maybe co1
   = opt_co4_wrap (extendLiftingContext env tv
                     (mkCoherenceRightCo Nominal t2 (mkSymCo kind_co) arg'))
                  sym rep r co_body
@@ -357,7 +362,7 @@ opt_co4 env sym rep r (InstCo co1 arg)
     -- If so, do an inefficient one-variable substitution, then re-optimize
 
     -- forall over type...
-  | Just (tv', kind_co', co_body') <- splitForAllCo_maybe co1'
+  | Just (tv', kind_co', co_body') <- splitForAllCo_ty_maybe co1'
   = opt_co4_wrap (extendLiftingContext (zapLiftingContext env) tv'
                     (mkCoherenceRightCo Nominal t2 (mkSymCo kind_co') arg'))
             False False r' co_body'
@@ -427,7 +432,7 @@ opt_univ env sym (PhantomProv h) _r ty1 ty2
   | sym       = mkPhantomCo h' ty2' ty1'
   | otherwise = mkPhantomCo h' ty1' ty2'
   where
-    h' = opt_co4 env sym False Nominal h
+    h' = opt_co4_wrap env sym False Nominal h
     ty1' = substTy (lcSubstLeft  env) ty1
     ty2' = substTy (lcSubstRight env) ty2
 
@@ -440,14 +445,14 @@ opt_univ env sym prov role oty1 oty2
       -- Phantom is already taken care of, and ProofIrrel doesn't relate tyconapps
   = let roles    = tyConRolesX role tc1
         arg_cos  = zipWith3 (mkUnivCo prov') roles tys1 tys2
-        arg_cos' = zipWith (opt_co4 env sym False) roles arg_cos
+        arg_cos' = zipWith (opt_co4_wrap env sym False) roles arg_cos
     in
     mkTyConAppCo role tc1 arg_cos'
 
   -- can't optimize the AppTy case because we can't build the kind coercions.
 
-  | Just (tv1, ty1) <- splitForAllTy_maybe oty1
-  , Just (tv2, ty2) <- splitForAllTy_maybe oty2
+  | Just (tv1, ty1) <- splitForAllTy_ty_maybe oty1
+  , Just (tv2, ty2) <- splitForAllTy_ty_maybe oty2
       -- NB: prov isn't interesting here either
   = let k1   = tyVarKind tv1
         k2   = tyVarKind tv2
@@ -596,11 +601,11 @@ opt_trans_rule is co1 co2@(AppCo co2a co2b)
 
 -- Push transitivity inside forall
 opt_trans_rule is co1 co2
-  | ForAllCo tv1 eta1 r1 <- co1
+  | Just (tv1, eta1, r1) <- splitForAllCo_ty_maybe co1
   , Just (tv2,eta2,r2) <- etaForAllCo_maybe co2
   = push_trans tv1 eta1 r1 tv2 eta2 r2
 
-  | ForAllCo tv2 eta2 r2 <- co2
+  | Just (tv2, eta2, r2) <- splitForAllCo_ty_maybe co2
   , Just (tv1,eta1,r1) <- etaForAllCo_maybe co1
   = push_trans tv1 eta1 r1 tv2 eta2 r2
 

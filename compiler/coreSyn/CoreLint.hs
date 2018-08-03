@@ -1346,7 +1346,7 @@ lintType ty@(FunTy t1 t2)
        ; k2 <- lintType t2
        ; lintArrow (text "type or kind" <+> quotes (ppr ty)) k1 k2 }
 
-lintType t@(ForAllTy (TvBndr tv _vis) ty)
+lintType t@(ForAllTy (Bndr tv _vis) ty)
   = do { lintL (isTyVar tv) (text "Covar bound in type:" <+> ppr t)
        ; lintTyBndr tv $ \tv' ->
     do { k <- lintType ty
@@ -1485,7 +1485,7 @@ lint_app doc kfn kas
              addErrL (fail_msg (text "Fun:" <+> (ppr kfa $$ ppr tka)))
            ; return kfb }
 
-    go_app in_scope (ForAllTy (TvBndr kv _vis) kfn) tka@(ta,ka)
+    go_app in_scope (ForAllTy (Bndr kv _vis) kfn) tka@(ta,ka)
       = do { let kv_kind = tyVarKind kv
            ; unless (ka `eqType` kv_kind) $
              addErrL (fail_msg (text "Forall:" <+> (ppr kv $$ ppr kv_kind $$ ppr tka)))
@@ -1677,11 +1677,14 @@ lintCoercion co@(AppCo co1 co2)
 lintCoercion (ForAllCo tv1 kind_co co)
   = do { (_, k2) <- lintStarCoercion kind_co
        ; let tv2 = setTyVarKind tv1 k2
+       -- ; ensureEqTys (tyVarKind tv1) k1 $ (vcat [ text "lhs kind mistach in ForallCo"
+       --                                          , text "lhs kind:" <+> ppr (tyVarKind tv1)
+       --                                          , text "rhs kind:" <+> ppr k1 ])
        ; addInScopeVar tv1 $
     do {
        ; (k3, k4, t1, t2, r) <- lintCoercion co
        ; in_scope <- getInScope
-       ; let tyl = mkInvForAllTy tv1 t1
+       ; let tyl = mkInvForAllTy_unchecked tv1 t1
              subst = mkTvSubst in_scope $
                      -- We need both the free vars of the `t2` and the
                      -- free vars of the range of the substitution in
@@ -1847,7 +1850,7 @@ lintCoercion (InstCo co arg)
        ; (k1',k2',s1,s2, r') <- lintCoercion arg
        ; lintRole arg Nominal r'
        ; in_scope <- getInScope
-       ; case (splitForAllTy_maybe t1', splitForAllTy_maybe t2') of
+       ; case (splitForAllTy_ty_maybe t1', splitForAllTy_ty_maybe t2') of
           (Just (tv1,t1), Just (tv2,t2))
             | k1' `eqType` tyVarKind tv1
             , k2' `eqType` tyVarKind tv2

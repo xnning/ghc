@@ -331,13 +331,13 @@ mkDictSelId name clas
     sel_names      = map idName (classAllSelIds clas)
     new_tycon      = isNewTyCon tycon
     [data_con]     = tyConDataCons tycon
-    tyvars         = dataConUserTyVarBinders data_con
+    tyvars         = dataConUserTyCoVarBinders data_con
     n_ty_args      = length tyvars
     arg_tys        = dataConRepArgTys data_con  -- Includes the dictionary superclasses
     val_index      = assoc "MkId.mkDictSelId" (sel_names `zip` [0..]) name
 
     sel_ty = mkForAllTys tyvars $
-             mkFunTy (mkClassPred clas (mkTyVarTys (binderVars tyvars))) $
+             mkFunTy (mkClassPred clas (mkTyCoVarTys (binderVars tyvars))) $
              getNth arg_tys val_index
 
     base_info = noCafIdInfo
@@ -390,11 +390,12 @@ mkDictSelRhs clas val_index
     arg_tys        = dataConRepArgTys data_con  -- Includes the dictionary superclasses
 
     the_arg_id     = getNth arg_ids val_index
-    pred           = mkClassPred clas (mkTyVarTys tyvars)
+    pred           = mkClassPred clas (mkTyCoVarTys tyvars)
     dict_id        = mkTemplateLocal 1 pred
     arg_ids        = mkTemplateLocalsNum 2 arg_tys
 
-    rhs_body | new_tycon = unwrapNewTypeBody tycon (mkTyVarTys tyvars) (Var dict_id)
+    rhs_body | new_tycon = unwrapNewTypeBody tycon (mkTyCoVarTys tyvars)
+                                                   (Var dict_id)
              | otherwise = Case (Var dict_id) dict_id (idType the_arg_id)
                                 [(DataAlt data_con, arg_ids, varToCoreExpr the_arg_id)]
                                 -- varToCoreExpr needed for equality superclass selectors
@@ -465,7 +466,7 @@ mkDataConWorkId wkr_name data_con
 
         ----------- Workers for newtypes --------------
     (nt_tvs, _, nt_arg_tys, _) = dataConSig data_con
-    res_ty_args  = mkTyVarTys nt_tvs
+    res_ty_args  = mkTyCoVarTys nt_tvs
     nt_wrap_ty   = dataConUserType data_con
     nt_work_info = noCafIdInfo          -- The NoCaf-ness is set by noCafIdInfo
                   `setArityInfo` 1      -- Arity 1
@@ -484,7 +485,7 @@ dataConCPR :: DataCon -> DmdResult
 dataConCPR con
   | isDataTyCon tycon     -- Real data types only; that is,
                           -- not unboxed tuples or newtypes
-  , null (dataConExTyVars con)  -- No existentials
+  , null (dataConExTyCoVars con)  -- No existentials
   , wkr_arity > 0
   , wkr_arity <= mAX_CPR_SIZE
   = if is_prod then vanillaCprProdRes (dataConRepArity con)
@@ -618,9 +619,9 @@ mkDataConRep dflags fam_envs wrap_name mb_bangs data_con
                      , dcr_bangs   = arg_ibangs }) }
 
   where
-    (univ_tvs, ex_tvs, eq_spec, theta, orig_arg_tys, _orig_res_ty)
+    (univ_tvs, ex_tvs, _dep_eq_spec, eq_spec, theta, orig_arg_tys, _orig_res_ty)
       = dataConFullSig data_con
-    wrap_tvs     = dataConUserTyVars data_con
+    wrap_tvs     = dataConUserTyCoVars data_con
     res_ty_args  = substTyVars (mkTvSubstPrs (map eqSpecPair eq_spec)) univ_tvs
 
     tycon        = dataConTyCon data_con       -- The representation TyCon (not family)
@@ -632,6 +633,7 @@ mkDataConRep dflags fam_envs wrap_name mb_bangs data_con
 
     wrap_arg_tys = theta ++ orig_arg_tys
     wrap_arity   = length wrap_arg_tys
+             -- TODO: should we include this @count@?
              -- The wrap_args are the arguments *other than* the eq_spec
              -- Because we are going to apply the eq_spec args manually in the
              -- wrapper
@@ -656,7 +658,7 @@ mkDataConRep dflags fam_envs wrap_name mb_bangs data_con
                      -- Some forcing/unboxing (includes eq_spec)
              || (not $ null eq_spec))) -- GADT
       || isFamInstTyCon tycon -- Cast result
-      || dataConUserTyVarsArePermuted data_con
+      || dataConUserTyCoVarsArePermuted data_con
                      -- If the data type was written with GADT syntax and
                      -- orders the type variables differently from what the
                      -- worker expects, it needs a data con wrapper to reorder
@@ -673,7 +675,7 @@ mkDataConRep dflags fam_envs wrap_name mb_bangs data_con
                       do { let (ex_vars, term_vars) = splitAtList ex_tvs src_vars
                                subst1 = zipTvSubst univ_tvs ty_args
                                subst2 = extendTvSubstList subst1 ex_tvs
-                                                          (mkTyVarTys ex_vars)
+                                                           (mkTyCoVarTys ex_vars)
                          ; (rep_ids, binds) <- go subst2 boxers term_vars
                          ; return (ex_vars ++ rep_ids, binds) } )
 
@@ -892,7 +894,8 @@ dataConArgUnpack arg_ty
       -- A recursive newtype might mean that
       -- 'arg_ty' is a newtype
   , let rep_tys = dataConInstArgTys con tc_args
-  = ASSERT( null (dataConExTyVars con) )  -- Note [Unpacking GADTs and existentials]
+  = ASSERT( null (dataConExTyCoVars con) )
+      -- Note [Unpacking GADTs and existentials]
     ( rep_tys `zip` dataConRepStrictness con
     ,( \ arg_id ->
        do { rep_ids <- mapM newLocal rep_tys
@@ -959,7 +962,8 @@ isUnpackableType dflags fam_envs ty
     unpackable_type ty
       | Just (tc, _) <- splitTyConApp_maybe ty
       , Just data_con <- tyConSingleAlgDataCon_maybe tc
-      , null (dataConExTyVars data_con)  -- See Note [Unpacking GADTs and existentials]
+      , null (dataConExTyCoVars data_con)
+          -- See Note [Unpacking GADTs and existentials]
       = Just data_con
       | otherwise
       = Nothing
@@ -975,7 +979,7 @@ components, like
 And it'd be fine to unpack a product type with existential components
 too, but that would require a bit more plumbing, so currently we don't.
 
-So for now we require: null (dataConExTyVars data_con)
+So for now we require: null (dataConExTyCoVars data_con)
 See Trac #14978
 
 Note [Unpack one-wide fields]
@@ -1136,7 +1140,7 @@ mkFCallId dflags uniq fcall ty
            `setLevityInfoWithType` ty
 
     (bndrs, _) = tcSplitPiTys ty
-    arity      = count isAnonTyBinder bndrs
+    arity      = count isAnonTyCoBinder bndrs
     strict_sig = mkClosedStrictSig (replicate arity topDmd) topRes
     -- the call does not claim to be strict in its arguments, since they
     -- may be lifted (foreign import prim) and the called code doesn't

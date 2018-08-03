@@ -1039,8 +1039,9 @@ mkEtaWW orig_n orig_expr in_scope orig_ty
 
        | Just (tv,ty') <- splitForAllTy_maybe ty
        , let (subst', tv') = Type.substTyVarBndr subst tv
+       = let ((n_subst, n_tv), n_n) = ((subst', tv'), n)
            -- Avoid free vars of the original expression
-       = go n subst' ty' (EtaVar tv' : eis)
+         in go n_n n_subst ty' (EtaVar n_tv : eis)
 
        | Just (arg_ty, res_ty) <- splitFunTy_maybe ty
        , not (isTypeLevPoly arg_ty)

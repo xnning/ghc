@@ -646,8 +646,8 @@ mkCoAxBranch tvs cvs lhs rhs roles loc
                , cab_loc     = loc
                , cab_incomps = placeHolderIncomps }
   where
-    (env1, tvs1) = tidyTyCoVarBndrs emptyTidyEnv tvs
-    (env,  cvs1) = tidyTyCoVarBndrs env1         cvs
+    (env1, tvs1) = tidyVarBndrs emptyTidyEnv tvs
+    (env,  cvs1) = tidyVarBndrs env1         cvs
     -- See Note [Tidy axioms when we build them]
 
 -- all of the following code is here to avoid mutual dependencies with
@@ -1366,11 +1366,11 @@ normalise_type ty
            ; (co2, nty2) <- go ty2
            ; r <- getRole
            ; return (mkFunCo r co1 co2, mkFunTy nty1 nty2) }
-    go (ForAllTy (TvBndr tyvar vis) ty)
-      = do { (lc', tv', h, ki') <- normalise_tyvar_bndr tyvar
+    go (ForAllTy (Bndr tcvar vis) ty)
+      = do { (lc', tv', h, ki') <- normalise_var_bndr tcvar
            ; (co, nty)          <- withLC lc' $ normalise_type ty
            ; let tv2 = setTyVarKind tv' ki'
-           ; return (mkForAllCo tv' h co, ForAllTy (TvBndr tv2 vis) nty) }
+           ; return (mkForAllCo tv' h co, ForAllTy (Bndr tv2 vis) nty) }
     go (TyVarTy tv)    = normalise_tyvar tv
     go (CastTy ty co)
       = do { (nco, nty) <- go ty
@@ -1397,12 +1397,30 @@ normalise_tyvar tv
            Nothing -> (mkReflCo r ty, ty) }
   where ty = mkTyVarTy tv
 
+normalise_var_bndr :: TyCoVar -> NormM (LiftingContext, TyCoVar, Coercion, Kind)
+normalise_var_bndr tcvar
+  -- | isTyVar tcvar
+  = normalise_tyvar_bndr tcvar
+  -- | otherwise
+  -- = normalise_covar_bndr tcvar
+
 normalise_tyvar_bndr :: TyVar -> NormM (LiftingContext, TyVar, Coercion, Kind)
 normalise_tyvar_bndr tv
-  = do { lc1 <- getLC
+  = ASSERT( isTyVar tv)
+    do { lc1 <- getLC
        ; env <- getEnv
        ; let callback lc ki = runNormM (normalise_type ki) env lc Nominal
-       ; return $ liftCoSubstVarBndrUsing callback lc1 tv }
+             (lc, nvar, nco, [ki]) = liftCoSubstVarBndrUsing callback lc1 tv
+       ; return $ (lc, nvar, nco, ki) }
+
+-- normalise_covar_bndr :: CoVar -> NormM (LiftingContext, CoVar, Coercion, Kind)
+-- normalise_covar_bndr cv
+--   = ASSERT( isCoVar cv)
+--     do { lc1 <- getLC
+--        ; env <- getEnv
+--        ; let callback lc ki = runNormM (normalise_type ki) env lc Nominal
+--              (lc, nvar, nco, [k1, k2]) = liftCoSubstVarBndrUsing callback lc1 cv
+--        ; return $ (lc, nvar, nco, mkCoercionType (coVarRole nvar) k1 k2) }
 
 -- | a monad for the normalisation functions, reading 'FamInstEnvs',
 -- a 'LiftingContext', and a 'Role'.
@@ -1536,10 +1554,10 @@ coreFlattenTy = go
                                  (env2, ty2') = go env1 ty2 in
                              (env2, mkFunTy ty1' ty2')
 
-    go env (ForAllTy (TvBndr tv vis) ty)
+    go env (ForAllTy (Bndr tv vis) ty)
       = let (env1, tv') = coreFlattenVarBndr env tv
             (env2, ty') = go env1 ty in
-        (env2, ForAllTy (TvBndr tv' vis) ty')
+        (env2, ForAllTy (Bndr tv' vis) ty')
 
     go env ty@(LitTy {}) = (env, ty)
 
@@ -1563,20 +1581,20 @@ coreFlattenCo env co
     covar         = uniqAway in_scope (mkCoVar fresh_name kind')
     env2          = env1 { fe_subst = subst1 `extendTCvInScope` covar }
 
-coreFlattenVarBndr :: FlattenEnv -> TyVar -> (FlattenEnv, TyVar)
+coreFlattenVarBndr :: FlattenEnv -> TyCoVar -> (FlattenEnv, TyCoVar)
 coreFlattenVarBndr env tv
   | kind' `eqType` kind
-  = ( env { fe_subst = extendTvSubst old_subst tv (mkTyVarTy tv) }
+  = ( env { fe_subst = extendTCvSubst old_subst tv (mkTyCoVarTy tv) }
              -- override any previous binding for tv
     , tv)
 
   | otherwise
-  = let new_tv    = uniqAway (getTCvInScope old_subst) (setTyVarKind tv kind')
-        new_subst = extendTvSubstWithClone old_subst tv new_tv
+  = let new_tv    = uniqAway (getTCvInScope old_subst) (setVarType tv kind')
+        new_subst = extendTCvSubstWithClone old_subst tv new_tv
     in
     (env' { fe_subst = new_subst }, new_tv)
   where
-    kind          = tyVarKind tv
+    kind          = varType tv
     (env', kind') = coreFlattenTy env kind
     old_subst     = fe_subst env
 
@@ -1608,7 +1626,7 @@ allTyVarsInTys :: [Type] -> VarSet
 allTyVarsInTys []       = emptyVarSet
 allTyVarsInTys (ty:tys) = allTyVarsInTy ty `unionVarSet` allTyVarsInTys tys
 
--- | Get the set of all type variables mentioned anywhere in a type.
+-- | Get the set of all type/coercion variables mentioned anywhere in a type.
 allTyVarsInTy :: Type -> VarSet
 allTyVarsInTy = go
   where
@@ -1616,10 +1634,10 @@ allTyVarsInTy = go
     go (TyConApp _ tys)  = allTyVarsInTys tys
     go (AppTy ty1 ty2)   = (go ty1) `unionVarSet` (go ty2)
     go (FunTy ty1 ty2)   = (go ty1) `unionVarSet` (go ty2)
-    go (ForAllTy (TvBndr tv _) ty) = unitVarSet tv     `unionVarSet`
-                                     go (tyVarKind tv) `unionVarSet`
-                                     go ty
-                                     -- Don't remove the tv from the set!
+    go (ForAllTy (Bndr tv _) ty) = unitVarSet tv     `unionVarSet`
+                                   go (tyVarKind tv) `unionVarSet`
+                                   go ty
+                                   -- Don't remove the tv from the set!
     go (LitTy {})        = emptyVarSet
     go (CastTy ty co)    = go ty `unionVarSet` go_co co
     go (CoercionTy co)   = go_co co
