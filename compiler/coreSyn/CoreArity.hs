@@ -1125,7 +1125,7 @@ etaBodyForJoinPoint need_args body
     go n ty subst rev_bs e
       | Just (tv, res_ty) <- splitForAllTy_maybe ty
       , let (subst', tv') = Type.substTyVarBndr subst tv
-      = go (n-1) res_ty subst' (tv' : rev_bs) (e `App` varToCoreExpr tv')
+      = go (n-1) res_ty subst' (tv' : rev_bs) (e `App` Type (mkTyVarTy tv'))
       | Just (arg_ty, res_ty) <- splitFunTy_maybe ty
       , let (subst', b) = freshEtaId n subst arg_ty
       = go (n-1) res_ty subst' (b : rev_bs) (e `App` Var b)

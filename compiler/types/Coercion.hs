@@ -1276,7 +1276,7 @@ promoteCoercion co = case co of
       | otherwise
       -> mkKindCo co
 
-    ForAllCo tv _ g
+    ForAllCo _ _ g
       -- | isTyVar tv
       -> promoteCoercion g
 

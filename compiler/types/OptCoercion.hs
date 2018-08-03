@@ -157,22 +157,22 @@ opt_co3 env sym _                       r co = opt_co4_wrap env sym False r co
 -- | Optimize a non-phantom coercion.
 opt_co4, opt_co4_wrap :: LiftingContext -> SymFlag -> ReprFlag -> Role -> Coercion -> NormalCo
 
--- opt_co4_wrap = opt_co4
-opt_co4_wrap env sym rep r co
-  = pprTrace "opt_co4_wrap {"
-    ( vcat [ text "Sym:" <+> ppr sym
-           , text "Rep:" <+> ppr rep
-           , text "Role:" <+> ppr r
-           , text "Co:" <+> ppr co ]) $
-    ASSERT2( r == coercionRole co,
-            ( vcat [ text "Sym:" <+> ppr sym
-           , text "Rep:" <+> ppr rep
-           , text "Role:" <+> ppr r
-           , text "Co:" <+> ppr co ])
-           )
-    let result = opt_co4 env sym rep r co in
-    pprTrace "opt_co4_wrap }" (ppr co $$ text "---" $$ ppr result) $
-    result
+opt_co4_wrap = opt_co4
+-- opt_co4_wrap env sym rep r co
+--   = pprTrace "opt_co4_wrap {"
+--     ( vcat [ text "Sym:" <+> ppr sym
+--            , text "Rep:" <+> ppr rep
+--            , text "Role:" <+> ppr r
+--            , text "Co:" <+> ppr co ]) $
+--     ASSERT2( r == coercionRole co,
+--             ( vcat [ text "Sym:" <+> ppr sym
+--            , text "Rep:" <+> ppr rep
+--            , text "Role:" <+> ppr r
+--            , text "Co:" <+> ppr co ])
+--            )
+--     let result = opt_co4 env sym rep r co in
+--     pprTrace "opt_co4_wrap }" (ppr co $$ text "---" $$ ppr result) $
+--     result
 
 opt_co4 env _   rep r (Refl ty)
   =

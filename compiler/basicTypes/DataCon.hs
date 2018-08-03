@@ -1028,7 +1028,7 @@ dataConUserTyCoVarBinders = dcUserTyCoVarBinders
 -- by the programmer in any GADT declaration. This includes *all* GADT-like
 -- equalities, including those written in by hand by the programmer.
 dataConEqSpec :: DataCon -> [EqSpec]
-dataConEqSpec con@(MkData { dcEqSpec = eq_spec, dcOtherTheta = theta })
+dataConEqSpec (MkData { dcEqSpec = eq_spec, dcOtherTheta = theta })
   = eq_spec ++
     [ spec   -- heterogeneous equality
     | Just (tc, [_k1, _k2, ty1, ty2]) <- map splitTyConApp_maybe theta
@@ -1061,7 +1061,7 @@ dataConEqSpec con@(MkData { dcEqSpec = eq_spec, dcOtherTheta = theta })
 -- | The *full* constraints on the constructor type, including dependent GADT
 -- equalities.
 dataConTheta :: DataCon -> ThetaType
-dataConTheta con@(MkData { dcEqSpec = eq_spec, dcOtherTheta = theta })
+dataConTheta (MkData { dcEqSpec = eq_spec, dcOtherTheta = theta })
   = eqSpecPreds (eq_spec) ++ theta
 
 -- | Get the Id of the 'DataCon' worker: a function that is the "actual"
@@ -1186,7 +1186,7 @@ dataConInstSig
                                      -- theta and arg tys
 -- ^ Instantiate the universal tyvars of a data con,
 --   returning the instantiated existentials, constraints, and args
-dataConInstSig con@(MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
+dataConInstSig (MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
                            , dcEqSpec = eq_spec, dcOtherTheta  = theta
                            , dcOrigArgTys = arg_tys })
                univ_tys
@@ -1217,7 +1217,7 @@ dataConInstSig con@(MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
 -- 7) The original result type of the 'DataCon'
 dataConFullSig :: DataCon
                -> ([TyVar], [TyCoVar], [EqSpec], [EqSpec], ThetaType, [Type], Type)
-dataConFullSig con@(MkData {dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs,
+dataConFullSig (MkData {dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs,
                             dcEqSpec = eq_spec, dcOtherTheta = theta,
                             dcOrigArgTys = arg_tys, dcOrigResTy = res_ty})
   = (univ_tvs, ex_tvs, [], eq_spec, theta, arg_tys, res_ty)
