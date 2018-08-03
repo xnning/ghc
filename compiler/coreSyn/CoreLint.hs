@@ -1852,6 +1852,17 @@ lintCoercion the_co@(NthCo r0 n co)
                ks = typeKind ts
                kt = typeKind tt
 
+         ; _ -> case (splitForAllTy_co_maybe s, splitForAllTy_co_maybe t) of
+         { (Just (cv_s, _ty_s), Just (cv_t, _ty_t))
+             | n == 0
+             -> do {lintRole the_co Nominal r0
+                   ; return (ks, kt, ts, tt, r0) }
+             where
+               ts = varType cv_s
+               tt = varType cv_t
+               ks = typeKind ts
+               kt = typeKind tt
+
          ; _ -> case (splitTyConApp_maybe s, splitTyConApp_maybe t) of
          { (Just (tc_s, tys_s), Just (tc_t, tys_t))
              | tc_s == tc_t
@@ -1869,7 +1880,7 @@ lintCoercion the_co@(NthCo r0 n co)
                kt = typeKind tt
 
          ; _ -> failWithL (hang (text "Bad getNth:")
-                              2 (ppr the_co $$ ppr s $$ ppr t)) }}}
+                              2 (ppr the_co $$ ppr s $$ ppr t)) }}}}
 
 lintCoercion the_co@(LRCo lr co)
   = do { (_,_,s,t,r) <- lintCoercion co
@@ -1888,7 +1899,7 @@ lintCoercion the_co@(LRCo lr co)
 
 lintCoercion (InstCo co arg)
   = do { (k3, k4, t1',t2', r) <- lintCoercion co
-       ; (k1',k2',s1,s2, r') <- lintCoercion arg
+       ; (k1',k2', s1, s2, r') <- lintCoercion arg
        ; lintRole arg Nominal r'
        ; in_scope <- getInScope
        ; case (splitForAllTy_ty_maybe t1', splitForAllTy_ty_maybe t2') of
