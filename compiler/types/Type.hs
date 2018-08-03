@@ -1309,10 +1309,6 @@ interfaces.  Notably this plays a role in tcTySigs in TcBinds.hs.
 -- variable
 mkInvForAllTy :: TyCoVar -> Type -> Type
 mkInvForAllTy tv ty
-  -- | isCoVar tv
-  -- , not (tv `elemVarSet` tyCoVarsOfType ty)
-  -- = mkFunTy (varType tv) ty
-  -- | otherwise
   = ForAllTy (Bndr tv Inferred) ty
 
 -- | Like mkInvForAllTy, but does not check the occurrence of the covar.
@@ -1346,9 +1342,6 @@ mkLamTypes :: [Var] -> Type -> Type
 -- ^ 'mkLamType' for multiple type or value arguments
 
 mkLamType v ty
-   -- | isCoVar v
-   -- , v `elemVarSet` tyCoVarsOfType ty
-   -- = ForAllTy (Bndr v Inferred) ty
    | isTyVar v
    = ForAllTy (Bndr v Inferred) ty
    | otherwise
@@ -1372,10 +1365,6 @@ mkTyConBindersPreferAnon vars inner_ty = fst (go vars)
               , v `elemVarSet` fvs
               = ( Bndr v (NamedTCB Required) : binders
                 , fvs `delVarSet` v `unionVarSet` kind_vars )
-              -- | isCoVar v
-              -- , v `elemVarSet` fvs
-              -- = ( Bndr v (NamedTCB Inferred) : binders
-              --   , fvs `delVarSet` v `unionVarSet` kind_vars )
               | otherwise
               = ( Bndr v AnonTCB : binders
                 , fvs `unionVarSet` kind_vars )
@@ -2500,7 +2489,6 @@ typeKind (TyVarTy tyvar)   = tyVarKind tyvar
 typeKind (CastTy _ty co)   = pSnd $ coercionKind co
 typeKind (CoercionTy co)   = coercionType co
 typeKind ty@(ForAllTy (Bndr _ _) _)
-  -- | isTyVar tv                     -- See Note [Weired typing rule for ForAllTy].
   = case occCheckExpand tvs k of   -- We must make sure tv does not occur in kind
       Just k' -> k'                -- As it is already out of scope!
       Nothing -> pprPanic "typeKind"

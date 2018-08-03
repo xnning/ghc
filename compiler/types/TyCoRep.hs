@@ -2099,9 +2099,7 @@ extendTCvSubst subst v ty
 
 extendTCvSubstWithClone :: TCvSubst -> TyCoVar -> TyCoVar -> TCvSubst
 extendTCvSubstWithClone subst tcv
-  -- | isTyVar tcv
   = extendTvSubstWithClone subst tcv
-  -- | otherwise   = extendCvSubstWithClone subst tcv
 
 extendTvSubst :: TCvSubst -> TyVar -> Type -> TCvSubst
 extendTvSubst (TCvSubst in_scope tenv cenv) tv ty
@@ -2494,9 +2492,7 @@ substTyCoVars subst = map $ substTyCoVar subst
 
 substTyCoVar :: TCvSubst -> TyCoVar -> Type
 substTyCoVar subst tv
-  -- | isTyVar tv
   = substTyVar subst tv
-  -- | otherwise = CoercionTy $ substCoVar subst tv
 
 lookupTyVar :: TCvSubst -> TyVar  -> Maybe Type
         -- See Note [Extending the TCvSubst]
@@ -2599,9 +2595,7 @@ substForAllCoBndrUsing :: Bool  -- apply sym to binder?
                        -> TCvSubst -> TyCoVar -> KindCoercion
                        -> (TCvSubst, TyCoVar, KindCoercion)
 substForAllCoBndrUsing sym sco subst old_var
-  -- | isTyVar old_var
   = substForAllCoTyVarBndrUsing sym sco subst old_var
-  -- | otherwise       = substForAllCoCoVarBndrUsing sym sco subst old_var
 
 substForAllCoTyVarBndrUsing :: Bool  -- apply sym to binder?
                             -> (Coercion -> Coercion)  -- transformation to kind co
@@ -2691,9 +2685,7 @@ substVarBndrUnchecked = substVarBndrUsing substTyUnchecked
 substVarBndrUsing :: (TCvSubst -> Type -> Type)
                   -> TCvSubst -> TyCoVar -> (TCvSubst, TyCoVar)
 substVarBndrUsing subst_fn subst v
-  -- | isTyVar v
   = substTyVarBndrUsing subst_fn subst v
-  -- | otherwise = substCoVarBndrUsing subst_fn subst v
 
 -- | Substitute a tyvar in a binding position, returning an
 -- extended subst and a new tyvar.
