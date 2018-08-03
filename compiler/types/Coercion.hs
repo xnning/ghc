@@ -1268,12 +1268,13 @@ promoteCoercion co = case co of
       | otherwise
       -> mkKindCo co
 
-    ForAllCo _ _ g
+    ForAllCo tv _ g
+      | isTyVar tv
       -> promoteCoercion g
 
-    -- ForAllCo cv _ _
-    --   -> ASSERT( isCoVar cv )
-    --      mkNomReflCo liftedTypeKind
+    ForAllCo cv _ _
+      -> ASSERT( isCoVar cv )
+         mkNomReflCo liftedTypeKind
 
     FunCo _ _ _
       -> mkNomReflCo liftedTypeKind
@@ -1316,7 +1317,10 @@ promoteCoercion co = case co of
       -> mkKindCo co
 
     InstCo g _
+      | isForAllTy_ty ty1
       -> promoteCoercion g
+      | otherwise
+      -> mkKindCo co
 
     KindCo _
       -> ASSERT( False )
@@ -1389,6 +1393,7 @@ mkPiCos r vs co = foldr (mkPiCo r) co vs
 -- are quantified over the same variable.
 mkPiCo  :: Role -> Var -> Coercion -> Coercion
 mkPiCo r v co | isTyVar v
+              || isCoVar v
               = mkHomoForAllCos [v] co -- mkHomoForAllCos will take care of
                                        -- whether covar is used or not
               | otherwise = mkFunCo r (mkReflCo r (varType v)) co
@@ -1772,7 +1777,10 @@ liftCoSubstVarBndrUsing :: (LiftingContext -> Type -> (Coercion, a))
                            -> LiftingContext -> TyCoVar
                            -> (LiftingContext, TyCoVar, Coercion, [a])
 liftCoSubstVarBndrUsing fun lc old_var
+  | isTyVar old_var
   = liftCoSubstTyVarBndrUsing fun lc old_var
+  | otherwise
+  = liftCoSubstCoVarBndrUsing fun lc old_var
 
 liftCoSubstTyVarBndrUsing :: (LiftingContext -> Type -> (Coercion, a))
                            -> LiftingContext -> TyVar
@@ -1791,39 +1799,39 @@ liftCoSubstTyVarBndrUsing fun lc@(LC subst cenv) old_var
                -- :: new_var ~ new_var |> eta
     new_cenv = extendVarEnv cenv old_var lifted
 
--- liftCoSubstCoVarBndrUsing :: (LiftingContext -> Type -> (Coercion, a))
---                            -> LiftingContext -> CoVar
---                            -> (LiftingContext, CoVar, Coercion, [a])
--- liftCoSubstCoVarBndrUsing fun lc@(LC subst cenv) old_var
---   = ASSERT( isCoVar old_var )
---     ( LC (subst `extendTCvInScope` new_var) new_cenv
---     , new_var, kind_co, [stuff1, stuff2] )
---   where
---     (_, _, s1, s2, role) = coVarKindsTypesRole old_var
---     (eta1, stuff1) = fun lc s1
---     (eta2, stuff2) = fun lc s2
---     Pair s1' _     = coercionKind eta1
---     Pair s2' _     = coercionKind eta2
+liftCoSubstCoVarBndrUsing :: (LiftingContext -> Type -> (Coercion, a))
+                           -> LiftingContext -> CoVar
+                           -> (LiftingContext, CoVar, Coercion, [a])
+liftCoSubstCoVarBndrUsing fun lc@(LC subst cenv) old_var
+  = ASSERT( isCoVar old_var )
+    ( LC (subst `extendTCvInScope` new_var) new_cenv
+    , new_var, kind_co, [stuff1, stuff2] )
+  where
+    (_, _, s1, s2, role) = coVarKindsTypesRole old_var
+    (eta1, stuff1) = fun lc s1
+    (eta2, stuff2) = fun lc s2
+    Pair s1' _     = coercionKind eta1
+    Pair s2' _     = coercionKind eta2
 
---     -- old_var :: s1  ~ s2
---     -- eta1    :: s1' ~ t1
---     -- eta2    :: s2' ~ t2
---     -- co1     :: s1' ~ s2'
---     -- co2     :: t1  ~ t2
---     -- kind_co :: (s1' ~ s2') ~ (t1 ~ t2)
---     -- lifted  :: co1 ~ co2
+    -- old_var :: s1  ~ s2
+    -- eta1    :: s1' ~ t1
+    -- eta2    :: s2' ~ t2
+    -- co1     :: s1' ~ s2'
+    -- co2     :: t1  ~ t2
+    -- kind_co :: (s1' ~ s2') ~ (t1 ~ t2)
+    -- lifted  :: co1 ~ co2
 
---     k1      = mkCoercionType role s1' s2'
---     new_var = uniqAway (getTCvInScope subst) (setVarType old_var k1)
+    k1      = mkCoercionType role s1' s2'
+    new_var = uniqAway (getTCvInScope subst) (setVarType old_var k1)
 
---     co1     = mkCoVarCo new_var
---     co2     = mkSymCo eta1 `mkTransCo` co1 `mkTransCo` eta2
---     kind_co = mkTyConAppCo Nominal (equalityTyCon role)
---                            [ mkKindCo co1, mkKindCo co2
---                            , co1         , co2          ]
---     lifted  = mkProofIrrelCo Nominal kind_co co1 co2
+    co1     = mkCoVarCo new_var
+    co2     = mkSymCo eta1 `mkTransCo` co1 `mkTransCo` eta2
+    kind_co = mkTyConAppCo Nominal (equalityTyCon role)
+                           [ mkKindCo co1, mkKindCo co2
+                           , co1         , co2          ]
+    lifted  = mkProofIrrelCo Nominal kind_co co1 co2
 
---     new_cenv = extendVarEnv cenv old_var lifted
+    new_cenv = extendVarEnv cenv old_var lifted
 
 -- | Is a var in the domain of a lifting context?
 isMappedByLC :: TyCoVar -> LiftingContext -> Bool
