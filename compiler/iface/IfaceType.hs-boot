@@ -4,7 +4,6 @@ module IfaceType( IfaceType, IfaceTyCon, IfaceForAllBndr
                 , IfaceCoercion, IfaceTyLit, IfaceAppArgs ) where
 
 import Var (VarBndr, ArgFlag)
-import FastString (FastString)
 
 data IfaceAppArgs
 

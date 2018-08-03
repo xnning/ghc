@@ -743,10 +743,7 @@ mkTyVarTys = map mkTyVarTy -- a common use of mkTyVarTy
 
 mkTyCoVarTy :: TyCoVar -> Type
 mkTyCoVarTy v
-  -- | isTyVar v
   = TyVarTy v
-  -- | otherwise
-  -- = CoercionTy (CoVarCo v)
 
 mkTyCoVarTys :: [TyCoVar] -> [Type]
 mkTyCoVarTys = map mkTyCoVarTy
@@ -765,11 +762,6 @@ mkFunTys tys ty = foldr mkFunTy ty tys
 
 mkForAllTy :: TyCoVar -> ArgFlag -> Type -> Type
 mkForAllTy tv vis ty
-  -- | isCoVar tv
-  -- , not (tv `elemVarSet` tyCoVarsOfType ty)
-  -- = ASSERT( vis == Inferred )
-  --   mkFunTy (varType tv) ty
-  -- | otherwise
   = ForAllTy (Bndr tv vis) ty
 
 -- | Wraps foralls over the type using the provided 'TyCoVar's from left to right

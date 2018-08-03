@@ -1763,12 +1763,12 @@ bindIfaceForAllBndr (Bndr (IfaceTvBndr tv) vis) thing_inside
 bindIfaceForAllBndr (Bndr (IfaceIdBndr tv) vis) thing_inside
   = bindIfaceId tv $ \tv' -> thing_inside tv' vis
 
-bindIfaceTyVars :: [IfaceTvBndr] -> ([TyVar] -> IfL a) -> IfL a
-bindIfaceTyVars [] thing_inside = thing_inside []
-bindIfaceTyVars (tv:tvs) thing_inside
-  = bindIfaceTyVar tv   $ \tv' ->
-    bindIfaceTyVars tvs $ \tvs' ->
-    thing_inside (tv' : tvs')
+-- bindIfaceTyVars :: [IfaceTvBndr] -> ([TyVar] -> IfL a) -> IfL a
+-- bindIfaceTyVars [] thing_inside = thing_inside []
+-- bindIfaceTyVars (tv:tvs) thing_inside
+--   = bindIfaceTyVar tv   $ \tv' ->
+--     bindIfaceTyVars tvs $ \tvs' ->
+--     thing_inside (tv' : tvs')
 
 bindIfaceTyVar :: IfaceTvBndr -> (TyVar -> IfL a) -> IfL a
 bindIfaceTyVar (occ,kind) thing_inside

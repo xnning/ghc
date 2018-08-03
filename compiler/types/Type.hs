@@ -2499,7 +2499,7 @@ typeKind (FunTy {})        = liftedTypeKind
 typeKind (TyVarTy tyvar)   = tyVarKind tyvar
 typeKind (CastTy _ty co)   = pSnd $ coercionKind co
 typeKind (CoercionTy co)   = coercionType co
-typeKind ty@(ForAllTy (Bndr tv _) _)
+typeKind ty@(ForAllTy (Bndr _ _) _)
   -- | isTyVar tv                     -- See Note [Weired typing rule for ForAllTy].
   = case occCheckExpand tvs k of   -- We must make sure tv does not occur in kind
       Just k' -> k'                -- As it is already out of scope!
@@ -2664,7 +2664,7 @@ occCheckExpand vs_to_avoid ty
     go_co cxt (FunCo r co1 co2)         = do { co1' <- go_co cxt co1
                                              ; co2' <- go_co cxt co2
                                              ; return (mkFunCo r co1' co2') }
-    go_co cxt@(as,env) (CoVarCo c)
+    go_co cxt (CoVarCo c)
       -- | c `elemVarSet` as               = Nothing
       -- | Just c' <- lookupVarEnv env c   = return (mkCoVarCo c')
       -- | otherwise
