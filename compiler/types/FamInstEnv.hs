@@ -1399,10 +1399,7 @@ normalise_tyvar tv
 
 normalise_var_bndr :: TyCoVar -> NormM (LiftingContext, TyCoVar, Coercion, Kind)
 normalise_var_bndr tcvar
-  -- | isTyVar tcvar
   = normalise_tyvar_bndr tcvar
-  -- | otherwise
-  -- = normalise_covar_bndr tcvar
 
 normalise_tyvar_bndr :: TyVar -> NormM (LiftingContext, TyVar, Coercion, Kind)
 normalise_tyvar_bndr tv

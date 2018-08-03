@@ -2653,9 +2653,6 @@ occCheckExpand vs_to_avoid ty
                                              ; co2' <- go_co cxt co2
                                              ; return (mkFunCo r co1' co2') }
     go_co cxt (CoVarCo c)
-      -- | c `elemVarSet` as               = Nothing
-      -- | Just c' <- lookupVarEnv env c   = return (mkCoVarCo c')
-      -- | otherwise
       = do { c' <- go_var cxt c
            ; return (mkCoVarCo c') }
     go_co cxt (HoleCo h)                = do { c' <- go_var cxt (ch_co_var h)
