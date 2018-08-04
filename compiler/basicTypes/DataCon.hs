@@ -1186,12 +1186,12 @@ dataConInstSig
                                      -- theta and arg tys
 -- ^ Instantiate the universal tyvars of a data con,
 --   returning the instantiated existentials, constraints, and args
-dataConInstSig con@(MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
+dataConInstSig (MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
                            , dcEqSpec = eq_spec, dcOtherTheta  = theta
                            , dcOrigArgTys = arg_tys })
                univ_tys
   = ( ex_tvs'
-    , substTheta subst (eqSpecPreds (dataConKindEqSpec con ++ eq_spec) ++ theta)
+    , substTheta subst (eqSpecPreds (eq_spec) ++ theta)
     , substTys   subst arg_tys)
   where
     univ_subst = zipTvSubst univ_tvs univ_tys
