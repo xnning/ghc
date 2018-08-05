@@ -709,7 +709,7 @@ mkForAllCo tv kind_co co
 -- | Like 'mkForAllCo', but doesn't check if the inner coercion is reflexive.
 -- The kind of the tycovar should be the left-hand kind of the kind coercion.
 mkForAllCo_NoRefl :: TyCoVar -> Coercion -> Coercion -> Coercion
-mkForAllCo_NoRefl = mkForAllCo
+mkForAllCo_NoRefl = ForAllCo
 
 -- | Make nested ForAllCos
 mkForAllCos :: [(TyCoVar, Coercion)] -> Coercion -> Coercion
@@ -1393,7 +1393,6 @@ mkPiCos r vs co = foldr (mkPiCo r) co vs
 -- are quantified over the same variable.
 mkPiCo  :: Role -> Var -> Coercion -> Coercion
 mkPiCo r v co | isTyVar v
-              || isCoVar v
               = mkHomoForAllCos [v] co -- mkHomoForAllCos will take care of
                                        -- whether covar is used or not
               | otherwise = mkFunCo r (mkReflCo r (varType v)) co
