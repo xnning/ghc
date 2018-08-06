@@ -9,5 +9,5 @@ data PatSyn
 
 patSynArity :: PatSyn -> Arity
 patSynInstArgTys :: PatSyn -> [Type] -> [Type]
-patSynExTyCoVars :: PatSyn -> [TyCoVar]
+patSynExTyVars :: PatSyn -> [TyCoVar]
 patSynName :: PatSyn -> Name

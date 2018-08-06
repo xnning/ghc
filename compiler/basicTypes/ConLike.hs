@@ -116,7 +116,7 @@ conLikeInstOrigArgTys (PatSynCon pat_syn) tys =
 -- | Existentially quantified type/coercion variables
 conLikeExTyCoVars :: ConLike -> [TyCoVar]
 conLikeExTyCoVars (RealDataCon dcon1) = dataConExTyCoVars dcon1
-conLikeExTyCoVars (PatSynCon psyn1)   = patSynExTyCoVars psyn1
+conLikeExTyCoVars (PatSynCon psyn1)   = patSynExTyVars psyn1
 
 conLikeName :: ConLike -> Name
 conLikeName (RealDataCon data_con) = dataConName data_con
