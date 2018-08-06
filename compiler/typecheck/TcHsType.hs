@@ -1348,7 +1348,7 @@ Here
 and
   T :: forall {k3} k1. forall k3 -> k1 -> k2 -> k3 -> *
 
-See Note [TyVarBndrs, TyVarBinders, TyConBinders, and visibility]
+See Note [VarBndrs, TyCoVarBinders, TyConBinders, and visibility]
 in TyCoRep.
 
 kcLHsQTyVars uses the hsq_dependent field to decide whether
