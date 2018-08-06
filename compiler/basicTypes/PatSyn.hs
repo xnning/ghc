@@ -457,7 +457,7 @@ patSynInstResTy (MkPatSyn { psName = name, psUnivTyVars = univ_tvs
 -- | Print the type of a pattern synonym. The foralls are printed explicitly
 pprPatSynType :: PatSyn -> SDoc
 pprPatSynType (MkPatSyn { psUnivTyVars = univ_tvs,  psReqTheta  = req_theta
-                        , psExTyVars = ex_tvs,      psProvTheta = prov_theta
+                        , psExTyVars   = ex_tvs,    psProvTheta = prov_theta
                         , psArgs       = orig_args, psResultTy = orig_res_ty })
   = sep [ pprForAll univ_tvs
         , pprThetaArrowTy req_theta
