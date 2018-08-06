@@ -15,8 +15,7 @@ module PatSyn (
         patSynName, patSynArity, patSynIsInfix,
         patSynArgs,
         patSynMatcher, patSynBuilder,
-        patSynUnivTyVarBinders, patSynExTyVars, patSynExTyVarBinders,
-        patSynSig,
+        patSynUnivTyVarBinders, patSynExTyVars, patSynExTyVarBinders, patSynSig,
         patSynInstArgTys, patSynInstResTy, patSynFieldLabels,
         patSynFieldType,
 
@@ -72,7 +71,7 @@ data PatSyn
         -- Required dictionaries (may mention psUnivTyVars)
         psReqTheta    :: ThetaType,
 
-        -- Existentially-quantified type/coercion vars
+        -- Existentially-quantified type vars
         psExTyVars    :: [TyCoVarBinder],
 
         -- Provided dictionaries (may mention psUnivTyVars or psExTyVars)
@@ -212,7 +211,7 @@ In this case, the fields of MkPatSyn will be set as follows:
   psInfix      = False
 
   psUnivTyVars = [t]
-  psExTyVars = [b]
+  psExTyVars   = [b]
   psProvTheta  = (Show (Maybe t), Ord b)
   psReqTheta   = (Eq t, Num t)
   psResultTy  = T (Maybe t)
@@ -400,7 +399,7 @@ patSynFieldType ps label
 patSynUnivTyVarBinders :: PatSyn -> [TyCoVarBinder]
 patSynUnivTyVarBinders = psUnivTyVars
 
-patSynExTyVars :: PatSyn -> [TyCoVar]
+patSynExTyVars :: PatSyn -> [TyVar]
 patSynExTyVars ps = binderVars (psExTyVars ps)
 
 patSynExTyVarBinders :: PatSyn -> [TyCoVarBinder]

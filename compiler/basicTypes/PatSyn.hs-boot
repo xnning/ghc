@@ -2,12 +2,12 @@ module PatSyn where
 
 import BasicTypes (Arity)
 import {-# SOURCE #-} TyCoRep (Type)
-import Var (TyCoVar)
+import Var (TyVar)
 import Name (Name)
 
 data PatSyn
 
 patSynArity :: PatSyn -> Arity
 patSynInstArgTys :: PatSyn -> [Type] -> [Type]
-patSynExTyVars :: PatSyn -> [TyCoVar]
+patSynExTyVars :: PatSyn -> [TyVar]
 patSynName :: PatSyn -> Name
