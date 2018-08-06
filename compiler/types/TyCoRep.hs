@@ -120,6 +120,7 @@ module TyCoRep (
         substCo, substCos, substCoVar, substCoVars, lookupCoVar,
         cloneTyVarBndr, cloneTyVarBndrs,
         substVarBndr, substVarBndrs,
+        substTyVarBndr, substTyVarBndrs,
         substCoVarBndr,
         substTyVar, substTyVars, substTyCoVars,
         substForAllCoBndr,
@@ -2707,6 +2708,12 @@ substCoVars subst cvs = map (substCoVar subst) cvs
 
 lookupCoVar :: TCvSubst -> Var -> Maybe Coercion
 lookupCoVar (TCvSubst _ _ cenv) v = lookupVarEnv cenv v
+
+substTyVarBndr :: HasCallStack => TCvSubst -> TyVar -> (TCvSubst, TyVar)
+substTyVarBndr = substTyVarBndrUsing substTy
+
+substTyVarBndrs :: HasCallStack => TCvSubst -> [TyVar] -> (TCvSubst, [TyVar])
+substTyVarBndrs = mapAccumL substTyVarBndr
 
 substVarBndr :: HasCallStack => TCvSubst -> TyCoVar -> (TCvSubst, TyCoVar)
 substVarBndr = substVarBndrUsing substTy
