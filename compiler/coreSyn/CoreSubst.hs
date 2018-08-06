@@ -47,7 +47,7 @@ import qualified Coercion
 
         -- We are defining local versions
 import Type     hiding ( substTy, extendTvSubst, extendCvSubst, extendTvSubstList
-                       , isInScope, cloneTyVarBndr )
+                       , isInScope, substTyVarBndr, cloneTyVarBndr )
 import Coercion hiding ( substCo, substCoVarBndr )
 
 import PrelNames
@@ -562,7 +562,7 @@ Subst to a TCvSubst.
 
 substTyVarBndr :: Subst -> TyVar -> (Subst, TyVar)
 substTyVarBndr (Subst in_scope id_env tv_env cv_env) tv
-  = case Type.substVarBndr (TCvSubst in_scope tv_env cv_env) tv of
+  = case Type.substTyVarBndr (TCvSubst in_scope tv_env cv_env) tv of
         (TCvSubst in_scope' tv_env' cv_env', tv')
            -> (Subst in_scope' id_env tv_env' cv_env', tv')
 

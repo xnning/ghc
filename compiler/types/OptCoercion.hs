@@ -15,7 +15,7 @@ import GhcPrelude
 import DynFlags
 import TyCoRep
 import Coercion
-import Type hiding( substTy )
+import Type hiding( substTyVarBndr, substTy )
 import TcType       ( exactTyCoVarsOfType )
 import TyCon
 import CoAxiom

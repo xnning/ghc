@@ -39,7 +39,7 @@ import DataCon
 import Demand( etaExpandStrictSig )
 import OptCoercion ( optCoercion )
 import Type     hiding ( substTy, extendTvSubst, extendCvSubst, extendTvSubstList
-                       , isInScope, cloneTyVarBndr )
+                       , isInScope, substTyVarBndr, cloneTyVarBndr )
 import Coercion hiding ( substCo, substCoVarBndr )
 import TyCon        ( tyConArity )
 import TysWiredIn

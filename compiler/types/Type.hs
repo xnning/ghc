@@ -186,7 +186,8 @@ module Type (
         substTyUnchecked, substTysUnchecked, substThetaUnchecked,
         substTyWithUnchecked,
         substCoUnchecked, substCoWithUnchecked,
-        substVarBndr, substVarBndrs, substTyVar, substTyVars,
+        substTyVarBndr, substTyVarBndrs, substTyVar, substTyVars,
+        substVarBndr, substVarBndrs,
         cloneTyVarBndr, cloneTyVarBndrs, lookupTyVar,
 
         -- * Pretty-printing
