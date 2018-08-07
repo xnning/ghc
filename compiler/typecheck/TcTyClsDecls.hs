@@ -2204,7 +2204,7 @@ rejigConRes tmpl_bndrs res_tmpl dc_inferred_tvs dc_specified_tvs res_ty
                   tcMatchTy res_tmpl res_ty
   = let (univ_tvs, raw_eqs, kind_subst) = mkGADTVars tmpl_tvs dc_tvs subst
         raw_ex_tvs = dc_tvs `minusList` univ_tvs
-        (arg_subst, substed_ex_tvs) = substVarBndrs kind_subst raw_ex_tvs
+        (arg_subst, substed_ex_tvs) = substTyVarBndrs kind_subst raw_ex_tvs
 
         -- After rejigging the existential tyvars, the resulting substitution
         -- gives us exactly what we need to rejig the user-written tyvars,

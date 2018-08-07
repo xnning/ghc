@@ -1153,7 +1153,7 @@ flatten_args_tc tc = flatten_args all_bndrs any_named_bndrs inner_ki emptyVarSet
     -- NB: Those bangs there drop allocations in T9872{a,c,d} by 8%.
 
 {-# INLINE flatten_args #-}
-flatten_args :: [TyCoBinder] -> Bool   -- Binders, and True iff any of them are
+flatten_args :: [TyCoBinder] -> Bool -- Binders, and True iff any of them are
                                      -- named.
              -> Kind -> TcTyCoVarSet -- function kind; kind's free vars
              -> [Role] -> [Type]     -- these are in 1-to-1 correspondence

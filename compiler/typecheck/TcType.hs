@@ -153,7 +153,7 @@ module TcType (
   mkTvSubstPrs, notElemTCvSubst, unionTCvSubst,
   getTvSubstEnv, setTvSubstEnv, getTCvInScope, extendTCvInScope,
   extendTCvInScopeList, extendTCvInScopeSet, extendTvSubstAndInScope,
-  Type.lookupTyVar, Type.extendTCvSubst, Type.substVarBndr,
+  Type.lookupTyVar, Type.extendTCvSubst, Type.substTyVarBndr,
   Type.extendTvSubst,
   isInScope, mkTCvSubst, mkTvSubst, zipTyEnv, zipCoEnv,
   Type.substTy, substTys, substTyWith, substTyWithCoVars,
@@ -1353,7 +1353,7 @@ findDupTyVarTvs prs
 mkSigmaTy :: [TyCoVarBinder] -> [PredType] -> Type -> Type
 mkSigmaTy bndrs theta tau = mkForAllTys bndrs (mkPhiTy theta tau)
 
--- | Make a sigma ty where all type/coercion variables are 'Inferred'. That is,
+-- | Make a sigma ty where all type variables are 'Inferred'. That is,
 -- they cannot be used with visible type application.
 mkInfSigmaTy :: [TyCoVar] -> [PredType] -> Type -> Type
 mkInfSigmaTy tyvars theta ty = mkSigmaTy (mkTyCoVarBinders Inferred tyvars) theta ty
