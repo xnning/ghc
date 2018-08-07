@@ -27,7 +27,6 @@ module IfaceType (
 
         -- Equality testing
         isIfaceLiftedTypeKind,
-        isIfaceIdBndr, isIfaceTvBndr,
 
         -- Conversion from IfaceAppArgs -> [IfaceType]
         appArgsIfaceTypes,
@@ -107,10 +106,6 @@ ifaceBndrName (IfaceIdBndr bndr) = ifaceIdBndrName bndr
 isIfaceIdBndr :: IfaceBndr -> Bool
 isIfaceIdBndr (IfaceIdBndr {}) = True
 isIfaceIdBndr _ = False
-
-isIfaceTvBndr :: IfaceBndr -> Bool
-isIfaceTvBndr (IfaceTvBndr {}) = True
-isIfaceTvBndr _ = False
 
 type IfaceLamBndr = (IfaceBndr, IfaceOneShot)
 

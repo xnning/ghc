@@ -102,7 +102,7 @@ buildDataCon :: FamInstEnvs
            -> [FieldLabel]             -- Field labels
            -> [TyVar]                  -- Universals
            -> [TyCoVar]                -- Existentials
-           -> [TyCoVarBinder]          -- User-written 'TyVarBinder's
+           -> [TyCoVarBinder]          -- User-written 'TyCoVarBinder's
            -> [EqSpec]                 -- Equality spec
            -> KnotTied ThetaType       -- Does not include the "stupid theta"
                                        -- or the GADT equalities

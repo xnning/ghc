@@ -1778,7 +1778,7 @@ bindIfaceTyConBinders :: [IfaceTyConBinder]
 bindIfaceTyConBinders [] thing_inside = thing_inside []
 bindIfaceTyConBinders (b:bs) thing_inside
   = bindIfaceTyConBinderX bindIfaceBndr b $ \ b'  ->
-    bindIfaceTyConBinders bs               $ \ bs' ->
+    bindIfaceTyConBinders bs              $ \ bs' ->
     thing_inside (b':bs')
 
 bindIfaceTyConBinders_AT :: [IfaceTyConBinder]
