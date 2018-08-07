@@ -2646,7 +2646,8 @@ substForAllCoTyVarBndrUsing :: Bool  -- apply sym to binder?
                             -> TCvSubst -> TyVar -> KindCoercion
                             -> (TCvSubst, TyVar, KindCoercion)
 substForAllCoTyVarBndrUsing sym sco (TCvSubst in_scope tenv cenv) old_var old_kind_co
-  = ( TCvSubst (in_scope `extendInScopeSet` new_var) new_env cenv
+  = ASSERT( isTyVar old_var )
+    ( TCvSubst (in_scope `extendInScopeSet` new_var) new_env cenv
     , new_var, new_kind_co )
   where
     new_env | no_change && not sym = delVarEnv tenv old_var
@@ -2661,13 +2662,10 @@ substForAllCoTyVarBndrUsing sym sco (TCvSubst in_scope tenv cenv) old_var old_ki
                 | otherwise      = sco old_kind_co
 
     Pair new_ki1 _ = coercionKind new_kind_co
-    -- We could do substitution to (tyVarKind old_var). We don't do so because:
-    --   1. We already substituted new_kind_co, which contains the kind
-    --      information we want. We don't want to do substitution once more.
-    --   2. In most of the time, new_kind_co is a Refl, in which case coercionKind
-    --      is really fast.
-    --   3. RAE tested this line of code and figured out that using coercionKind
-    --      has better performance (July 2018).
+    -- We could do substitution to (tyVarKind old_var). We don't do so because
+    -- we already substituted new_kind_co, which contains the kind information
+    -- we want. We don't want to do substitution once more. Also, in most cases,
+    -- new_kind_co is a Refl, in which case coercionKind is really fast.
 
     new_var  = uniqAway in_scope (setTyVarKind old_var new_ki1)
 
@@ -2677,23 +2675,22 @@ substForAllCoCoVarBndrUsing :: Bool  -- apply sym to binder?
                             -> (TCvSubst, CoVar, KindCoercion)
 substForAllCoCoVarBndrUsing sym sco (TCvSubst in_scope tenv cenv)
                             old_var old_kind_co
-  = ( TCvSubst (in_scope `extendInScopeSet` new_var) tenv new_cenv
+  = ASSERT( isCoVar old_var )
+    ( TCvSubst (in_scope `extendInScopeSet` new_var) tenv new_cenv
     , new_var, new_kind_co )
   where
     new_cenv | no_change && not sym = delVarEnv cenv old_var
-             | otherwise = extendVarEnv cenv old_var new_co
+             | otherwise = extendVarEnv cenv old_var (mkCoVarCo new_var)
 
-    new_co = mkCoVarCo new_var
     no_kind_change = noFreeVarsOfCo old_kind_co
     no_change = no_kind_change && (new_var == old_var)
 
     new_kind_co | no_kind_change = old_kind_co
                 | otherwise      = sco old_kind_co
 
-    (Pair h1 h2, _) = coercionKindRole new_kind_co
+    Pair h1 h2 = coercionKind new_kind_co
 
-    new_var       = uniqAway in_scope subst_old_var
-    subst_old_var = mkCoVar (varName old_var) new_var_type
+    new_var       = uniqAway in_scope $ mkCoVar (varName old_var) new_var_type
     new_var_type  | sym       = h2
                   | otherwise = h1
 
