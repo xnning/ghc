@@ -382,17 +382,15 @@ opt_co4 env sym rep r (InstCo co1 arg)
 
     -- forall over coercion...
   | Just (cv, kind_co, co_body) <- splitForAllCo_co_maybe co1
+  , CoercionTy h1 <- t1
+  , CoercionTy h2 <- t2
   = let r2  = coVarRole cv
-        kind_co'   = opt_co4_wrap env sym False Nominal kind_co
-        kind_co''  = downgradeRole r2 Nominal kind_co'
-        n1 = mkNthCo r2 2 kind_co''
-        n2 = mkNthCo r2 3 kind_co''
-        CoercionTy h1 = t1
-        CoercionTy h2 = t2
-        l_co = h1
-        r_co = n1 `mkTransCo` h2 `mkTransCo` (mkSymCo n2)
-        k_co = Refl (coercionType h1)
-        new_co = mkProofIrrelCo Nominal k_co l_co r_co
+        kind_co' = downgradeRole r2 Nominal $
+                                 opt_co4_wrap env sym False Nominal kind_co
+        n1 = mkNthCo r2 2 kind_co'
+        n2 = mkNthCo r2 3 kind_co'
+        new_co = mkProofIrrelCo Nominal (Refl (coercionType h1)) h1
+                                (n1 `mkTransCo` h2 `mkTransCo` (mkSymCo n2))
     in
     opt_co4_wrap (extendLiftingContext env cv new_co) sym rep r co_body
 
@@ -407,16 +405,14 @@ opt_co4 env sym rep r (InstCo co1 arg)
 
     -- forall over coercion...
   | Just (cv', kind_co', co_body') <- splitForAllCo_co_maybe co1'
+  , CoercionTy h1 <- t1
+  , CoercionTy h2 <- t2
   = let r2  = coVarRole cv'
         kind_co'' = downgradeRole r2 Nominal kind_co'
         n1 = mkNthCo r2 2 kind_co''
         n2 = mkNthCo r2 3 kind_co''
-        CoercionTy h1 = t1
-        CoercionTy h2 = t2
-        l_co = h1
-        r_co = n1 `mkTransCo` h2 `mkTransCo` (mkSymCo n2)
-        k_co = Refl (coercionType h1)
-        new_co = mkProofIrrelCo Nominal k_co l_co r_co
+        new_co = mkProofIrrelCo Nominal (Refl (coercionType h1)) h1
+                                (n1 `mkTransCo` h2 `mkTransCo` (mkSymCo n2))
     in
     opt_co4_wrap (extendLiftingContext (zapLiftingContext env) cv' new_co)
                  False False r' co_body'
@@ -1083,7 +1079,7 @@ Here,
   h1   = mkNthCo Nominal 0 g :: (s1~s2)~(s3~s4)
   eta1 = mkNthCo r 2 h1      :: (s1 ~ s3)
   eta2 = mkNthCo r 3 h1      :: (s2 ~ s4)
-  h2   = mkInstCo co (cv1 ~ (sym eta1;c1;eta2))
+  h2   = mkInstCo g (cv1 ~ (sym eta1;c1;eta2))
 -}
 etaForAllCo_ty_maybe :: Coercion -> Maybe (TyVar, Coercion, Coercion)
 -- Try to make the coercion be of form (forall tv:kind_co. co)
