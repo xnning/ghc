@@ -44,6 +44,7 @@ module Type (
         splitForAllTy_ty_maybe, splitForAllTy_co_maybe,
         splitPiTy_maybe, splitPiTy, splitPiTys,
         mkPiTy, mkPiTys, mkTyConBindersPreferAnon,
+        mkPiTys_unchecked,
         mkLamType, mkLamTypes,
         piResultTy, piResultTys,
         applyTysX, dropForAlls,

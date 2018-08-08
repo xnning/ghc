@@ -42,6 +42,7 @@ module TyCoRep (
         mkTyCoVarTy, mkTyCoVarTys,
         mkFunTy, mkFunTys, mkForAllTy, mkForAllTys,
         mkPiTy, mkPiTys,
+        mkPiTys_unchecked,
         isTYPE,
         isLiftedTypeKind, isUnliftedTypeKind,
         isCoercionType, isRuntimeRepTy, isRuntimeRepVar,
@@ -779,6 +780,10 @@ mkForAllTy tv vis ty
   | otherwise
   = ForAllTy (Bndr tv vis) ty
 
+-- | Like 'mkForAllTy', but does not check the occurance of the binder
+mkForAllTy_unchecked :: TyCoVar -> ArgFlag -> Type -> Type
+mkForAllTy_unchecked tv vis ty = ForAllTy (Bndr tv vis) ty
+
 -- | Wraps foralls over the type using the provided 'TyCoVar's from left to right
 mkForAllTys :: [TyCoVarBinder] -> Type -> Type
 mkForAllTys tyvars ty = foldr ForAllTy ty tyvars
@@ -787,8 +792,17 @@ mkPiTy :: TyCoBinder -> Type -> Type
 mkPiTy (Anon ty1) ty2           = FunTy ty1 ty2
 mkPiTy (Named (Bndr tv vis)) ty = mkForAllTy tv vis ty
 
+-- | Like 'mkPiTy', but does not check the occurance of the binder
+mkPiTy_unchecked :: TyCoBinder -> Type -> Type
+mkPiTy_unchecked (Anon ty1) ty2           = FunTy ty1 ty2
+mkPiTy_unchecked (Named (Bndr tv vis)) ty = mkForAllTy_unchecked tv vis ty
+
 mkPiTys :: [TyCoBinder] -> Type -> Type
 mkPiTys tbs ty = foldr mkPiTy ty tbs
+
+-- | Like 'mkPiTys', but does not check the occurance of the binder
+mkPiTys_unchecked :: [TyCoBinder] -> Type -> Type
+mkPiTys_unchecked tbs ty = foldr mkPiTy_unchecked ty tbs
 
 -- | Does this type classify a core (unlifted) Coercion?
 -- At either role nominal or representational

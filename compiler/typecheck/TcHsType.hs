@@ -892,7 +892,7 @@ tcInferApps mode mb_kind_info orig_hs_ty fun_ty fun_ki orig_hs_args
     go _ acc_args subst fun ki_binders inner_ki []
       = return ( fun
                , reverse acc_args
-               , nakedSubstTy subst $ mkPiTys ki_binders inner_ki)
+               , nakedSubstTy subst $ mkPiTys_unchecked ki_binders inner_ki)
                  -- nakedSubstTy: see Note [The well-kinded type invariant]
 
       -- The function's kind has a binder. Is it visible or invisible?
@@ -1029,7 +1029,7 @@ instantiateTyN mb_kind_env n bndrs inner_ki
 
   | otherwise
   = do { (subst, inst_args) <- tcInstTyBinders empty_subst mb_kind_env inst_bndrs
-       ; let rebuilt_ki = mkPiTys leftover_bndrs inner_ki
+       ; let rebuilt_ki = mkPiTys_unchecked leftover_bndrs inner_ki
        ; ki' <- zonkTcType (substTy subst rebuilt_ki)
        ; traceTc "instantiateTyN" (vcat [ ppr ki
                                         , ppr n
@@ -1040,7 +1040,7 @@ instantiateTyN mb_kind_env n bndrs inner_ki
   where
      -- NB: splitAt is forgiving with invalid numbers
      (inst_bndrs, leftover_bndrs) = splitAt n bndrs
-     ki          = mkPiTys bndrs inner_ki
+     ki          = mkPiTys_unchecked bndrs inner_ki
      empty_subst = mkEmptyTCvSubst (mkInScopeSet (tyCoVarsOfType ki))
 
 -- | Instantiate a type to have at most @n@ invisible arguments.
