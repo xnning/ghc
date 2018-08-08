@@ -33,6 +33,7 @@ module Coercion (
         mkNthCo, nthCoRole, mkLRCo,
         mkInstCo, mkAppCo, mkAppCos, mkTyConAppCo, mkFunCo,
         mkForAllCo, mkForAllCos, mkHomoForAllCos, mkHomoForAllCos_NoRefl,
+        mkForAllCo_unchecked, mkForAllCos_unchecked,
         mkPhantomCo,
         mkUnsafeCo, mkHoleCo, mkUnivCo, mkSubCo,
         mkAxiomInstCo, mkProofIrrelCo,
@@ -711,6 +712,16 @@ mkForAllCo tv kind_co co
   | otherwise
   = ForAllCo tv kind_co co
 
+-- | Like 'mkForAllCo', but doesn't check the occurrence of the binder.
+-- The kind of the tycovar should be the left-hand kind of the kind coercion.
+mkForAllCo_unchecked :: TyCoVar -> Coercion -> Coercion -> Coercion
+mkForAllCo_unchecked tv kind_co co
+  | Just (ty, r) <- isReflCo_maybe co
+  , isGReflCo kind_co
+  = mkReflCo r (mkInvForAllTy_unchecked tv ty)
+  | otherwise
+  = ForAllCo tv kind_co co
+
 -- | Like 'mkForAllCo', but doesn't check if the inner coercion is reflexive.
 -- The kind of the tycovar should be the left-hand kind of the kind coercion.
 mkForAllCo_NoRefl :: TyCoVar -> Coercion -> Coercion -> Coercion
@@ -731,6 +742,17 @@ mkForAllCos bndrs co
            non_refls_rev'd
   | otherwise
   = foldr (uncurry mkForAllCo_NoRefl) co bndrs
+
+-- | Like 'mkForAllCos', but doesn't check the occurrence of the binder.
+mkForAllCos_unchecked :: [(TyCoVar, Coercion)] -> Coercion -> Coercion
+mkForAllCos_unchecked bndrs co
+  | Just (ty, r ) <- isReflCo_maybe co
+  = let (refls_rev'd, non_refls_rev'd) = span (isReflCo . snd) (reverse bndrs) in
+    foldl (flip $ uncurry ForAllCo)
+          (mkReflCo r (mkInvForAllTys_unchecked (reverse (map fst refls_rev'd)) ty))
+          non_refls_rev'd
+  | otherwise
+  = foldr (uncurry ForAllCo) co bndrs
 
 -- | Make a Coercion quantified over a type/coercion variable;
 -- the variable has the same type in both sides of the coercion
@@ -2201,7 +2223,7 @@ buildCoercion orig_ty1 orig_ty2 = go orig_ty1 orig_ty2
     go (ForAllTy (Bndr tv1 _flag1) ty1) (ForAllTy (Bndr tv2 _flag2) ty2)
       | isTyVar tv1
       = ASSERT( isTyVar tv2 )
-        mkForAllCo tv1 kind_co (go ty1 ty2')
+        mkForAllCo_unchecked tv1 kind_co (go ty1 ty2')
       where kind_co  = go (tyVarKind tv1) (tyVarKind tv2)
             in_scope = mkInScopeSet $ tyCoVarsOfType ty2 `unionVarSet` tyCoVarsOfCo kind_co
             ty2'     = substTyWithInScope in_scope [tv2]

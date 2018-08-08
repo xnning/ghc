@@ -919,7 +919,7 @@ mkDataCon name declared_infix prom_info
         NoDataConRep -> dataConUserType con
         -- If the DataCon has a wrapper, then the worker's type is never seen
         -- by the user. The visibilities we pick do not matter here.
-        DCR{} -> mkInvForAllTys univ_tvs $ mkInvForAllTys ex_tvs $
+        DCR{} -> mkInvForAllTys_unchecked univ_tvs $ mkInvForAllTys ex_tvs $
                  mkFunTys rep_arg_tys $
                  mkTyConApp rep_tycon (mkTyVarTys univ_tvs)
 

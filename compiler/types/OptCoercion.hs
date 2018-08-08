@@ -512,7 +512,7 @@ opt_univ env sym prov role oty1 oty2
 
         (env', tv1', eta') = optForAllCoBndr env sym tv1 eta
     in
-    mkForAllCo tv1' eta' (opt_univ env' sym prov' role ty1 ty2')
+    mkForAllCo_unchecked tv1' eta' (opt_univ env' sym prov' role ty1 ty2')
 
   | Just (cv1, ty1) <- splitForAllTy_co_maybe oty1
   , Just (cv2, ty2) <- splitForAllTy_co_maybe oty2
@@ -686,7 +686,7 @@ opt_trans_rule is co1 co2
     -- Wanted:
     --   \/tv1 : (eta1;eta2).  (r1; r2[tv2 |-> tv1 |> eta1])
     = fireTransRule "EtaAllTy_ty" co1 co2 $
-      mkForAllCo tv1 (opt_trans is eta1 eta2) (opt_trans is' r1 r2')
+      mkForAllCo_unchecked tv1 (opt_trans is eta1 eta2) (opt_trans is' r1 r2')
     where
       is' = is `extendInScopeSet` tv1
       r2' = substCoWithUnchecked [tv2] [mkCastTy (TyVarTy tv1) eta1] r2

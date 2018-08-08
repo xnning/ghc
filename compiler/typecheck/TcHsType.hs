@@ -234,7 +234,7 @@ tc_hs_sig_type_and_gen skol_info (HsIB { hsib_ext = sig_vars
        ; let ty1 = mkSpecForAllTys tkvs ty
        ; kvs <- kindGeneralizeLocal wanted ty1
        ; emitConstraints wanted -- we still need to solve these
-       ; return (mkInvForAllTys kvs ty1) }
+       ; return (mkInvForAllTys_unchecked kvs ty1) }
 
 tc_hs_sig_type_and_gen _ (XHsImplicitBndrs _) _ = panic "tc_hs_sig_type_and_gen"
 

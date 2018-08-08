@@ -134,6 +134,7 @@ module TcType (
   Type, PredType, ThetaType, TyCoBinder, ArgFlag(..),
 
   mkForAllTy, mkForAllTys, mkInvForAllTys, mkSpecForAllTys, mkInvForAllTy,
+  mkInvForAllTy_unchecked, mkInvForAllTys_unchecked,
   mkFunTy, mkFunTys,
   mkTyConApp, mkAppTy, mkAppTys,
   mkTyConTy, mkTyVarTy, mkTyVarTys,

@@ -37,8 +37,9 @@ module Type (
         repSplitTyConApp_maybe,
 
         mkForAllTy, mkForAllTys, mkInvForAllTys, mkSpecForAllTys,
+        mkForAllTy_unchecked,
         mkVisForAllTys, mkInvForAllTy,
-        mkInvForAllTy_unchecked,
+        mkInvForAllTy_unchecked, mkInvForAllTys_unchecked,
         splitForAllTys, splitForAllVarBndrs,
         splitForAllTy_maybe, splitForAllTy,
         splitForAllTy_ty_maybe, splitForAllTy_co_maybe,
@@ -1347,6 +1348,10 @@ mkInvForAllTy_unchecked tv ty = ForAllTy (Bndr tv Inferred) ty
 -- a common case
 mkInvForAllTys :: [TyCoVar] -> Type -> Type
 mkInvForAllTys tvs ty = foldr mkInvForAllTy ty tvs
+
+-- | Like 'mkInvForAllTys', but does not check the occurrence of the binder.
+mkInvForAllTys_unchecked :: [TyCoVar] -> Type -> Type
+mkInvForAllTys_unchecked tvs ty = foldr mkInvForAllTy_unchecked ty tvs
 
 -- | Like mkForAllTys, but assumes all variables are dependent and specified,
 -- a common case

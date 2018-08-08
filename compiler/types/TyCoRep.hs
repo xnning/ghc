@@ -41,6 +41,7 @@ module TyCoRep (
         mkTyConTy, mkTyVarTy, mkTyVarTys,
         mkTyCoVarTy, mkTyCoVarTys,
         mkFunTy, mkFunTys, mkForAllTy, mkForAllTys,
+        mkForAllTy_unchecked,
         mkPiTy, mkPiTys,
         mkPiTys_unchecked,
         isTYPE,
