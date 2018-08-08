@@ -1710,7 +1710,7 @@ lintCoercion (ForAllCo tv1 kind_co co)
                      -- linted and `tv2` has the same unique as `tv1`.
                      -- See Note [The substitution invariant]
                      unitVarEnv tv1 (TyVarTy tv2 `mkCastTy` mkSymCo kind_co)
-             tyr = mkInvForAllTy tv2 $
+             tyr = mkInvForAllTy_unchecked tv2 $
                    substTy subst t2
        ; return (k3, k4, tyl, tyr, r) } }
 
