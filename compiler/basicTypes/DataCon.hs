@@ -290,10 +290,10 @@ data DataCon
         --      dcUnivTyVars         = [a,b,c]
         --      dcExTyCoVars         = [x,y]
         --      dcUserTyCoVarBinders = [c,y,x,b]
-        --      dcEqSpec           = [a~(x,y)]
-        --      dcOtherTheta       = [x~y, Ord x]
-        --      dcOrigArgTys       = [x,y]
-        --      dcRepTyCon         = T
+        --      dcEqSpec             = [a~(x,y)]
+        --      dcOtherTheta         = [x~y, Ord x]
+        --      dcOrigArgTys         = [x,y]
+        --      dcRepTyCon           = T
 
         -- In general, the dcUnivTyVars are NOT NECESSARILY THE SAME AS THE
         -- TYVARS FOR THE PARENT TyCon. (This is a change (Oct05): previously,
@@ -325,7 +325,9 @@ data DataCon
         --            the tyConTyVars of the parent TyCon
         dcUnivTyVars     :: [TyVar],
 
-        -- Existentially-quantified type vars [x,y]
+        -- Existentially-quantified type and coercion vars [x,y]
+        -- For an example involving coercion variables,
+        -- see Note [Existential coercion variables]
         dcExTyCoVars     :: [TyCoVar],
 
         -- INVARIANT: the UnivTyVars and ExTyCoVars all have distinct OccNames
@@ -451,6 +453,25 @@ can use visible type application at a call of the data constructor.
 
 See also [DataCon user type variable binders] for an extended discussion on the
 order in which TyCoVarBinders appear in a DataCon.
+
+Note [Existential coercion variables]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For now (Aug 18) we can't write coercion quantifications in source Haskell, but
+we can in Core. Consider having:
+
+  data T :: forall k. k -> k -> Constraint where
+    MkT :: forall k (a::k) (b::k). forall k' (c::k'J (co::k'~k). (b~(c|>co))
+        => T k a b
+
+  dcUnivTyVars         = [k,a,b]
+  dcExTyCoVars         = [k',c,co]
+  dcUserTyCoVarBinders = [k,a,k',c,co]
+  dcEqSpec             = [b~(c|>co)]
+  dcOtherTheta         = []
+  dcOrigArgTys         = []
+  dcRepTyCon           = T
+  dataConKindEqSpec    = [(t::k')~k]
 
 Note [DataCon arities]
 ~~~~~~~~~~~~~~~~~~~~~~
