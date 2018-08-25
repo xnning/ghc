@@ -477,6 +477,30 @@ In sum, in order to uphold (EQ), we need the following three invariants:
 
 These invariants are all documented above, in the declaration for Type.
 
+Note [Unused coercion variable in ForAllTy]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Suppose we have
+  \(co:t1 ~ t2). e
+
+What type should we give to this expression?
+  (1) forall (co:t1 ~ t2) -> t
+  (2) (t1 ~ t2) -> t
+
+If co is used in t, (1) should be the right choice.
+if co is not used in t, we would like to have (1) and (2) equivalent.
+
+However, we want to keep eqType simple and don't want eqType (1) (2) to return
+True in any case.
+
+We decide to always construct (2) if co is not used in t.
+
+Thus in mkForAllty, we check whether the variable is a coercion
+variable and whether it is used in the body. If so, it returns a FunTy
+instead of a ForAllTy.
+
+There are cases we want to skip the check. For example, the check is unnecessary
+when it is known from the context that the input variable is a type variable.
+In those cases, we use mkForAllTy_unchecked.
 -}
 
 -- | A type labeled 'KnotTied' might have knot-tied tycons in it. See
@@ -772,6 +796,9 @@ mkFunTy arg res = FunTy arg res
 mkFunTys :: [Type] -> Type -> Type
 mkFunTys tys ty = foldr mkFunTy ty tys
 
+-- | If tv is a coercion variable and it is not used in the body, returns
+-- a FunTy, otherwise makes a forall type.
+-- See Note [Unused coercion variable in ForAllTy]
 mkForAllTy :: TyCoVar -> ArgFlag -> Type -> Type
 mkForAllTy tv vis ty
   | isCoVar tv
@@ -782,6 +809,7 @@ mkForAllTy tv vis ty
   = ForAllTy (Bndr tv vis) ty
 
 -- | Like 'mkForAllTy', but does not check the occurrence of the binder
+-- See Note [Unused coercion variable in ForAllTy]
 mkForAllTy_unchecked :: TyCoVar -> ArgFlag -> Type -> Type
 mkForAllTy_unchecked tv vis ty = ForAllTy (Bndr tv vis) ty
 
