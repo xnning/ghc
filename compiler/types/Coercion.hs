@@ -1429,18 +1429,26 @@ promoteCoercion co = case co of
 -- fails if this is not possible, if @g@ coerces between a forall and an ->
 -- or if second parameter has a representational role and can't be used
 -- with an InstCo.
-instCoercion :: Pair Type -- type of the first coercion
-             -> CoercionN  -- ^ must be nominal
+instCoercion :: Pair Type -- g :: lty ~ rty
+             -> CoercionN  -- ^  must be nominal
              -> Coercion
              -> Maybe CoercionN
 instCoercion (Pair lty rty) g w
   | isForAllTy_ty lty && isForAllTy_ty rty
   , Just w' <- setNominalRole_maybe (coercionRole w) w
+    -- g :: (forall t1. t2) ~ (forall t1. t3)
+    -- w :: s1 ~ s2
+    -- returns mkInstCo g w' :: t2 [t1 |-> s1 ] ~ t3 [t1 |-> s2]
   = Just $ mkInstCo g w'
   | isForAllTy_co lty && isForAllTy_co rty
   , Just w' <- setNominalRole_maybe (coercionRole w) w
+    -- g :: (forall t1. t2) ~ (forall t1. t3)
+    -- w :: s1 ~ s2
+    -- returns mkInstCo g w' :: t2 [t1 |-> s1 ] ~ t3 [t1 |-> s2]
   = Just $ mkInstCo g w'
   | isFunTy lty && isFunTy rty
+    -- g :: (t1 -> t2) ~ (t3 -> t4)
+    -- returns t2 ~ t4
   = Just $ mkNthCo Nominal 3 g -- extract result type, which is the 4th argument to (->)
   | otherwise -- one forall, one funty...
   = Nothing
@@ -1872,6 +1880,44 @@ liftCoSubstTyVar (LC subst env) r v
   | otherwise
   = Just $ mkReflCo r (substTyVar subst v)
 
+{- Note [liftCoSubstVarBndr]
+
+callback:
+  We want 'liftCoSubstVarBndrUsing' to be general enough to be reused in
+  FamInstEnv, therefore the input arg 'fun' returns a pair with polymophic type
+  in snd.
+  However in 'liftCoSubstVarBndr', we don't need the snd, so we use unit and
+  ignore the fourth componenet of the return value.
+
+liftCoSubstTyVarBndrUsing:
+  Given
+    forall tv:k. t
+  We want to get
+    forall (tv:k1) (kind_co :: k1 ~ k2) body_co
+
+  We lift the kind k to get the kind_co
+    kind_co = ty_co_subst k :: k1 ~ k2
+
+  Now in the LiftingContext, we add the new mapping
+    tv |-> (tv :: k1) ~ ((tv |> kind_co) :: k2)
+
+liftCoSubstCoVarBndrUsing:
+  Given
+    forall cv:(s1 ~ s2). t
+  We want to get
+    forall (cv:s1'~s2') (kind_co :: (s1'~s2') ~ (t1 ~ t2)) body_co
+
+  We lift s1 and s2 respectively  to get
+    eta1 :: s1' ~ t1,
+    eta2 :: s2' ~ t2
+  And
+    kind_co = TyConAppCo Nominal (~#) eta1 eta2
+
+  Now in the liftingContext, we add the new mapping
+    cv |-> (cv :: s1' ~ s2') ~ ((sym eta1;cv;eta2) :: t1 ~ t2)
+-}
+
+-- See Note [liftCoSubstVarBndr]
 liftCoSubstVarBndr :: LiftingContext -> TyCoVar
                    -> (LiftingContext, TyCoVar, Coercion)
 liftCoSubstVarBndr lc tv
@@ -1880,10 +1926,6 @@ liftCoSubstVarBndr lc tv
   where
     callback lc' ty' = (ty_co_subst lc' Nominal ty', ())
 
--- We want to reuse @liftCoSubstVarBndrUsing@ in FamInstEnv, therefore
--- @fun@ returns a pair with @a@ polymorphic.
--- In @liftCoSubstVarBndr@, we don't really need the @a@. Thus we use
--- unit and ignore the fourth component of the return value.
 -- the callback must produce a nominal coercion
 liftCoSubstVarBndrUsing :: (LiftingContext -> Type -> (CoercionN, a))
                            -> LiftingContext -> TyCoVar
