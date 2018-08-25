@@ -51,7 +51,7 @@ module TyCoRep (
 
         -- * Functions over binders
         TyCoBinder(..), TyCoVarBinder,
-        binderVar, binderVars, binderKind, binderArgFlag,
+        binderVar, binderVars, binderType, binderArgFlag,
         delBinderVar,
         isInvisibleArgFlag, isVisibleArgFlag,
         isInvisibleBinder, isVisibleBinder,
@@ -781,7 +781,7 @@ mkForAllTy tv vis ty
   | otherwise
   = ForAllTy (Bndr tv vis) ty
 
--- | Like 'mkForAllTy', but does not check the occurance of the binder
+-- | Like 'mkForAllTy', but does not check the occurrence of the binder
 mkForAllTy_unchecked :: TyCoVar -> ArgFlag -> Type -> Type
 mkForAllTy_unchecked tv vis ty = ForAllTy (Bndr tv vis) ty
 
@@ -793,7 +793,7 @@ mkPiTy :: TyCoBinder -> Type -> Type
 mkPiTy (Anon ty1) ty2           = FunTy ty1 ty2
 mkPiTy (Named (Bndr tv vis)) ty = mkForAllTy tv vis ty
 
--- | Like 'mkPiTy', but does not check the occurance of the binder
+-- | Like 'mkPiTy', but does not check the occurrence of the binder
 mkPiTy_unchecked :: TyCoBinder -> Type -> Type
 mkPiTy_unchecked (Anon ty1) ty2           = FunTy ty1 ty2
 mkPiTy_unchecked (Named (Bndr tv vis)) ty = mkForAllTy_unchecked tv vis ty
@@ -801,7 +801,7 @@ mkPiTy_unchecked (Named (Bndr tv vis)) ty = mkForAllTy_unchecked tv vis ty
 mkPiTys :: [TyCoBinder] -> Type -> Type
 mkPiTys tbs ty = foldr mkPiTy ty tbs
 
--- | Like 'mkPiTys', but does not check the occurance of the binder
+-- | Like 'mkPiTys', but does not check the occurrence of the binder
 mkPiTys_unchecked :: [TyCoBinder] -> Type -> Type
 mkPiTys_unchecked tbs ty = foldr mkPiTy_unchecked ty tbs
 
@@ -1826,7 +1826,7 @@ injectiveVarsOfType = go
                          filterByList (inj ++ repeat True) tys
                          -- Oversaturated arguments to a tycon are
                          -- always injective, hence the repeat True
-    go (ForAllTy tvb ty) = tyCoFVsBndr tvb $ go (binderKind tvb)
+    go (ForAllTy tvb ty) = tyCoFVsBndr tvb $ go (binderType tvb)
                                              `unionFV` go ty
     go LitTy{}           = emptyFV
     go (CastTy ty _)     = go ty

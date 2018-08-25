@@ -62,7 +62,7 @@ module Var (
 
         -- * TyVar's
         VarBndr(..), ArgFlag(..), TyCoVarBinder,
-        binderVar, binderVars, binderArgFlag, binderKind,
+        binderVar, binderVars, binderArgFlag, binderType,
         isVisibleArgFlag, isInvisibleArgFlag, sameVis,
         mkTyCoVarBinder, mkTyCoVarBinders,
 
@@ -433,8 +433,8 @@ binderVars tvbs = map binderVar tvbs
 binderArgFlag :: VarBndr tv argf -> argf
 binderArgFlag (Bndr _ argf) = argf
 
-binderKind :: VarBndr TyCoVar argf -> Kind
-binderKind (Bndr tv _) = varType tv
+binderType :: VarBndr TyCoVar argf -> Type
+binderType (Bndr tv _) = varType tv
 
 -- | Make a named binder
 mkTyCoVarBinder :: ArgFlag -> TyCoVar -> TyCoVarBinder

@@ -632,7 +632,7 @@ mkDataConRep dflags fam_envs wrap_name mb_bangs data_con
     orig_bangs   = dataConSrcBangs data_con
 
     wrap_arg_tys = theta ++ orig_arg_tys
-    wrap_arity   = count isId ex_tvs + length wrap_arg_tys
+    wrap_arity   = count isCoVar ex_tvs + length wrap_arg_tys
              -- TODO: should we include this @count@?
              -- The wrap_args are the arguments *other than* the eq_spec
              -- Because we are going to apply the eq_spec args manually in the

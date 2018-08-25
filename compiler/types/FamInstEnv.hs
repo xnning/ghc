@@ -1520,7 +1520,7 @@ flattenTys in_scope tys = snd $ coreFlattenTys env tys
     -- *anywhere* in the types we're flattening, even if locally-bound in
     -- a forall. That way, we can ensure consistency both within and outside
     -- of that forall.
-    all_in_scope = in_scope `extendInScopeSetSet` allTyVarsInTys tys
+    all_in_scope = in_scope `extendInScopeSetSet` allTyCoVarsInTys tys
     env          = emptyFlattenEnv all_in_scope
 
 coreFlattenTys :: FlattenEnv -> [Type] -> (FlattenEnv, [Type])
@@ -1621,18 +1621,18 @@ coreFlattenTyFamApp env fam_tc fam_args
         FlattenEnv { fe_type_map = type_map
                    , fe_subst = subst } = env
 
--- | Get the set of all type variables mentioned anywhere in the list
+-- | Get the set of all type/coercion variables mentioned anywhere in the list
 -- of types. These variables are not necessarily free.
-allTyVarsInTys :: [Type] -> VarSet
-allTyVarsInTys []       = emptyVarSet
-allTyVarsInTys (ty:tys) = allTyVarsInTy ty `unionVarSet` allTyVarsInTys tys
+allTyCoVarsInTys :: [Type] -> VarSet
+allTyCoVarsInTys []       = emptyVarSet
+allTyCoVarsInTys (ty:tys) = allTyCoVarsInTy ty `unionVarSet` allTyCoVarsInTys tys
 
 -- | Get the set of all type/coercion variables mentioned anywhere in a type.
-allTyVarsInTy :: Type -> VarSet
-allTyVarsInTy = go
+allTyCoVarsInTy :: Type -> VarSet
+allTyCoVarsInTy = go
   where
     go (TyVarTy tv)      = unitVarSet tv
-    go (TyConApp _ tys)  = allTyVarsInTys tys
+    go (TyConApp _ tys)  = allTyCoVarsInTys tys
     go (AppTy ty1 ty2)   = (go ty1) `unionVarSet` (go ty2)
     go (FunTy ty1 ty2)   = (go ty1) `unionVarSet` (go ty2)
     go (ForAllTy (Bndr tv _) ty) = unitVarSet tv     `unionVarSet`

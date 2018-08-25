@@ -2114,6 +2114,7 @@ coercionKind co =
                                                 cv1 n_subst
 
     go_forall subst other_co
+      -- when other_co is not a ForAllCo
       = substTy subst `pLiftSnd` go other_co
 
 {-

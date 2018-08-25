@@ -97,7 +97,7 @@ module Type (
         mkTyCoVarBinder, mkTyCoVarBinders,
         mkAnonBinder,
         isAnonTyCoBinder, isNamedTyCoBinder,
-        binderVar, binderVars, binderKind, binderArgFlag,
+        binderVar, binderVars, binderType, binderArgFlag,
         tyCoBinderType, tyCoBinderVar_maybe,
         binderRelevantType_maybe, caseBinder,
         isVisibleArgFlag, isInvisibleArgFlag, isVisibleBinder, isInvisibleBinder,
@@ -1627,7 +1627,7 @@ tyCoBinderVar_maybe _          = Nothing
 
 tyCoBinderType :: TyCoBinder -> Type
 -- Barely used
-tyCoBinderType (Named tvb) = binderKind tvb
+tyCoBinderType (Named tvb) = binderType tvb
 tyCoBinderType (Anon ty)   = ty
 
 -- | Extract a relevant type, if there is one.
@@ -2534,7 +2534,7 @@ typeKind (TyVarTy tyvar)   = tyVarKind tyvar
 typeKind (CastTy _ty co)   = pSnd $ coercionKind co
 typeKind (CoercionTy co)   = coercionType co
 typeKind ty@(ForAllTy (Bndr tv _) _)
-  | isTyVar tv                     -- See Note [Weired typing rule for ForAllTy].
+  | isTyVar tv                     -- See Note [Weird typing rule for ForAllTy].
   = case occCheckExpand tvs k of   -- We must make sure tv does not occur in kind
       Just k' -> k'                -- As it is already out of scope!
       Nothing -> pprPanic "typeKind"

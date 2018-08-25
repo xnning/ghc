@@ -3284,7 +3284,7 @@ checkValidDependency binders res_kind
         tcb_var  = binderVar tcb
         tcb_kind = tyVarKind tcb_var
 
-        pp_binder binder = ppr (binderVar binder) <+> dcolon <+> ppr (binderKind binder)
+        pp_binder binder = ppr (binderVar binder) <+> dcolon <+> ppr (binderType binder)
 
 {-
 ************************************************************************
