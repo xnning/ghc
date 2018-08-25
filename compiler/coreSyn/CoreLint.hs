@@ -1716,7 +1716,8 @@ lintCoercion (ForAllCo tv1 kind_co co)
 
 lintCoercion (ForAllCo cv1 kind_co co)
   -- forall over coercions
-  = do { (_, _, _, k2, r) <- lintCoercion kind_co
+  = ASSERT( isCoVar cv1 )
+    do { (_, _, _, k2, r) <- lintCoercion kind_co
        ; lintRole kind_co Nominal r
        ; let cv2 = setVarType cv1 k2
        ; addInScopeVar cv1 $
