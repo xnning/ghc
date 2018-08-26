@@ -457,11 +457,11 @@ order in which TyCoVarBinders appear in a DataCon.
 Note [Existential coercion variables]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For now (Aug 18) we can't write coercion quantifications in source Haskell, but
+For now (Aug 2018) we can't write coercion quantifications in source Haskell, but
 we can in Core. Consider having:
 
   data T :: forall k. k -> k -> Constraint where
-    MkT :: forall k (a::k) (b::k). forall k' (c::k'J (co::k'~k). (b~(c|>co))
+    MkT :: forall k (a::k) (b::k). forall k' (c::k') (co::k'~k). (b~(c|>co))
         => T k a b
 
   dcUnivTyVars         = [k,a,b]
@@ -471,7 +471,8 @@ we can in Core. Consider having:
   dcOtherTheta         = []
   dcOrigArgTys         = []
   dcRepTyCon           = T
-  dataConKindEqSpec    = [(t::k')~k]
+
+  Function call 'dataConKindEqSpec' returns [(t::k')~k] with 't' fresh generated
 
 Note [DataCon arities]
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -1071,8 +1072,15 @@ dataConEqSpec con@(MkData { dcEqSpec = eq_spec, dcOtherTheta = theta })
 
 -- | Dependent (kind-level) equalities in a constructor.
 -- There are extracted from the existential variables.
+-- See Note [Existential coercion variables]
 dataConKindEqSpec :: DataCon -> [EqSpec]
 dataConKindEqSpec (MkData {dcExTyCoVars = ex_tcvs})
+  -- It is used in 'dataConEqSpec' and 'dataConFullSig', which are frequently
+  -- used functions.
+  -- For now (Aug 2018) this function always return empty set as we don't really
+  -- have coercion variables.
+  -- In the future when we do, we might want to cache this information in DataCon
+  -- so it won't be computed every time when aforementioned functions are called.
   = [ EqSpec tv ty
     | cv <- ex_tcvs
     , isCoVar cv
