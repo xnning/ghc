@@ -411,7 +411,8 @@ sameVis _        _        = True
 
 -- Variable Binder
 --
--- VarBndr is polymorphic in both var and visibility fields:
+-- VarBndr is polymorphic in both var and visibility fields.
+-- Currently there are four different uses of 'VarBndr':
 --   * Var.TyCoVarBinder = VarBndr TyCoVar ArgFlag
 --   * TyCon.TyConBinder = VarBndr TyCoVar TyConBndrVis
 --   * IfaceType.IfaceForAllBndr  = VarBndr IfaceBndr ArgFlag

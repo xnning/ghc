@@ -1548,6 +1548,6 @@ pushRefl co =
     Just (TyConApp tc tys, r)
       -> Just (TyConAppCo r tc (zipWith mkReflCo (tyConRolesX r tc) tys))
     Just (ForAllTy (Bndr tv _) ty, r)
-      -> Just (mkHomoForAllCos_NoRefl [tv] (mkReflCo r ty))
+      -> Just (ForAllCo tv (mkNomReflCo (varType tv)) (mkReflCo r ty))
     -- NB: NoRefl variant. Otherwise, we get a loop!
     _ -> Nothing
