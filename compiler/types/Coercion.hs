@@ -753,8 +753,8 @@ Similar variants exist for mkForAllCos, mkHomoForAllCos.
 -- See Note [Smart constructors for ForAllCo]
 mkForAllCo :: TyCoVar -> Coercion -> Coercion -> Coercion
 mkForAllCo tv kind_co co
-  | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co))
-    Just (ty, r) <- isReflCo_maybe co
+  | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co)) True
+  , Just (ty, r) <- isReflCo_maybe co
   , isGReflCo kind_co
   = mkReflCo r (mkInvForAllTy tv ty)
   | isCoVar tv
@@ -768,9 +768,9 @@ mkForAllCo tv kind_co co
 -- See Note [Smart constructors for ForAllCo]
 mkForAllCo_unchecked :: TyVar -> Coercion -> Coercion -> Coercion
 mkForAllCo_unchecked tv kind_co co
-  | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co))
-    ASSERT( isTyVar tv )
-    Just (ty, r) <- isReflCo_maybe co
+  | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co)) True
+  , ASSERT( isTyVar tv ) True
+  , Just (ty, r) <- isReflCo_maybe co
   , isGReflCo kind_co
   = mkReflCo r (mkInvForAllTy_unchecked tv ty)
   | otherwise
@@ -782,9 +782,9 @@ mkForAllCo_unchecked tv kind_co co
 -- See Note [Smart constructors for ForAllCo]
 mkForAllCo_NoRefl :: TyCoVar -> Coercion -> Coercion -> Coercion
 mkForAllCo_NoRefl tv kind_co co
-  | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co))
-    ASSERT( not (isReflCo co))
-    isCoVar tv
+  | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co)) True
+  , ASSERT( not (isReflCo co)) True
+  , isCoVar tv
   , not (tv `elemVarSet` tyCoVarsOfCo co)
   = FunCo (coercionRole co) kind_co co
   | otherwise
@@ -806,8 +806,8 @@ mkForAllCos bndrs co
 -- See Note [Smart constructors for ForAllCo]
 mkForAllCos_unchecked :: [(TyVar, Coercion)] -> Coercion -> Coercion
 mkForAllCos_unchecked bndrs co
-  | ASSERT( all (isTyVar . fst) bndrs )
-    Just (ty, r ) <- isReflCo_maybe co
+  | ASSERT( all (isTyVar . fst) bndrs ) True
+  , Just (ty, r ) <- isReflCo_maybe co
   = let (refls_rev'd, non_refls_rev'd) = span (isReflCo . snd) (reverse bndrs) in
     foldl (flip $ uncurry ForAllCo)
           (mkReflCo r (mkInvForAllTys_unchecked (reverse (map fst refls_rev'd)) ty))
