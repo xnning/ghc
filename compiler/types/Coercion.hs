@@ -753,32 +753,28 @@ Similar variants exist for mkForAllCos, mkHomoForAllCos.
 -- See Note [Smart constructors for ForAllCo]
 mkForAllCo :: TyCoVar -> Coercion -> Coercion -> Coercion
 mkForAllCo tv kind_co co
-  = ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co))
-    go
-  where
-    go | Just (ty, r) <- isReflCo_maybe co
-       , isGReflCo kind_co
-       = mkReflCo r (mkInvForAllTy tv ty)
-       | isCoVar tv
-       , not (tv `elemVarSet` tyCoVarsOfCo co)
-       = FunCo (coercionRole co) kind_co co
-       | otherwise
-       = ForAllCo tv kind_co co
+  | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co))
+    Just (ty, r) <- isReflCo_maybe co
+  , isGReflCo kind_co
+  = mkReflCo r (mkInvForAllTy tv ty)
+  | isCoVar tv
+  , not (tv `elemVarSet` tyCoVarsOfCo co)
+  = FunCo (coercionRole co) kind_co co
+  | otherwise
+  = ForAllCo tv kind_co co
 
 -- | Like 'mkForAllCo', but tv should always be a TyVar.
 -- The kind of the tycovar should be the left-hand kind of the kind coercion.
 -- See Note [Smart constructors for ForAllCo]
 mkForAllCo_unchecked :: TyVar -> Coercion -> Coercion -> Coercion
 mkForAllCo_unchecked tv kind_co co
-  = ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co))
+  | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co))
     ASSERT( isTyVar tv )
-    go
-  where
-    go | Just (ty, r) <- isReflCo_maybe co
-       , isGReflCo kind_co
-       = mkReflCo r (mkInvForAllTy_unchecked tv ty)
-       | otherwise
-       = ForAllCo tv kind_co co
+    Just (ty, r) <- isReflCo_maybe co
+  , isGReflCo kind_co
+  = mkReflCo r (mkInvForAllTy_unchecked tv ty)
+  | otherwise
+  = ForAllCo tv kind_co co
 
 -- | Like 'mkForAllCo', but the inner coercion shouldn't be an obvious
 -- reflexive coercion.
@@ -786,15 +782,13 @@ mkForAllCo_unchecked tv kind_co co
 -- See Note [Smart constructors for ForAllCo]
 mkForAllCo_NoRefl :: TyCoVar -> Coercion -> Coercion -> Coercion
 mkForAllCo_NoRefl tv kind_co co
-  = ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co))
+  | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co))
     ASSERT( not (isReflCo co))
-    go
-  where
-    go | isCoVar tv
-       , not (tv `elemVarSet` tyCoVarsOfCo co)
-       = FunCo (coercionRole co) kind_co co
-       | otherwise
-       = ForAllCo tv kind_co co
+    isCoVar tv
+  , not (tv `elemVarSet` tyCoVarsOfCo co)
+  = FunCo (coercionRole co) kind_co co
+  | otherwise
+  = ForAllCo tv kind_co co
 
 -- | Make nested ForAllCos
 -- See Note [Smart constructors for ForAllCo]
@@ -812,16 +806,14 @@ mkForAllCos bndrs co
 -- See Note [Smart constructors for ForAllCo]
 mkForAllCos_unchecked :: [(TyVar, Coercion)] -> Coercion -> Coercion
 mkForAllCos_unchecked bndrs co
-  = ASSERT( all (isTyVar . fst) bndrs )
-    go
-  where
-    go | Just (ty, r ) <- isReflCo_maybe co
-       = let (refls_rev'd, non_refls_rev'd) = span (isReflCo . snd) (reverse bndrs) in
-         foldl (flip $ uncurry ForAllCo)
-               (mkReflCo r (mkInvForAllTys_unchecked (reverse (map fst refls_rev'd)) ty))
-               non_refls_rev'd
-       | otherwise
-       = foldr (uncurry ForAllCo) co bndrs
+  | ASSERT( all (isTyVar . fst) bndrs )
+    Just (ty, r ) <- isReflCo_maybe co
+  = let (refls_rev'd, non_refls_rev'd) = span (isReflCo . snd) (reverse bndrs) in
+    foldl (flip $ uncurry ForAllCo)
+          (mkReflCo r (mkInvForAllTys_unchecked (reverse (map fst refls_rev'd)) ty))
+          non_refls_rev'd
+  | otherwise
+  = foldr (uncurry ForAllCo) co bndrs
 
 -- | Make a Coercion quantified over a type/coercion variable;
 -- the variable has the same type in both sides of the coercion
