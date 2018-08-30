@@ -406,7 +406,7 @@ data DataCon
         dcRep      :: DataConRep,
 
         -- Cached; see Note [DataCon arities]
-        -- INVARIANT: dcRepArity    == length dataConRepArgTys + count isId (dcExTyCoVars)
+        -- INVARIANT: dcRepArity    == length dataConRepArgTys + count isCoVar (dcExTyCoVars)
         -- INVARIANT: dcSourceArity == length dcOrigArgTys
         dcRepArity    :: Arity,
         dcSourceArity :: Arity,
@@ -925,7 +925,7 @@ mkDataCon name declared_infix prom_info
                   dcWorkId = work_id,
                   dcRep = rep,
                   dcSourceArity = length orig_arg_tys,
-                  dcRepArity = length rep_arg_tys + count isId ex_tvs,
+                  dcRepArity = length rep_arg_tys + count isCoVar ex_tvs,
                   dcPromoted = promoted }
 
         -- The 'arg_stricts' passed to mkDataCon are simply those for the

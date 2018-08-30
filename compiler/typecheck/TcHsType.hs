@@ -73,7 +73,7 @@ import TcHsSyn
 import TcErrors ( reportAllUnsolved )
 import TcType
 import Inst   ( tcInstTyBinders, tcInstTyBinder )
-import TyCoRep( TyCoBinder(..) )  -- Used in tcDataKindSig
+import TyCoRep( TyCoBinder(..), TyBinder )  -- Used in tcDataKindSig
 import Type
 import Coercion
 import RdrName( lookupLocalRdrOcc )
@@ -640,7 +640,7 @@ tc_hs_type mode forall@(HsForAllTy { hst_bndrs = hs_tvs, hst_body = ty }) exp_ki
                         tc_lhs_type mode ty exp_kind
     -- Do not kind-generalise here!  See Note [Kind generalisation]
     -- Why exp_kind?  See Note [Body kind of HsForAllTy]
-       ; let bndrs      = mkTyCoVarBinders Specified tvs'
+       ; let bndrs      = mkTyVarBinders Specified tvs'
        ; return (mkForAllTys bndrs ty') }
 
 tc_hs_type mode (HsQualTy { hst_ctxt = ctxt, hst_body = ty }) exp_kind
@@ -883,7 +883,7 @@ tcInferApps mode mb_kind_info orig_hs_ty fun_ty fun_ki orig_hs_args
        -> [TcType]        -- already type-checked args, in reverse order
        -> TCvSubst        -- instantiating substitution
        -> TcType          -- function applied to some args
-       -> [TyCoBinder]      -- binders in function kind (both vis. and invis.)
+       -> [TyBinder]      -- binders in function kind (both vis. and invis.)
        -> TcKind          -- function kind body (not a Pi-type)
        -> [LHsType GhcRn] -- un-type-checked args
        -> TcM (TcType, [TcType], TcKind)  -- same as overall return type
@@ -908,9 +908,9 @@ tcInferApps mode mb_kind_info orig_hs_ty fun_ty fun_ki orig_hs_args
       | otherwise
         -- It's visible. Check the next user-written argument
       = do { traceTc "tcInferApps (vis)" (vcat [ ppr ki_binder, ppr arg
-                                               , ppr (tyCoBinderType ki_binder)
+                                               , ppr (tyBinderType ki_binder)
                                                , ppr subst ])
-           ; let exp_kind = nakedSubstTy subst $ tyCoBinderType ki_binder
+           ; let exp_kind = nakedSubstTy subst $ tyBinderType ki_binder
                             -- nakedSubstTy: see Note [The well-kinded type invariant]
            ; arg' <- addErrCtxt (funAppCtxt orig_hs_ty arg n) $
                      tc_lhs_type mode arg exp_kind
@@ -1021,7 +1021,7 @@ checkExpectedKindX mb_kind_env pp_hs_ty ty act_kind exp_kind
 instantiateTyN :: Maybe (VarEnv Kind)              -- ^ Predetermined instantiations
                                                    -- (for assoc. type patterns)
                -> Int                              -- ^ @n@
-               -> [TyCoBinder] -> TcKind             -- ^ its kind (zonked)
+               -> [TyBinder] -> TcKind             -- ^ its kind (zonked)
                -> TcM ([TcType], TcKind)   -- ^ The inst'ed type, new args, kind (zonked)
 instantiateTyN mb_kind_env n bndrs inner_ki
   | n <= 0

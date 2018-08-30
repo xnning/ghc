@@ -3517,7 +3517,8 @@ noClassTyVarErr clas fam_tc
 
 badDataConTyCon :: DataCon -> Type -> Type -> SDoc
 badDataConTyCon data_con res_ty_tmpl actual_res_ty
-  | tcIsForAllTy actual_res_ty
+  | ASSERT( all isTyVar actual_ex_tvs )
+    tcIsForAllTy actual_res_ty
   = nested_foralls_contexts_suggestion
   | isJust (tcSplitPredFunTy_maybe actual_res_ty)
   = nested_foralls_contexts_suggestion

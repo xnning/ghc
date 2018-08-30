@@ -751,7 +751,7 @@ Similar variants exist for mkForAllCos, mkHomoForAllCos.
 -- | Make a Coercion from a tycovar, a kind coercion, and a body coercion.
 -- The kind of the tycovar should be the left-hand kind of the kind coercion.
 -- See Note [Smart constructors for ForAllCo]
-mkForAllCo :: TyCoVar -> Coercion -> Coercion -> Coercion
+mkForAllCo :: TyCoVar -> CoercionN -> Coercion -> Coercion
 mkForAllCo tv kind_co co
   | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co)) True
   , Just (ty, r) <- isReflCo_maybe co
@@ -766,7 +766,7 @@ mkForAllCo tv kind_co co
 -- | Like 'mkForAllCo', but tv should always be a TyVar.
 -- The kind of the tycovar should be the left-hand kind of the kind coercion.
 -- See Note [Smart constructors for ForAllCo]
-mkForAllCo_unchecked :: TyVar -> Coercion -> Coercion -> Coercion
+mkForAllCo_unchecked :: TyVar -> CoercionN -> Coercion -> Coercion
 mkForAllCo_unchecked tv kind_co co
   | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co)) True
   , ASSERT( isTyVar tv ) True
@@ -780,7 +780,7 @@ mkForAllCo_unchecked tv kind_co co
 -- reflexive coercion.
 -- The kind of the tycovar should be the left-hand kind of the kind coercion.
 -- See Note [Smart constructors for ForAllCo]
-mkForAllCo_NoRefl :: TyCoVar -> Coercion -> Coercion -> Coercion
+mkForAllCo_NoRefl :: TyCoVar -> CoercionN -> Coercion -> Coercion
 mkForAllCo_NoRefl tv kind_co co
   | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co)) True
   , ASSERT( not (isReflCo co)) True
@@ -792,7 +792,7 @@ mkForAllCo_NoRefl tv kind_co co
 
 -- | Make nested ForAllCos
 -- See Note [Smart constructors for ForAllCo]
-mkForAllCos :: [(TyCoVar, Coercion)] -> Coercion -> Coercion
+mkForAllCos :: [(TyCoVar, CoercionN)] -> Coercion -> Coercion
 mkForAllCos bndrs co
   | Just (ty, r ) <- isReflCo_maybe co
   = let (refls_rev'd, non_refls_rev'd) = span (isReflCo . snd) (reverse bndrs) in
@@ -804,7 +804,7 @@ mkForAllCos bndrs co
 
 -- | Like 'mkForAllCos', but bndrs should only contain type variables
 -- See Note [Smart constructors for ForAllCo]
-mkForAllCos_unchecked :: [(TyVar, Coercion)] -> Coercion -> Coercion
+mkForAllCos_unchecked :: [(TyVar, CoercionN)] -> Coercion -> Coercion
 mkForAllCos_unchecked bndrs co
   | ASSERT( all (isTyVar . fst) bndrs ) True
   , Just (ty, r ) <- isReflCo_maybe co
@@ -1113,10 +1113,10 @@ mkLRCo lr co
 
 -- | Instantiates a 'Coercion'.
 mkInstCo :: Coercion -> Coercion -> Coercion
-mkInstCo (ForAllCo tv _kind_co body_co) co
+mkInstCo (ForAllCo tcv _kind_co body_co) co
   | Just (arg, _) <- isReflCo_maybe co
       -- works for both tyvar and covar
-  = substCoUnchecked (zipTCvSubst [tv] [arg]) body_co
+  = substCoUnchecked (zipTCvSubst [tcv] [arg]) body_co
 mkInstCo co arg = InstCo co arg
 
 -- | Given @ty :: k1@, @co :: k1 ~ k2@,
@@ -1370,13 +1370,14 @@ promoteCoercion co = case co of
       | isTyVar tv
       -> promoteCoercion g
 
-    ForAllCo cv _ _
-      -> ASSERT( isCoVar cv )
+    ForAllCo _ _ _
+      -> ASSERT( False )
          mkNomReflCo liftedTypeKind
       -- See Note [Weird typing rule for ForAllTy] in Type
 
     FunCo _ _ _
-      -> mkNomReflCo liftedTypeKind
+      -> ASSERT( False )
+         mkNomReflCo liftedTypeKind
 
     CoVarCo {}     -> mkKindCo co
     HoleCo {}      -> mkKindCo co
@@ -1443,13 +1444,8 @@ instCoercion :: Pair Type -- g :: lty ~ rty
              -> Coercion
              -> Maybe CoercionN
 instCoercion (Pair lty rty) g w
-  | isForAllTy_ty lty && isForAllTy_ty rty
-  , Just w' <- setNominalRole_maybe (coercionRole w) w
-    -- g :: (forall t1. t2) ~ (forall t1. t3)
-    -- w :: s1 ~ s2
-    -- returns mkInstCo g w' :: t2 [t1 |-> s1 ] ~ t3 [t1 |-> s2]
-  = Just $ mkInstCo g w'
-  | isForAllTy_co lty && isForAllTy_co rty
+  | (isForAllTy_ty lty && isForAllTy_ty rty)
+  || (isForAllTy_co lty && isForAllTy_co rty)
   , Just w' <- setNominalRole_maybe (coercionRole w) w
     -- g :: (forall t1. t2) ~ (forall t1. t3)
     -- w :: s1 ~ s2
@@ -1721,7 +1717,7 @@ instance Outputable LiftingContext where
 type LiftCoEnv = VarEnv Coercion
      -- Maps *type variables* to *coercions*.
      -- That's the whole point of this function!
-     -- Also maps coercion variables to a pair of coercions
+     -- Also maps coercion variables to ProofIrrelCos.
 
 -- like liftCoSubstWith, but allows for existentially-bound types as well
 liftCoSubstWithEx :: Role          -- desired role for output coercion
@@ -1916,8 +1912,8 @@ liftCoSubstCoVarBndrUsing:
   We want to get
     forall (cv:s1'~s2') (kind_co :: (s1'~s2') ~ (t1 ~ t2)) body_co
 
-  We lift s1 and s2 respectively  to get
-    eta1 :: s1' ~ t1,
+  We lift s1 and s2 respectively to get
+    eta1 :: s1' ~ t1
     eta2 :: s2' ~ t2
   And
     kind_co = TyConAppCo Nominal (~#) eta1 eta2

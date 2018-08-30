@@ -1367,7 +1367,10 @@ lintType t@(ForAllTy (Bndr tv _vis) ty)
 
 lintType t@(ForAllTy (Bndr cv _vis) ty)
   -- forall over coercions
-  = do { lintL (isCoVar cv) (text "Non-Tyvar or Non-Covar bound in type:" <+> ppr t)
+  = do { lintL (isCoVar cv)
+               (text "Non-Tyvar or Non-Covar bound in type:" <+> ppr t)
+       ; lintL (cv `elemVarSet` tyCoVarsOfType ty)
+               (text "Covar does not occur in the body:" <+> ppr t)
        ; lintCoBndr cv $ \_ ->
     do { k <- lintType ty
        ; checkValueKind k (text "the body of forall:" <+> ppr t)

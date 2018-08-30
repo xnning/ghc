@@ -758,7 +758,7 @@ canForAll ev pend_sc
            _  -> pprPanic "canForAll" (ppr new_ev)
     } }
 
-solveForAll :: CtEvidence -> [TyCoVarBinder] -> TcThetaType -> PredType -> Bool
+solveForAll :: CtEvidence -> [TyVarBinder] -> TcThetaType -> PredType -> Bool
             -> TcS (StopOrContinue Ct)
 solveForAll ev tv_bndrs theta pred pend_sc
   | CtWanted { ctev_dest = dest } <- ev
@@ -1013,7 +1013,7 @@ can_eq_nc_forall ev eq_rel s1 s2
             phi1' = substTy subst1 phi1
 
             -- Unify the kinds, extend the substitution
-            go :: [TcTyVar] -> TCvSubst -> [TyCoVarBinder]
+            go :: [TcTyVar] -> TCvSubst -> [TyVarBinder]
                -> TcS (TcCoercion, Cts)
             go (skol_tv:skol_tvs) subst (bndr2:bndrs2)
               = do { let tv2 = binderVar bndr2

@@ -1037,13 +1037,19 @@ mkEtaWW orig_n orig_expr in_scope orig_ty
        | n == 0
        = (getTCvInScope subst, reverse eis)
 
-       | Just (tv,ty') <- splitForAllTy_maybe ty
-       , let (subst', tv') = Type.substVarBndr subst tv
-       = let ((n_subst, n_tv), n_n)
-               | isTyVar tv = ((subst', tv'), n)
-               | otherwise  = (freshEtaId n subst' (varType tv'), n-1)
+       | Just (tcv,ty') <- splitForAllTy_maybe ty
+       , let (subst', tcv') = Type.substVarBndr subst tcv
+       = let ((n_subst, n_tcv), n_n)
+               -- We want to have at least 'n' lambdas at the top.
+               -- If tcv is a tyvar, it corresponds to one Lambda (/\).
+               --   And we won't reduce n.
+               -- If tcv is a covar, we could eta-expand the expr with one
+               --   lambda \co:ty. e co. In this case we generate a new variable
+               --   of the coercion type, update the scope, and reduce n by 1.
+               | isTyVar tcv = ((subst', tcv'), n)
+               | otherwise  = (freshEtaId n subst' (varType tcv'), n-1)
            -- Avoid free vars of the original expression
-         in go n_n n_subst ty' (EtaVar n_tv : eis)
+         in go n_n n_subst ty' (EtaVar n_tcv : eis)
 
        | Just (arg_ty, res_ty) <- splitFunTy_maybe ty
        , not (isTypeLevPoly arg_ty)

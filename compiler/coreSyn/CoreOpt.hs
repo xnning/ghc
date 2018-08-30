@@ -1190,9 +1190,7 @@ collectBindersPushingCo e
         isForAllTy_co tyR
       , isReflCo (mkNthCo Nominal 0 co)  -- See Note [collectBindersPushingCo]
       , let cov = mkCoVarCo b
-      = go_c (b:bs) e (mkInstCo co (mkProofIrrelCo Nominal
-                                                   (mkNomReflCo (varType b))
-                                                   cov cov))
+      = go_c (b:bs) e (mkInstCo co (mkNomReflCo (mkCoercionTy cov)))
 
       | isId b
       , let Pair tyL tyR = coercionKind co

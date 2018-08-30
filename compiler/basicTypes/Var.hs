@@ -61,10 +61,11 @@ module Var (
         mustHaveLocalBinding,
 
         -- * TyVar's
-        VarBndr(..), ArgFlag(..), TyCoVarBinder,
+        VarBndr(..), ArgFlag(..), TyCoVarBinder, TyVarBinder,
         binderVar, binderVars, binderArgFlag, binderType,
         isVisibleArgFlag, isInvisibleArgFlag, sameVis,
         mkTyCoVarBinder, mkTyCoVarBinders,
+        mkTyVarBinder, mkTyVarBinders,
 
         -- ** Constructing TyVar's
         mkTyVar, mkTcTyVar,
@@ -412,8 +413,9 @@ sameVis _        _        = True
 -- Variable Binder
 --
 -- VarBndr is polymorphic in both var and visibility fields.
--- Currently there are four different uses of 'VarBndr':
+-- Currently there are five different uses of 'VarBndr':
 --   * Var.TyCoVarBinder = VarBndr TyCoVar ArgFlag
+--   * Var.TyVarBinder   = VarBndr TyVar ArgFlag
 --   * TyCon.TyConBinder = VarBndr TyCoVar TyConBndrVis
 --   * IfaceType.IfaceForAllBndr  = VarBndr IfaceBndr ArgFlag
 --   * IfaceType.IfaceTyConBinder = VarBndr IfaceBndr TyConBndrVis
@@ -425,7 +427,10 @@ data VarBndr var argf = Bndr var argf
 -- A 'TyCoVarBinder' is the binder of a ForAllTy
 -- It's convenient to define this synonym here rather its natural
 -- home in TyCoRep, because it's used in DataCon.hs-boot
+--
+-- A 'TyVarBinder' is a binder with only TyVar
 type TyCoVarBinder = VarBndr TyCoVar ArgFlag
+type TyVarBinder   = VarBndr TyVar ArgFlag
 
 binderVar :: VarBndr tv argf -> tv
 binderVar (Bndr v _) = v
@@ -443,9 +448,21 @@ binderType (Bndr tv _) = varType tv
 mkTyCoVarBinder :: ArgFlag -> TyCoVar -> TyCoVarBinder
 mkTyCoVarBinder vis var = Bndr var vis
 
+-- | Make a named binder
+-- 'var' should be a type variable
+mkTyVarBinder :: ArgFlag -> TyVar -> TyVarBinder
+mkTyVarBinder vis var
+  = ASSERT( isTyVar var )
+    Bndr var vis
+
 -- | Make many named binders
 mkTyCoVarBinders :: ArgFlag -> [TyCoVar] -> [TyCoVarBinder]
 mkTyCoVarBinders vis = map (mkTyCoVarBinder vis)
+
+-- | Make many named binders
+-- Input vars should be type variables
+mkTyVarBinders :: ArgFlag -> [TyVar] -> [TyVarBinder]
+mkTyVarBinders vis = map (mkTyVarBinder vis)
 
 {-
 ************************************************************************

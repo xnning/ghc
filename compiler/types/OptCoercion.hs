@@ -681,10 +681,10 @@ opt_trans_rule is co1 co2
   where
   push_trans tv1 eta1 r1 tv2 eta2 r2
     -- Given:
-    --   co1 = \/ tv1 : eta1. r1
-    --   co2 = \/ tv2 : eta2. r2
+    --   co1 = /\ tv1 : eta1. r1
+    --   co2 = /\ tv2 : eta2. r2
     -- Wanted:
-    --   \/tv1 : (eta1;eta2).  (r1; r2[tv2 |-> tv1 |> eta1])
+    --   /\tv1 : (eta1;eta2).  (r1; r2[tv2 |-> tv1 |> eta1])
     = fireTransRule "EtaAllTy_ty" co1 co2 $
       mkForAllCo_unchecked tv1 (opt_trans is eta1 eta2) (opt_trans is' r1 r2')
     where
@@ -705,12 +705,12 @@ opt_trans_rule is co1 co2
   where
   push_trans cv1 eta1 r1 cv2 eta2 r2
     -- Given:
-    --   co1 = \/ cv1 : eta1. r1
-    --   co2 = \/ cv2 : eta2. r2
+    --   co1 = /\ cv1 : eta1. r1
+    --   co2 = /\ cv2 : eta2. r2
     -- Wanted:
     --   n1 = nth 2 eta1
     --   n2 = nth 3 eta1
-    --   nco = \/ cv1 : (eta1;eta2). (r1; r2[cv2 |-> (sym n1);cv1;n2])
+    --   nco = /\ cv1 : (eta1;eta2). (r1; r2[cv2 |-> (sym n1);cv1;n2])
     = fireTransRule "EtaAllTy_co" co1 co2 $
       mkForAllCo cv1 (opt_trans is eta1 eta2) (opt_trans is' r1 r2')
     where

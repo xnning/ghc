@@ -924,13 +924,13 @@ chooseInferredQuantifiers :: TcThetaType   -- inferred
                           -> TcTyVarSet    -- tvs free in tau type
                           -> [TcTyVar]     -- inferred quantified tvs
                           -> Maybe TcIdSigInst
-                          -> TcM ([TyCoVarBinder], TcThetaType)
+                          -> TcM ([TyVarBinder], TcThetaType)
 chooseInferredQuantifiers inferred_theta tau_tvs qtvs Nothing
   = -- No type signature (partial or complete) for this binder,
     do { let free_tvs = closeOverKinds (growThetaTyVars inferred_theta tau_tvs)
                         -- Include kind variables!  Trac #7916
              my_theta = pickCapturedPreds free_tvs inferred_theta
-             binders  = [ mkTyCoVarBinder Inferred tv
+             binders  = [ mkTyVarBinder Inferred tv
                         | tv <- qtvs
                         , tv `elemVarSet` free_tvs ]
        ; return (binders, my_theta) }
@@ -961,7 +961,7 @@ chooseInferredQuantifiers inferred_theta tau_tvs qtvs
        ; (free_tvs, my_theta) <- choose_psig_context psig_qtvs annotated_theta wcx
 
        ; let keep_me    = free_tvs `unionVarSet` psig_qtvs
-             final_qtvs = [ mkTyCoVarBinder vis tv
+             final_qtvs = [ mkTyVarBinder vis tv
                           | tv <- qtvs -- Pulling from qtvs maintains original order
                           , tv `elemVarSet` keep_me
                           , let vis | tv `elemVarSet` psig_qtvs = Specified

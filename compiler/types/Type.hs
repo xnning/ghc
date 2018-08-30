@@ -99,6 +99,7 @@ module Type (
         isAnonTyCoBinder, isNamedTyCoBinder,
         binderVar, binderVars, binderType, binderArgFlag,
         tyCoBinderType, tyCoBinderVar_maybe,
+        tyBinderType,
         binderRelevantType_maybe, caseBinder,
         isVisibleArgFlag, isInvisibleArgFlag, isVisibleBinder, isInvisibleBinder,
         tyConBindersTyCoBinders,
@@ -1629,6 +1630,12 @@ tyCoBinderType :: TyCoBinder -> Type
 -- Barely used
 tyCoBinderType (Named tvb) = binderType tvb
 tyCoBinderType (Anon ty)   = ty
+
+tyBinderType :: TyBinder -> Type
+tyBinderType (Named (Bndr tv _))
+  = ASSERT( isTyVar tv )
+    tyVarKind tv
+tyBinderType (Anon ty)   = ty
 
 -- | Extract a relevant type, if there is one.
 binderRelevantType_maybe :: TyCoBinder -> Maybe Type

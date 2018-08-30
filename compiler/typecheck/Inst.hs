@@ -488,7 +488,7 @@ no longer cut it, but it seems fine for now.
 -- The @VarEnv Kind@ gives some known instantiations.
 -- See also Note [Bidirectional type checking]
 tcInstTyBinders :: TCvSubst -> Maybe (VarEnv Kind)
-                -> [TyCoBinder] -> TcM (TCvSubst, [TcType])
+                -> [TyBinder] -> TcM (TCvSubst, [TcType])
 tcInstTyBinders subst mb_kind_info bndrs
   = do { (subst, args) <- mapAccumLM (tcInstTyBinder mb_kind_info) subst bndrs
        ; traceTc "instantiating tybinders:"
@@ -498,7 +498,7 @@ tcInstTyBinders subst mb_kind_info bndrs
 
 -- | Used only in *types*
 tcInstTyBinder :: Maybe (VarEnv Kind)
-               -> TCvSubst -> TyCoBinder -> TcM (TCvSubst, TcType)
+               -> TCvSubst -> TyBinder -> TcM (TCvSubst, TcType)
 tcInstTyBinder mb_kind_info subst (Named (Bndr tv _))
   = case lookup_tv tv of
       Just ki -> return (extendTvSubstAndInScope subst tv ki, ki)

@@ -50,7 +50,7 @@ module TyCoRep (
         sameVis,
 
         -- * Functions over binders
-        TyCoBinder(..), TyCoVarBinder,
+        TyCoBinder(..), TyCoVarBinder, TyBinder,
         binderVar, binderVars, binderType, binderArgFlag,
         delBinderVar,
         isInvisibleArgFlag, isVisibleArgFlag,
@@ -523,6 +523,10 @@ data TyCoBinder
                         -- Visibility is determined by the type (Constraint vs. *)
   deriving Data.Data
 
+-- | 'TyBinder' is like 'TyCoBinder', but there can only be 'TyVarBinder'
+-- in the 'Named' field.
+type TyBinder = TyCoBinder
+
 -- | Remove the binder's variable from the set, if the binder has
 -- a variable.
 delBinderVar :: VarSet -> TyCoVarBinder -> VarSet
@@ -788,9 +792,6 @@ infixr 3 `mkFunTy`      -- Associates to the right
 -- | Make an arrow type
 mkFunTy :: Type -> Type -> Type
 mkFunTy arg res = FunTy arg res
-  -- Originally, if the arg was a coercion type, we would make a ForAllTy. Now
-  -- we don't need to do this because we consider co -> ty to be equivalent as
-  -- \/_ : co. ty
 
 -- | Make nested arrow types
 mkFunTys :: [Type] -> Type -> Type
