@@ -720,7 +720,7 @@ cond_stdOK deriv_ctxt permissive dflags tc rep_tc
       | otherwise
       = IsValid
       where
-        (_, ex_tvs, _, eq_spec, theta, _, _) = dataConFullSig con
+        (_, ex_tvs, eq_spec, theta, _, _) = dataConFullSig con
         bad msg = NotValid (badCon con (text msg))
 
 no_cons_why :: TyCon -> SDoc

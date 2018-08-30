@@ -1235,23 +1235,23 @@ dataConInstSig con@(MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
 --
 -- 2) The result of 'dataConExTyCoVars'
 --
--- 3) The dependent GADT equalities (which are a subset of return value (2))
+-- 3) The non-dependent GADT equalities.
+--    Dependent GADT equalities are implied by coercion variables in
+--    return value (2).
 --
--- 4) The non-dependent GADT equalities
---
--- 5) The other constraints of the data constructor type, excluding GADT
+-- 4) The other constraints of the data constructor type, excluding GADT
 -- equalities
 --
--- 6) The original argument types to the 'DataCon' (i.e. before
+-- 5) The original argument types to the 'DataCon' (i.e. before
 --    any change of the representation of the type)
 --
--- 7) The original result type of the 'DataCon'
+-- 6) The original result type of the 'DataCon'
 dataConFullSig :: DataCon
-               -> ([TyVar], [TyCoVar], [EqSpec], [EqSpec], ThetaType, [Type], Type)
-dataConFullSig con@(MkData {dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs,
-                            dcEqSpec = eq_spec, dcOtherTheta = theta,
-                            dcOrigArgTys = arg_tys, dcOrigResTy = res_ty})
-  = (univ_tvs, ex_tvs, dataConKindEqSpec con, eq_spec, theta, arg_tys, res_ty)
+               -> ([TyVar], [TyCoVar], [EqSpec], ThetaType, [Type], Type)
+dataConFullSig (MkData {dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs,
+                        dcEqSpec = eq_spec, dcOtherTheta = theta,
+                        dcOrigArgTys = arg_tys, dcOrigResTy = res_ty})
+  = (univ_tvs, ex_tvs, eq_spec, theta, arg_tys, res_ty)
 
 dataConOrigResTy :: DataCon -> Type
 dataConOrigResTy dc = dcOrigResTy dc

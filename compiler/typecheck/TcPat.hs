@@ -723,7 +723,7 @@ tcDataConPat :: PatEnv -> Located Name -> DataCon
 tcDataConPat penv (L con_span con_name) data_con pat_ty arg_pats thing_inside
   = do  { let tycon = dataConTyCon data_con
                   -- For data families this is the representation tycon
-              (univ_tvs, ex_tvs, _, eq_spec, theta, arg_tys, _)
+              (univ_tvs, ex_tvs, eq_spec, theta, arg_tys, _)
                 = dataConFullSig data_con
               header = L con_span (RealDataCon data_con)
 

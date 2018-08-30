@@ -168,7 +168,7 @@ conLikeFullSig :: ConLike
                -> ([TyVar], [TyCoVar], [EqSpec]
                   , ThetaType, ThetaType, [Type], Type)
 conLikeFullSig (RealDataCon con) =
-  let (univ_tvs, ex_tvs, _, eq_spec, theta, arg_tys, res_ty) = dataConFullSig con
+  let (univ_tvs, ex_tvs, eq_spec, theta, arg_tys, res_ty) = dataConFullSig con
   -- Required theta is empty as normal data cons require no additional
   -- constraints for a match
   in (univ_tvs, ex_tvs, eq_spec, theta, [], arg_tys, res_ty)

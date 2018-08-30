@@ -2691,7 +2691,7 @@ checkPartialRecordField all_cons fld
     is_exhaustive = all (dataConCannotMatch inst_tys) cons_without_field
 
     con1 = ASSERT( not (null cons_with_field) ) head cons_with_field
-    (univ_tvs, _, _, eq_spec, _, _, _) = dataConFullSig con1
+    (univ_tvs, _, eq_spec, _, _, _) = dataConFullSig con1
     eq_subst = mkTvSubstPrs (map eqSpecPair eq_spec)
     inst_tys = substTyVars eq_subst univ_tvs
 
@@ -2760,7 +2760,7 @@ checkValidDataCon dflags existential_ok tc con
           -- checked here because we sometimes build invalid DataCons before
           -- erroring above here
         ; when debugIsOn $
-          do { let (univs, exs, _, eq_spec, _, _, _) = dataConFullSig con
+          do { let (univs, exs, eq_spec, _, _, _) = dataConFullSig con
                    user_tvs                       = dataConUserTyVars con
                    user_tvbs_invariant
                      =    Set.fromList (filterEqSpec eq_spec univs ++ exs)
@@ -2843,7 +2843,7 @@ checkNewDataCon con
                 -- No strictness annotations
     }
   where
-    (_univ_tvs, ex_tvs, _, eq_spec, theta, arg_tys, _res_ty)
+    (_univ_tvs, ex_tvs, eq_spec, theta, arg_tys, _res_ty)
       = dataConFullSig con
     check_con what msg
        = checkTc what (msg $$ ppr con <+> dcolon <+> ppr (dataConUserType con))
@@ -3363,7 +3363,7 @@ checkValidRoles tc
                     eqSpecPreds eq_spec ++ theta ++ arg_tys }
                     -- See Note [Role-checking data constructor arguments] in TcTyDecls
       where
-        (univ_tvs, ex_tvs, _, eq_spec, theta, arg_tys, _res_ty)
+        (univ_tvs, ex_tvs, eq_spec, theta, arg_tys, _res_ty)
           = dataConFullSig datacon
         univ_roles = zipVarEnv univ_tvs (tyConRoles tc)
               -- zipVarEnv uses zipEqual, but we don't want that for ex_tvs

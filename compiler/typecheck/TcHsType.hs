@@ -1108,7 +1108,7 @@ tcTyVar mode name         -- Could be a tyvar, a tycon, or a datacon
                    ; when (isFamInstTyCon (dataConTyCon dc)) $
                        -- see Trac #15245
                        promotionErr name FamDataConPE
-                   ; let (_, _, _, _, theta, _, _) = dataConFullSig dc
+                   ; let (_, _, _, theta, _, _) = dataConFullSig dc
                    ; case dc_theta_illegal_constraint theta of
                        Just pred -> promotionErr name $
                                     ConstrainedDataConPE pred

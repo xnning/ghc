@@ -1481,7 +1481,7 @@ reifyDataCon isGadtDataCon tys dc
                  = dataConInstSig dc tys
              -- used for GADTs data constructors
              g_user_tvs' = dataConUserTyVars dc
-             (g_univ_tvs, _, _, g_eq_spec, g_theta', g_arg_tys', g_res_ty')
+             (g_univ_tvs, _, g_eq_spec, g_theta', g_arg_tys', g_res_ty')
                  = dataConFullSig dc
              (srcUnpks, srcStricts)
                  = mapAndUnzip reifySourceBang (dataConSrcBangs dc)

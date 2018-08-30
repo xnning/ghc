@@ -1762,7 +1762,7 @@ tyConToIfaceDecl env tycon
                     ifConSrcStricts = map toIfaceSrcBang
                                           (dataConSrcBangs data_con)}
         where
-          (univ_tvs, ex_tvs, _dep_eq_sepc, eq_spec, theta, arg_tys, _)
+          (univ_tvs, ex_tvs, eq_spec, theta, arg_tys, _)
             = dataConFullSig data_con
           user_bndrs = dataConUserTyVarBinders data_con
 

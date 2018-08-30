@@ -579,7 +579,7 @@ irDataCon datacon
           (map tyVarKind ex_tvs ++ eqSpecPreds eq_spec ++ theta ++ arg_tys)
       -- See Note [Role-checking data constructor arguments]
   where
-    (univ_tvs, ex_tvs, _, eq_spec, theta, arg_tys, _res_ty)
+    (univ_tvs, ex_tvs, eq_spec, theta, arg_tys, _res_ty)
       = dataConFullSig datacon
 
 irType :: VarSet -> Type -> RoleM ()
