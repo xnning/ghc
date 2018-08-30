@@ -525,7 +525,7 @@ rnIfaceConDecl :: Rename IfaceConDecl
 rnIfaceConDecl d = do
     con_name <- rnIfaceGlobal (ifConName d)
     con_ex_tvs <- mapM rnIfaceBndr (ifConExTCvs d)
-    con_user_tvbs <- mapM rnIfaceForAllBndr (ifConUserTCvBinders d)
+    con_user_tvbs <- mapM rnIfaceForAllBndr (ifConUserTvBinders d)
     let rnIfConEqSpec (n,t) = (,) n <$> rnIfaceType t
     con_eq_spec <- mapM rnIfConEqSpec (ifConEqSpec d)
     con_ctxt <- mapM rnIfaceType (ifConCtxt d)
@@ -536,7 +536,7 @@ rnIfaceConDecl d = do
     con_stricts <- mapM rnIfaceBang (ifConStricts d)
     return d { ifConName = con_name
              , ifConExTCvs = con_ex_tvs
-             , ifConUserTCvBinders = con_user_tvbs
+             , ifConUserTvBinders = con_user_tvbs
              , ifConEqSpec = con_eq_spec
              , ifConCtxt = con_ctxt
              , ifConArgTys = con_arg_tys

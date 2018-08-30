@@ -638,7 +638,7 @@ ds_expr _ expr@(RecordUpd { rupd_expr = record_expr, rupd_flds = fields
                   prov_theta, _req_theta, arg_tys, _) = conLikeFullSig con
                  user_tvs =
                    case con of
-                     RealDataCon data_con -> dataConUserTyCoVars data_con
+                     RealDataCon data_con -> dataConUserTyVars data_con
                      PatSynCon _          -> univ_tvs ++ ex_tvs
                        -- The order here is because of the order in `TcPatSyn`.
                  in_subst  = zipTvSubst univ_tvs in_inst_tys

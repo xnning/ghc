@@ -150,7 +150,7 @@ module TyCoRep (
 import GhcPrelude
 
 import {-# SOURCE #-} DataCon( dataConFullSig
-                             , dataConUserTyCoVarBinders
+                             , dataConUserTyVarBinders
                              , DataCon )
 import {-# SOURCE #-} Type( isPredTy, isCoercionTy, mkAppTy, mkCastTy
                           , tyCoVarsOfTypeWellScoped
@@ -3109,7 +3109,7 @@ pprDataConWithArgs :: DataCon -> SDoc
 pprDataConWithArgs dc = sep [forAllDoc, thetaDoc, ppr dc <+> argsDoc]
   where
     (_univ_tvs, _ex_tvs, _dep_eq_spec, _eq_spec, theta, arg_tys, _res_ty) = dataConFullSig dc
-    user_bndrs = dataConUserTyCoVarBinders dc
+    user_bndrs = dataConUserTyVarBinders dc
     forAllDoc  = pprUserForAll user_bndrs
     thetaDoc   = pprThetaArrowTy theta
     argsDoc    = hsep (fmap pprParendType arg_tys)

@@ -892,7 +892,7 @@ tcIfaceDataCons tycon_name tycon tc_tybinders if_cons
 
     tc_con_decl (IfCon { ifConInfix = is_infix,
                          ifConExTCvs = ex_bndrs,
-                         ifConUserTCvBinders = user_bndrs,
+                         ifConUserTvBinders = user_bndrs,
                          ifConName = dc_name,
                          ifConCtxt = ctxt, ifConEqSpec = spec,
                          ifConArgTys = args, ifConFields = lbl_names,

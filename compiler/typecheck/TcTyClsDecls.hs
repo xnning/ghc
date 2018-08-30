@@ -2761,7 +2761,7 @@ checkValidDataCon dflags existential_ok tc con
           -- erroring above here
         ; when debugIsOn $
           do { let (univs, exs, _, eq_spec, _, _, _) = dataConFullSig con
-                   user_tvs                       = dataConUserTyCoVars con
+                   user_tvs                       = dataConUserTyVars con
                    user_tvbs_invariant
                      =    Set.fromList (filterEqSpec eq_spec univs ++ exs)
                        == Set.fromList user_tvs

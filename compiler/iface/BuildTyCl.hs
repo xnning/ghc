@@ -102,7 +102,7 @@ buildDataCon :: FamInstEnvs
            -> [FieldLabel]             -- Field labels
            -> [TyVar]                  -- Universals
            -> [TyCoVar]                -- Existentials
-           -> [TyCoVarBinder]          -- User-written 'TyCoVarBinder's
+           -> [TyVarBinder]            -- User-written 'TyVarBinder's
            -> [EqSpec]                 -- Equality spec
            -> KnotTied ThetaType       -- Does not include the "stupid theta"
                                        -- or the GADT equalities
@@ -167,8 +167,8 @@ mkDataConStupidTheta tycon arg_tys univ_tvs
 ------------------------------------------------------
 buildPatSyn :: Name -> Bool
             -> (Id,Bool) -> Maybe (Id, Bool)
-            -> ([TyCoVarBinder], ThetaType) -- ^ Univ and req
-            -> ([TyCoVarBinder], ThetaType) -- ^ Ex and prov
+            -> ([TyVarBinder], ThetaType) -- ^ Univ and req
+            -> ([TyVarBinder], ThetaType) -- ^ Ex and prov
             -> [Type]               -- ^ Argument types
             -> Type                 -- ^ Result type
             -> [FieldLabel]         -- ^ Field labels for
@@ -202,8 +202,8 @@ buildPatSyn src_name declared_infix matcher@(matcher_id,_) builder
     (ex_tvs1, prov_theta1, cont_tau)   = tcSplitSigmaTy cont_sigma
     (arg_tys1, _) = (tcSplitFunTys cont_tau)
     twiddle = char '~'
-    subst = zipTCvSubst (univ_tvs1 ++ ex_tvs1)
-                        (mkTyCoVarTys (binderVars (univ_tvs ++ ex_tvs)))
+    subst = zipTvSubst (univ_tvs1 ++ ex_tvs1)
+                       (mkTyVarTys (binderVars (univ_tvs ++ ex_tvs)))
 
     -- For a nullary pattern synonym we add a single void argument to the
     -- matcher to preserve laziness in the case of unlifted types.

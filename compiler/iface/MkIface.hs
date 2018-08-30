@@ -1752,7 +1752,7 @@ tyConToIfaceDecl env tycon
                     ifConInfix   = dataConIsInfix data_con,
                     ifConWrapper = isJust (dataConWrapId_maybe data_con),
                     ifConExTCvs  = map toIfaceBndr ex_tvs',
-                    ifConUserTCvBinders = map toIfaceForAllBndr user_bndrs',
+                    ifConUserTvBinders = map toIfaceForAllBndr user_bndrs',
                     ifConEqSpec  = map (to_eq_spec . eqSpecPair) eq_spec,
                     ifConCtxt    = tidyToIfaceContext con_env2 theta,
                     ifConArgTys  = map (tidyToIfaceType con_env2) arg_tys,
@@ -1764,7 +1764,7 @@ tyConToIfaceDecl env tycon
         where
           (univ_tvs, ex_tvs, _dep_eq_sepc, eq_spec, theta, arg_tys, _)
             = dataConFullSig data_con
-          user_bndrs = dataConUserTyCoVarBinders data_con
+          user_bndrs = dataConUserTyVarBinders data_con
 
           -- Tidy the univ_tvs of the data constructor to be identical
           -- to the tyConTyVars of the type constructor.  This means

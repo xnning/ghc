@@ -244,12 +244,12 @@ data IfaceConDecl
         -- So this guarantee holds for IfaceConDecl, but *not* for DataCon
 
         ifConExTCvs   :: [IfaceBndr],  -- Existential ty/covars
-        ifConUserTCvBinders :: [IfaceForAllBndr],
-          -- The ty/covars, in the order the user wrote them
-          -- INVARIANT: the set of ty/covars in ifConUserTCvBinders is exactly
-          --            the set of ifConExTCvs, unioned with the set of ifBinders
-          --            (from the parent IfaceDecl) whose tyvars do not appear
-          --            in ifConEqSpec
+        ifConUserTvBinders :: [IfaceForAllBndr],
+          -- The tyvars, in the order the user wrote them
+          -- INVARIANT: the set of tyvars in ifConUserTvBinders is exactly the
+          --            set of tyvars (*not* covars) of ifConExTCvs, unioned
+          --            with the set of ifBinders (from the parent IfaceDecl)
+          --            whose tyvars do not appear in ifConEqSpec
           -- See Note [DataCon user type variable binders] in DataCon
         ifConEqSpec  :: IfaceEqSpec,        -- Equality constraints
         ifConCtxt    :: IfaceContext,       -- Non-stupid context
@@ -976,7 +976,7 @@ pprIfaceConDecl :: ShowSub -> Bool
                 -> IfaceConDecl -> SDoc
 pprIfaceConDecl ss gadt_style tycon tc_binders parent
         (IfCon { ifConName = name, ifConInfix = is_infix,
-                 ifConUserTCvBinders = user_tvbs,
+                 ifConUserTvBinders = user_tvbs,
                  ifConEqSpec = eq_spec, ifConCtxt = ctxt, ifConArgTys = arg_tys,
                  ifConStricts = stricts, ifConFields = fields })
   | gadt_style = pp_prefix_con <+> dcolon <+> ppr_gadt_ty

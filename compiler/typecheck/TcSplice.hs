@@ -1480,7 +1480,7 @@ reifyDataCon isGadtDataCon tys dc
              (ex_tvs, theta, arg_tys)
                  = dataConInstSig dc tys
              -- used for GADTs data constructors
-             g_user_tvs' = dataConUserTyCoVars dc
+             g_user_tvs' = dataConUserTyVars dc
              (g_univ_tvs, _, _, g_eq_spec, g_theta', g_arg_tys', g_res_ty')
                  = dataConFullSig dc
              (srcUnpks, srcStricts)

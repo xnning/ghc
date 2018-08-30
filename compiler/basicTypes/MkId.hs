@@ -331,13 +331,13 @@ mkDictSelId name clas
     sel_names      = map idName (classAllSelIds clas)
     new_tycon      = isNewTyCon tycon
     [data_con]     = tyConDataCons tycon
-    tyvars         = dataConUserTyCoVarBinders data_con
+    tyvars         = dataConUserTyVarBinders data_con
     n_ty_args      = length tyvars
     arg_tys        = dataConRepArgTys data_con  -- Includes the dictionary superclasses
     val_index      = assoc "MkId.mkDictSelId" (sel_names `zip` [0..]) name
 
     sel_ty = mkForAllTys tyvars $
-             mkFunTy (mkClassPred clas (mkTyCoVarTys (binderVars tyvars))) $
+             mkFunTy (mkClassPred clas (mkTyVarTys (binderVars tyvars))) $
              getNth arg_tys val_index
 
     base_info = noCafIdInfo
@@ -390,11 +390,11 @@ mkDictSelRhs clas val_index
     arg_tys        = dataConRepArgTys data_con  -- Includes the dictionary superclasses
 
     the_arg_id     = getNth arg_ids val_index
-    pred           = mkClassPred clas (mkTyCoVarTys tyvars)
+    pred           = mkClassPred clas (mkTyVarTys tyvars)
     dict_id        = mkTemplateLocal 1 pred
     arg_ids        = mkTemplateLocalsNum 2 arg_tys
 
-    rhs_body | new_tycon = unwrapNewTypeBody tycon (mkTyCoVarTys tyvars)
+    rhs_body | new_tycon = unwrapNewTypeBody tycon (mkTyVarTys tyvars)
                                                    (Var dict_id)
              | otherwise = Case (Var dict_id) dict_id (idType the_arg_id)
                                 [(DataAlt data_con, arg_ids, varToCoreExpr the_arg_id)]
@@ -621,7 +621,7 @@ mkDataConRep dflags fam_envs wrap_name mb_bangs data_con
   where
     (univ_tvs, ex_tvs, _dep_eq_spec, eq_spec, theta, orig_arg_tys, _orig_res_ty)
       = dataConFullSig data_con
-    wrap_tvs     = dataConUserTyCoVars data_con
+    wrap_tvs     = dataConUserTyVars data_con
     res_ty_args  = substTyVars (mkTvSubstPrs (map eqSpecPair eq_spec)) univ_tvs
 
     tycon        = dataConTyCon data_con       -- The representation TyCon (not family)
@@ -657,7 +657,7 @@ mkDataConRep dflags fam_envs wrap_name mb_bangs data_con
                      -- Some forcing/unboxing (includes eq_spec)
              || (not $ null eq_spec))) -- GADT
       || isFamInstTyCon tycon -- Cast result
-      || dataConUserTyCoVarsArePermuted data_con
+      || dataConUserTyVarsArePermuted data_con
                      -- If the data type was written with GADT syntax and
                      -- orders the type variables differently from what the
                      -- worker expects, it needs a data con wrapper to reorder

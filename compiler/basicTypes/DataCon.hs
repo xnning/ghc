@@ -32,7 +32,7 @@ module DataCon (
         dataConTyCon, dataConOrigTyCon,
         dataConUserType,
         dataConUnivTyVars, dataConExTyCoVars, dataConUnivAndExTyCoVars,
-        dataConUserTyCoVars, dataConUserTyCoVarBinders,
+        dataConUserTyVars, dataConUserTyVarBinders,
         dataConEqSpec, dataConTheta,
         dataConStupidTheta,
         dataConInstArgTys, dataConOrigArgTys, dataConOrigResTy,
@@ -51,7 +51,7 @@ module DataCon (
         isNullarySrcDataCon, isNullaryRepDataCon, isTupleDataCon, isUnboxedTupleCon,
         isUnboxedSumCon,
         isVanillaDataCon, classDataCon, dataConCannotMatch,
-        dataConUserTyCoVarsArePermuted,
+        dataConUserTyVarsArePermuted,
         isBanged, isMarkedStrict, eqHsBang, isSrcStrict, isSrcUnpacked,
         specialPromotedDc,
 
@@ -287,13 +287,13 @@ data DataCon
         -- The next six fields express the type of the constructor, in pieces
         -- e.g.
         --
-        --      dcUnivTyVars         = [a,b,c]
-        --      dcExTyCoVars         = [x,y]
-        --      dcUserTyCoVarBinders = [c,y,x,b]
-        --      dcEqSpec             = [a~(x,y)]
-        --      dcOtherTheta         = [x~y, Ord x]
-        --      dcOrigArgTys         = [x,y]
-        --      dcRepTyCon           = T
+        --      dcUnivTyVars       = [a,b,c]
+        --      dcExTyCoVars       = [x,y]
+        --      dcUserTyVarBinders = [c,y,x,b]
+        --      dcEqSpec           = [a~(x,y)]
+        --      dcOtherTheta       = [x~y, Ord x]
+        --      dcOrigArgTys       = [x,y]
+        --      dcRepTyCon         = T
 
         -- In general, the dcUnivTyVars are NOT NECESSARILY THE SAME AS THE
         -- TYVARS FOR THE PARENT TyCon. (This is a change (Oct05): previously,
@@ -334,11 +334,11 @@ data DataCon
         -- Reason: less confusing, and easier to generate IfaceSyn
 
         -- The type/coercion vars in the order the user wrote them [c,y,x,b]
-        -- INVARIANT: the set of tycovars in dcUserTyCoVarBinders is exactly the
-        --            set of dcExTyCoVars unioned with the set of dcUnivTyVars
-        --            whose tyvars do not appear in dcEqSpec
+        -- INVARIANT: the set of tyvars in dcUserTyVarBinders is exactly the set
+        --            of tyvars (*not* covars) of dcExTyCoVars unioned with the
+        --            set of dcUnivTyVars whose tyvars do not appear in dcEqSpec
         -- See Note [DataCon user type variable binders]
-        dcUserTyCoVarBinders :: [TyCoVarBinder],
+        dcUserTyVarBinders :: [TyVarBinder],
 
         dcEqSpec :: [EqSpec],   -- Equalities derived from the result type,
                                 -- _as written by the programmer_
@@ -438,21 +438,21 @@ data DataCon
   }
 
 
-{- Note [TyCoVarBinders in DataCons]
+{- Note [TyVarBinders in DataCons]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-For the TyCoVarBinders in a DataCon and PatSyn:
+For the TyVarBinders in a DataCon and PatSyn:
 
  * Each argument flag is Inferred or Specified.
    None are Required. (A DataCon is a term-level function; see
    Note [No Required TyCoBinder in terms] in TyCoRep.)
 
-Why do we need the TyCoVarBinders, rather than just the TyCoVars?  So that
+Why do we need the TyVarBinders, rather than just the TyVars?  So that
 we can construct the right type for the DataCon with its foralls
 attributed the correct visibility.  That in turn governs whether you
 can use visible type application at a call of the data constructor.
 
 See also [DataCon user type variable binders] for an extended discussion on the
-order in which TyCoVarBinders appear in a DataCon.
+order in which TyVarBinders appear in a DataCon.
 
 Note [Existential coercion variables]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -464,13 +464,13 @@ we can in Core. Consider having:
     MkT :: forall k (a::k) (b::k). forall k' (c::k') (co::k'~k). (b~(c|>co))
         => T k a b
 
-  dcUnivTyVars         = [k,a,b]
-  dcExTyCoVars         = [k',c,co]
-  dcUserTyCoVarBinders = [k,a,k',c,co]
-  dcEqSpec             = [b~(c|>co)]
-  dcOtherTheta         = []
-  dcOrigArgTys         = []
-  dcRepTyCon           = T
+  dcUnivTyVars       = [k,a,b]
+  dcExTyCoVars       = [k',c,co]
+  dcUserTyVarBinders = [k,a,k',c]
+  dcEqSpec           = [b~(c|>co)]
+  dcOtherTheta       = []
+  dcOrigArgTys       = []
+  dcRepTyCon         = T
 
   Function call 'dataConKindEqSpec' returns [(t::k')~k] with 't' fresh generated
 
@@ -531,33 +531,34 @@ FC demands the variables go in universal-then-existential order under the hood.
 Our solution is thus to equip DataCon with two different sets of type
 variables:
 
-* dcUnivTyVars and dcExTyCoVars, for the universal and existential type/coercion
-  variables, respectively. Their order is irrelevant for the purposes of
-  TypeApplications, and as a consequence, they do not come equipped with
-  visibilities (that is, they are TyVars/TyCoVars instead of TyCoVarBinders).
-* dcUserTyCoVarBinders, for the type/coercion variables binders in the order in
-  which they originally arose in the user-written type signature. Their order
-  *does* matter for TypeApplications, so they are full TyCoVarBinders, complete
-  with visibilities.
+* dcUnivTyVars and dcExTyCoVars, for the universal type variable and existential
+  type/coercion variables, respectively. Their order is irrelevant for the
+  purposes of TypeApplications, and as a consequence, they do not come equipped
+  with visibilities (that is, they are TyVars/TyCoVars instead of
+  TyCoVarBinders).
+* dcUserTyVarBinders, for the type variables binders in the order in which they
+  originally arose in the user-written type signature. Their order *does* matter
+  for TypeApplications, so they are full TyVarBinders, complete with
+  visibilities.
 
-This encoding has some redundancy. The set of tycovars in dcUserTyCoVarBinders
+This encoding has some redundancy. The set of tyvars in dcUserTyVarBinders
 consists precisely of:
 
 * The set of tyvars in dcUnivTyVars whose type variables do not appear in
   dcEqSpec, unioned with:
-* The set of tycovars in dcExTyCoVars
+* The set of tyvars (*not* covars) in dcExTyCoVars
 
-The word "set" is used above because the order in which the tyvars
-appear in dcUserTyCoVarBinders can be completely different from the order in
-dcUnivTyVars or dcExTyCoVars. That is, the tyvars in dcUserTyCoVarBinders are a
-permutation of (dcExTyCoVars + a subset of dcUnivTyVars). But aside from the
-ordering, they in fact share the same type variables (with the same Uniques).
-We sometimes refer to this as "the dcUserTyCoVarBinders invariant".
+The word "set" is used above because the order in which the tyvars appear in
+dcUserTyVarBinders can be completely different from the order in dcUnivTyVars or
+dcExTyCoVars. That is, the tyvars in dcUserTyVarBinders are a permutation of
+(tyvars of dcExTyCoVars + a subset of dcUnivTyVars). But aside from the
+ordering, they in fact share the same type variables (with the same Uniques). We
+sometimes refer to this as "the dcUserTyVarBinders invariant".
 
-dcUserTyCoVarBinders, as the name suggests, is the one that users will see most
-of the time. It's used when computing the type signature of a data constructor
-(see dataConUserType), and as a result, it's what matters from a
-TypeApplications perspective.
+dcUserTyVarBinders, as the name suggests, is the one that users will see most of
+the time. It's used when computing the type signature of a data constructor (see
+dataConUserType), and as a result, it's what matters from a TypeApplications
+perspective.
 -}
 
 -- | Data Constructor Representation
@@ -867,27 +868,27 @@ isMarkedStrict _               = True   -- All others are strict
 
 -- | Build a new data constructor
 mkDataCon :: Name
-          -> Bool             -- ^ Is the constructor declared infix?
-          -> TyConRepName     -- ^  TyConRepName for the promoted TyCon
-          -> [HsSrcBang]      -- ^ Strictness/unpack annotations, from user
-          -> [FieldLabel]     -- ^ Field labels for the constructor,
-                              -- if it is a record, otherwise empty
-          -> [TyVar]          -- ^ Universals.
-          -> [TyCoVar]        -- ^ Existentials.
-          -> [TyCoVarBinder]  -- ^ User-written 'TyCoVarBinder's.
-                              --   These must be Inferred/Specified.
-                              --   See @Note [TyCoVarBinders in DataCons]@
-          -> [EqSpec]         -- ^ GADT equalities
+          -> Bool           -- ^ Is the constructor declared infix?
+          -> TyConRepName   -- ^  TyConRepName for the promoted TyCon
+          -> [HsSrcBang]    -- ^ Strictness/unpack annotations, from user
+          -> [FieldLabel]   -- ^ Field labels for the constructor,
+                            -- if it is a record, otherwise empty
+          -> [TyVar]        -- ^ Universals.
+          -> [TyCoVar]      -- ^ Existentials.
+          -> [TyVarBinder]  -- ^ User-written 'TyVarBinder's.
+                            --   These must be Inferred/Specified.
+                            --   See @Note [TyVarBinders in DataCons]@
+          -> [EqSpec]       -- ^ GADT equalities
           -> KnotTied ThetaType -- ^ Theta-type occurring before the arguments proper
           -> [KnotTied Type]    -- ^ Original argument types
           -> KnotTied Type      -- ^ Original result type
-          -> RuntimeRepInfo   -- ^ See comments on 'TyCon.RuntimeRepInfo'
-          -> KnotTied TyCon   -- ^ Representation type constructor
-          -> ConTag           -- ^ Constructor tag
-          -> ThetaType        -- ^ The "stupid theta", context of the data
-                              -- declaration e.g. @data Eq a => T a ...@
-          -> Id               -- ^ Worker Id
-          -> DataConRep       -- ^ Representation
+          -> RuntimeRepInfo     -- ^ See comments on 'TyCon.RuntimeRepInfo'
+          -> KnotTied TyCon     -- ^ Representation type constructor
+          -> ConTag             -- ^ Constructor tag
+          -> ThetaType          -- ^ The "stupid theta", context of the data
+                                -- declaration e.g. @data Eq a => T a ...@
+          -> Id                 -- ^ Worker Id
+          -> DataConRep         -- ^ Representation
           -> DataCon
   -- Can get the tag from the TyCon
 
@@ -914,7 +915,7 @@ mkDataCon name declared_infix prom_info
                   dcVanilla = is_vanilla, dcInfix = declared_infix,
                   dcUnivTyVars = univ_tvs,
                   dcExTyCoVars = ex_tvs,
-                  dcUserTyCoVarBinders = user_tvbs,
+                  dcUserTyVarBinders = user_tvbs,
                   dcEqSpec = eq_spec,
                   dcOtherTheta = theta,
                   dcStupidTheta = stupid_theta,
@@ -1037,14 +1038,14 @@ dataConUnivAndExTyCoVars (MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tv
 -- See Note [DataCon user type variable binders]
 -- | The type/coercion variables of the constructor, in the order the user wrote
 -- them
-dataConUserTyCoVars :: DataCon -> [TyCoVar]
-dataConUserTyCoVars (MkData { dcUserTyCoVarBinders = tvbs }) = binderVars tvbs
+dataConUserTyVars :: DataCon -> [TyVar]
+dataConUserTyVars (MkData { dcUserTyVarBinders = tvbs }) = binderVars tvbs
 
 -- See Note [DataCon user type variable binders]
 -- | 'TyCoVarBinder's for the type/coercion variables of the constructor, in the
 -- order the user wrote them
-dataConUserTyCoVarBinders :: DataCon -> [TyCoVarBinder]
-dataConUserTyCoVarBinders = dcUserTyCoVarBinders
+dataConUserTyVarBinders :: DataCon -> [TyVarBinder]
+dataConUserTyVarBinders = dcUserTyVarBinders
 
 -- | Equalities derived from the result type of the data constructor, as written
 -- by the programmer in any GADT declaration. This includes *all* GADT-like
@@ -1276,7 +1277,7 @@ dataConUserType :: DataCon -> Type
 --
 -- NB: If the constructor is part of a data instance, the result type
 -- mentions the family tycon, not the internal one.
-dataConUserType (MkData { dcUserTyCoVarBinders = user_tvbs,
+dataConUserType (MkData { dcUserTyVarBinders = user_tvbs,
                           dcOtherTheta = theta, dcOrigArgTys = arg_tys,
                           dcOrigResTy = res_ty })
   = mkForAllTys user_tvbs $
@@ -1393,16 +1394,16 @@ dataConCannotMatch tys con
 --
 -- This is not a cheap test, so we minimize its use in GHC as much as possible.
 -- Currently, its only call site in the GHC codebase is in 'mkDataConRep' in
--- "MkId", and so 'dataConUserTyCoVarsArePermuted' is only called at most once
+-- "MkId", and so 'dataConUserTyVarsArePermuted' is only called at most once
 -- during a data constructor's lifetime.
 
 -- See Note [DataCon user type variable binders], as well as
 -- Note [Data con wrappers and GADT syntax] for an explanation of what
 -- mkDataConRep is doing with this function.
-dataConUserTyCoVarsArePermuted :: DataCon -> Bool
-dataConUserTyCoVarsArePermuted (MkData { dcUnivTyVars = univ_tvs
-                                       , dcExTyCoVars = ex_tvs, dcEqSpec = eq_spec
-                                       , dcUserTyCoVarBinders = user_tvbs }) =
+dataConUserTyVarsArePermuted :: DataCon -> Bool
+dataConUserTyVarsArePermuted (MkData { dcUnivTyVars = univ_tvs
+                                     , dcExTyCoVars = ex_tvs, dcEqSpec = eq_spec
+                                     , dcUserTyVarBinders = user_tvbs }) =
   (filterEqSpec eq_spec univ_tvs ++ ex_tvs) /= binderVars user_tvbs
 
 {-
