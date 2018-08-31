@@ -1002,6 +1002,9 @@ getDataConArgTys dc con_app_ty
   = do { let rep_con_app_ty = unwrapType con_app_ty
        ; traceTR (text "getDataConArgTys 1" <+> (ppr con_app_ty $$ ppr rep_con_app_ty
                    $$ ppr (tcSplitTyConApp_maybe rep_con_app_ty)))
+       ; ASSERT( all isTyVar ex_tvs ) return ()
+                 -- ex_tvs can only be tyvars as data types in source
+                 -- Haskell cannot mention covar yet (Aug 2018)
        ; (subst, _) <- instTyVars (univ_tvs ++ ex_tvs)
        ; addConstraint rep_con_app_ty (substTy subst (dataConOrigResTy dc))
               -- See Note [Constructor arg types]

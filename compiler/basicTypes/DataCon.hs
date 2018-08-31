@@ -327,7 +327,7 @@ data DataCon
 
         -- Existentially-quantified type and coercion vars [x,y]
         -- For an example involving coercion variables,
-        -- see Note [Existential coercion variables]
+        -- Why tycovars? See Note [Existential coercion variables]
         dcExTyCoVars     :: [TyCoVar],
 
         -- INVARIANT: the UnivTyVars and ExTyCoVars all have distinct OccNames
@@ -341,8 +341,10 @@ data DataCon
         dcUserTyVarBinders :: [TyVarBinder],
 
         dcEqSpec :: [EqSpec],   -- Equalities derived from the result type,
-                                -- _as written by the programmer_
-                                -- Only non-dependent GADT equalities.
+                                -- _as written by the programmer_.
+                                -- Only non-dependent GADT equalities (dependent
+                                -- GADT equalities are in the covars of
+                                -- dcExTyCoVars).
 
                 -- This field allows us to move conveniently between the two ways
                 -- of representing a GADT constructor's type:
@@ -472,7 +474,7 @@ we can in Core. Consider having:
   dcOrigArgTys       = []
   dcRepTyCon         = T
 
-  Function call 'dataConKindEqSpec' returns [(t::k')~k] with 't' fresh generated
+  Function call 'dataConKindEqSpec' returns [k'~k] with 't' fresh generated
 
 Note [DataCon arities]
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -1216,13 +1218,16 @@ dataConInstSig
   -> ([TyCoVar], ThetaType, [Type])  -- Return instantiated existentials
                                      -- theta and arg tys
 -- ^ Instantiate the universal tyvars of a data con,
---   returning the instantiated existentials, constraints, and args
+--   returning
+--     ( instantiated existentials
+--     , instantiated constraints including dependent GADT equalities
+--         which are *also* listed in the instantiated existentials
+--     , instantiated args)
 dataConInstSig con@(MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tvs
-                           , dcEqSpec = eq_spec, dcOtherTheta  = theta
                            , dcOrigArgTys = arg_tys })
                univ_tys
   = ( ex_tvs'
-    , substTheta subst (eqSpecPreds (dataConKindEqSpec con ++ eq_spec) ++ theta)
+    , substTheta subst (dataConTheta con)
     , substTys   subst arg_tys)
   where
     univ_subst = zipTvSubst univ_tvs univ_tys

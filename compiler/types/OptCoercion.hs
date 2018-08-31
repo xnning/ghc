@@ -378,21 +378,17 @@ opt_co4 env sym rep r (InstCo co1 arg)
   | Just (tv, kind_co, co_body) <- splitForAllCo_ty_maybe co1
   = opt_co4_wrap (extendLiftingContext env tv
                     (mkCoherenceRightCo Nominal t2 (mkSymCo kind_co) arg'))
+                   -- kind_co :: k1 ~ k2
+                   -- arg' :: (t1 :: k1) ~ (t2 :: k2)
+                   -- tv |-> (t1 :: k1) ~ (((t2 :: k2) |> (sym kind_co)) :: k1)
                  sym rep r co_body
 
     -- forall over coercion...
   | Just (cv, kind_co, co_body) <- splitForAllCo_co_maybe co1
   , CoercionTy h1 <- t1
   , CoercionTy h2 <- t2
-  = let r2  = coVarRole cv
-        kind_co' = downgradeRole r2 Nominal $
-                                 opt_co4_wrap env sym False Nominal kind_co
-        n1 = mkNthCo r2 2 kind_co'
-        n2 = mkNthCo r2 3 kind_co'
-        new_co = mkProofIrrelCo Nominal (Refl (coercionType h1)) h1
-                                (n1 `mkTransCo` h2 `mkTransCo` (mkSymCo n2))
-    in
-    opt_co4_wrap (extendLiftingContext env cv new_co) sym rep r co_body
+  = let new_co = mk_new_co cv (opt_co4_wrap env sym False Nominal kind_co) h1 h2
+    in opt_co4_wrap (extendLiftingContext env cv new_co) sym rep r co_body
 
     -- See if it is a forall after optimization
     -- If so, do an inefficient one-variable substitution, then re-optimize
@@ -407,15 +403,9 @@ opt_co4 env sym rep r (InstCo co1 arg)
   | Just (cv', kind_co', co_body') <- splitForAllCo_co_maybe co1'
   , CoercionTy h1 <- t1
   , CoercionTy h2 <- t2
-  = let r2  = coVarRole cv'
-        kind_co'' = downgradeRole r2 Nominal kind_co'
-        n1 = mkNthCo r2 2 kind_co''
-        n2 = mkNthCo r2 3 kind_co''
-        new_co = mkProofIrrelCo Nominal (Refl (coercionType h1)) h1
-                                (n1 `mkTransCo` h2 `mkTransCo` (mkSymCo n2))
-    in
-    opt_co4_wrap (extendLiftingContext (zapLiftingContext env) cv' new_co)
-                 False False r' co_body'
+  = let new_co = mk_new_co cv' kind_co' h1 h2
+    in opt_co4_wrap (extendLiftingContext (zapLiftingContext env) cv' new_co)
+                    False False r' co_body'
 
   | otherwise = InstCo co1' arg'
   where
@@ -423,6 +413,20 @@ opt_co4 env sym rep r (InstCo co1 arg)
     r'   = chooseRole rep r
     arg' = opt_co4_wrap env sym False Nominal arg
     Pair t1 t2 = coercionKind arg'
+
+    mk_new_co cv kind_co h1 h2
+      = let -- h1 :: (t1 ~ t2)
+            -- h2 :: (t3 ~ t4)
+            -- kind_co :: (t1 ~ t2) ~ (t3 ~ t4)
+            -- n1 :: t1 ~ t3
+            -- n2 :: t2 ~ t4
+            -- new_co = (h1 :: t1 ~ t2) ~ ((n1;h2;sym n2) :: t1 ~ t2)
+            r2  = coVarRole cv
+            kind_co' = downgradeRole r2 Nominal kind_co
+            n1 = mkNthCo r2 2 kind_co'
+            n2 = mkNthCo r2 3 kind_co'
+         in mkProofIrrelCo Nominal (Refl (coercionType h1)) h1
+                           (n1 `mkTransCo` h2 `mkTransCo` (mkSymCo n2))
 
 opt_co4 env sym _rep r (KindCo co)
   = ASSERT( r == Nominal )

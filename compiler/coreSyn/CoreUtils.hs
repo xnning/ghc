@@ -77,7 +77,7 @@ import Id
 import IdInfo
 import PrelNames( absentErrorIdKey )
 import Type
-import TyCoRep( TyCoBinder(..) )
+import TyCoRep( TyCoBinder(..), TyBinder )
 import Coercion
 import TyCon
 import Unique
@@ -1564,7 +1564,7 @@ app_ok primop_ok fun args
   where
     (arg_tys, _) = splitPiTys (idType fun)
 
-    arg_ok :: TyCoBinder -> CoreExpr -> Bool
+    arg_ok :: TyBinder -> CoreExpr -> Bool
     arg_ok (Named _) _ = True   -- A type argument
     arg_ok (Anon ty) arg        -- A term argument
        | isUnliftedType ty = expr_ok primop_ok arg

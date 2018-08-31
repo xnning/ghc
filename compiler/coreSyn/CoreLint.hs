@@ -1848,25 +1848,17 @@ lintCoercion co@(TransCo co1 co2)
 
 lintCoercion the_co@(NthCo r0 n co)
   = do { (_, _, s, t, r) <- lintCoercion co
-       ; case (splitForAllTy_ty_maybe s, splitForAllTy_ty_maybe t) of
-         { (Just (tv_s, _ty_s), Just (tv_t, _ty_t))
-             |  n == 0
-             -> do { lintRole the_co Nominal r0
-                   ; return (ks, kt, ts, tt, r0) }
-             where
-               ts = tyVarKind tv_s
-               tt = tyVarKind tv_t
-               ks = typeKind ts
-               kt = typeKind tt
-
-         ; _ -> case (splitForAllTy_co_maybe s, splitForAllTy_co_maybe t) of
-         { (Just (cv_s, _ty_s), Just (cv_t, _ty_t))
+       ; case (splitForAllTy_maybe s, splitForAllTy_maybe t) of
+         { (Just (tcv_s, _ty_s), Just (tcv_t, _ty_t))
+             -- works for both tyvar and covar
              | n == 0
+             ,  (isForAllTy_ty s && isForAllTy_ty t)
+             || (isForAllTy_co s && isForAllTy_co t)
              -> do { lintRole the_co Nominal r0
                    ; return (ks, kt, ts, tt, r0) }
              where
-               ts = varType cv_s
-               tt = varType cv_t
+               ts = varType tcv_s
+               tt = varType tcv_t
                ks = typeKind ts
                kt = typeKind tt
 
@@ -1887,7 +1879,7 @@ lintCoercion the_co@(NthCo r0 n co)
                kt = typeKind tt
 
          ; _ -> failWithL (hang (text "Bad getNth:")
-                              2 (ppr the_co $$ ppr s $$ ppr t)) }}}}
+                              2 (ppr the_co $$ ppr s $$ ppr t)) }}}
 
 lintCoercion the_co@(LRCo lr co)
   = do { (_,_,s,t,r) <- lintCoercion co
