@@ -1727,7 +1727,7 @@ lintCoercion (ForAllCo cv1 kind_co co)
     do {
        ; (_, _, t1, t2, r) <- lintCoercion co
        ; in_scope <- getInScope
-       ; let tyl   = mkInvForAllTy_unchecked cv1 t1
+       ; let tyl   = mkInvForAllTy cv1 t1
              r2    = coVarRole cv1
              eta1  = mkNthCo r2 2 (downgradeRole r2 Nominal kind_co)
              eta2  = mkNthCo r2 3 (downgradeRole r2 Nominal kind_co)
@@ -1740,7 +1740,7 @@ lintCoercion (ForAllCo cv1 kind_co co)
                      -- See Note [The substitution invariant]
                      unitVarEnv cv1 (eta1 `mkTransCo` (mkCoVarCo cv2)
                                           `mkTransCo` (mkSymCo eta2))
-             tyr = mkInvForAllTy_unchecked cv2 $
+             tyr = mkInvForAllTy cv2 $
                    substTy subst t2
        ; return (liftedTypeKind, liftedTypeKind, tyl, tyr, r) } }
                    -- See Note [Weird typing rule for ForAllTy] in Type

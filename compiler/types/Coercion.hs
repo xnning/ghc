@@ -33,7 +33,6 @@ module Coercion (
         mkNthCo, nthCoRole, mkLRCo,
         mkInstCo, mkAppCo, mkAppCos, mkTyConAppCo, mkFunCo,
         mkForAllCo, mkForAllCos, mkHomoForAllCos,
-        mkForAllCo_unchecked, mkForAllCos_unchecked,
         mkPhantomCo,
         mkUnsafeCo, mkHoleCo, mkUnivCo, mkSubCo,
         mkAxiomInstCo, mkProofIrrelCo,
@@ -703,83 +702,39 @@ mkAppCos co1 cos = foldl' mkAppCo co1 cos
 
 See Note [Unused coercion variable in ForAllTy] in TyCoRep for the motivation for
 checking coercion variable in types.
-To lift the design choice to (ForAllCo tv kind_co body_co), we have two options:
+To lift the design choice to (ForAllCo cv kind_co body_co), we have two options:
 
-(1) As in mkForAllTy, in mkForAllCo, we check whether tv is a coercion variable
+(1) In mkForAllCo, we check whether cv is a coercion variable
     and whether it is not used in body_co. If so we construct a FunCo.
-    Then in coercionKind, we can use mkInvForAllTy_unchecked to skip the check.
-(2) We don't do any check in mkForAllCo.
-    Then in coercionKind, we use mkForAllTy to perform the check and construct
+(2) We don't do this check in mkForAllCo.
+    In coercionKind, we use mkForAllTy to perform the check and construct
     a FunTy when necessary.
 
-We choose (1) because we believe coercionKind is used more frequently so we
-perform less checks by using (1).
+We chose (2) for two reasons:
 
-See Note [Smart constructors for ForAllCo] for more details about smart
-constructors for ForAllCo.
+* for a coercion, all that matters is its kind, So ForAllCo or FunCo does not
+  make a difference.
+* even if cv occurs in body_co, it is possible that cv does not occur in the kind
+  of body_co. Therefore the check in coercionKind is inevitable.
 
-Note [Smart constructors for ForAllCo]
-~~~~~~~~~~~~~~~~~~~
-
-For ForAllCos,
-  forall (var::k1) (kind_co :: k1 ~ k2) (body_co :: n1 ~ n2)
-
-Invariant: the kind of var should be the left-hand kind of co.
-See Note [Forall coercions] in TyCoRep for more details.
-
-There are several checks for ForAllCo, and we can skip some of them in some
-cases.
-  * CK1: check if body_co is reflexive.
-         If so, we can construct a GRefl instead of a ForAllCo.
-  * CK2: check if var is a coercion variable and whether it appears
-         in the body. See Note [Unused coercion variable in ForAllCo].
-
-CK1  CK2
-yes  yes  mkForAllCo
-yes  no   mkForAllCo_unchecked
-            We know that var won't be a coercion variable.
-no   yes  mkForAllCo_NoRefl
-            We know the inner coercion won't be an obvious reflexive co.
-            For example, this is guaranteed in the call in mkForAllCos.
-no   no   ForAllCo
-            The primitive constructor.
-
-Similar variants exist for mkForAllCos, mkHomoForAllCos.
 -}
 
 
 -- | Make a Coercion from a tycovar, a kind coercion, and a body coercion.
 -- The kind of the tycovar should be the left-hand kind of the kind coercion.
--- See Note [Smart constructors for ForAllCo]
+-- See Note [Unused coercion variable in ForAllCo]
 mkForAllCo :: TyCoVar -> CoercionN -> Coercion -> Coercion
 mkForAllCo tv kind_co co
   | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co)) True
   , Just (ty, r) <- isReflCo_maybe co
   , isGReflCo kind_co
   = mkReflCo r (mkInvForAllTy tv ty)
-  | isCoVar tv
-  , not (tv `elemVarSet` tyCoVarsOfCo co)
-  = FunCo (coercionRole co) kind_co co
-  | otherwise
-  = ForAllCo tv kind_co co
-
--- | Like 'mkForAllCo', but tv should always be a TyVar.
--- The kind of the tycovar should be the left-hand kind of the kind coercion.
--- See Note [Smart constructors for ForAllCo]
-mkForAllCo_unchecked :: TyVar -> CoercionN -> Coercion -> Coercion
-mkForAllCo_unchecked tv kind_co co
-  | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co)) True
-  , ASSERT( isTyVar tv ) True
-  , Just (ty, r) <- isReflCo_maybe co
-  , isGReflCo kind_co
-  = mkReflCo r (mkInvForAllTy_unchecked tv ty)
   | otherwise
   = ForAllCo tv kind_co co
 
 -- | Like 'mkForAllCo', but the inner coercion shouldn't be an obvious
--- reflexive coercion.
+-- reflexive coercion. For example, it is guaranteed in 'mkForAllCos'.
 -- The kind of the tycovar should be the left-hand kind of the kind coercion.
--- See Note [Smart constructors for ForAllCo]
 mkForAllCo_NoRefl :: TyCoVar -> CoercionN -> Coercion -> Coercion
 mkForAllCo_NoRefl tv kind_co co
   | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co)) True
@@ -791,7 +746,6 @@ mkForAllCo_NoRefl tv kind_co co
   = ForAllCo tv kind_co co
 
 -- | Make nested ForAllCos
--- See Note [Smart constructors for ForAllCo]
 mkForAllCos :: [(TyCoVar, CoercionN)] -> Coercion -> Coercion
 mkForAllCos bndrs co
   | Just (ty, r ) <- isReflCo_maybe co
@@ -802,22 +756,8 @@ mkForAllCos bndrs co
   | otherwise
   = foldr (uncurry mkForAllCo_NoRefl) co bndrs
 
--- | Like 'mkForAllCos', but bndrs should only contain type variables
--- See Note [Smart constructors for ForAllCo]
-mkForAllCos_unchecked :: [(TyVar, CoercionN)] -> Coercion -> Coercion
-mkForAllCos_unchecked bndrs co
-  | ASSERT( all (isTyVar . fst) bndrs ) True
-  , Just (ty, r ) <- isReflCo_maybe co
-  = let (refls_rev'd, non_refls_rev'd) = span (isReflCo . snd) (reverse bndrs) in
-    foldl (flip $ uncurry ForAllCo)
-          (mkReflCo r (mkInvForAllTys_unchecked (reverse (map fst refls_rev'd)) ty))
-          non_refls_rev'd
-  | otherwise
-  = foldr (uncurry ForAllCo) co bndrs
-
 -- | Make a Coercion quantified over a type/coercion variable;
 -- the variable has the same type in both sides of the coercion
--- See Note [Smart constructors for ForAllCo]
 mkHomoForAllCos :: [TyCoVar] -> Coercion -> Coercion
 mkHomoForAllCos tvs co
   | Just (ty, r) <- isReflCo_maybe co
@@ -825,10 +765,8 @@ mkHomoForAllCos tvs co
   | otherwise
   = mkHomoForAllCos_NoRefl tvs co
 
--- | Like 'mkHomoForAllCos', but doesn't check if the inner coercion
--- is reflexive.
--- co is not an obvious reflexive coercion.
--- See Note [Smart constructors for ForAllCo]
+-- | Like 'mkHomoForAllCos', but the inner coercion shouldn't be an obvious
+-- reflexive coercion. For example, it is guaranteed in 'mkHomoForAllCos'.
 mkHomoForAllCos_NoRefl :: [TyCoVar] -> Coercion -> Coercion
 mkHomoForAllCos_NoRefl tvs orig_co
   = ASSERT( not (isReflCo orig_co))
@@ -2134,7 +2072,7 @@ coercionKind co =
     go (TyConAppCo _ tc cos)= mkTyConApp tc <$> (sequenceA $ map go cos)
     go (AppCo co1 co2)      = mkAppTy <$> go co1 <*> go co2
     go co@(ForAllCo tv1 k_co co1) -- works for both tyvar and covar
-       | isGReflCo k_co           = mkInvForAllTy_unchecked tv1 <$> go co1
+       | isGReflCo k_co           = mkInvForAllTy tv1 <$> go co1
          -- kind_co always has kind @Type@, thus @isGReflCo@
        | otherwise                = go_forall empty_subst co
        where
@@ -2200,7 +2138,7 @@ coercionKind co =
                                   TyVarTy tv2 `mkCastTy` mkSymCo k_co
     go_forall subst (ForAllCo cv1 k_co co)
       | isCoVar cv1
-      = mkInvForAllTy_unchecked <$> Pair cv1 cv2 <*> go_forall subst' co
+      = mkInvForAllTy <$> Pair cv1 cv2 <*> go_forall subst' co
       where
         Pair _ k2 = go k_co
         r         = coVarRole cv1
@@ -2335,7 +2273,7 @@ buildCoercion orig_ty1 orig_ty2 = go orig_ty1 orig_ty2
     go (ForAllTy (Bndr tv1 _flag1) ty1) (ForAllTy (Bndr tv2 _flag2) ty2)
       | isTyVar tv1
       = ASSERT( isTyVar tv2 )
-        mkForAllCo_unchecked tv1 kind_co (go ty1 ty2')
+        mkForAllCo tv1 kind_co (go ty1 ty2')
       where kind_co  = go (tyVarKind tv1) (tyVarKind tv2)
             in_scope = mkInScopeSet $ tyCoVarsOfType ty2 `unionVarSet` tyCoVarsOfCo kind_co
             ty2'     = substTyWithInScope in_scope [tv2]

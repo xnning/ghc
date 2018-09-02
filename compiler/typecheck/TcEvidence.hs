@@ -146,11 +146,8 @@ mkTcAppCo              = mkAppCo
 mkTcFunCo              = mkFunCo
 mkTcAxInstCo           = mkAxInstCo
 mkTcUnbranchedAxInstCo = mkUnbranchedAxInstCo Representational
-mkTcForAllCo           = mkForAllCo_unchecked
-  -- As in source Haskell we won't have coercion variables in forall, we use
-  -- --mkForAllCo_unchecked, which skips the check for coercion variable.
-  -- See Note [Smart constructors for ForAllCo] in Coercion for more detials.
-mkTcForAllCos          = mkForAllCos_unchecked
+mkTcForAllCo           = mkForAllCo
+mkTcForAllCos          = mkForAllCos
 mkTcNthCo              = mkNthCo
 mkTcLRCo               = mkLRCo
 mkTcSubCo              = mkSubCo
