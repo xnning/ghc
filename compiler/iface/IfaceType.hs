@@ -994,7 +994,6 @@ pprUserIfaceForAll tvs
    = sdocWithDynFlags $ \dflags ->
      -- See Note [When to print foralls]
      ppWhen (any tv_has_kind_var tvs
-             || any (isIfaceIdBndr . binderVar) tvs
              || any tv_is_required tvs
              || gopt Opt_PrintExplicitForalls dflags) $
      pprIfaceForAll tvs
@@ -1013,15 +1012,13 @@ criteria are met:
 
 1. -fprint-explicit-foralls is on.
 
-2. A coercion variable is bound.
-
-3. A bound type variable has a polymorphic kind. E.g.,
+2. A bound type variable has a polymorphic kind. E.g.,
 
      forall k (a::k). Proxy a -> Proxy a
 
    Since a's kind mentions a variable k, we print the foralls.
 
-4. A bound type variable is a visible argument (#14238).
+3. A bound type variable is a visible argument (#14238).
    Suppose we are printing the kind of:
 
      T :: forall k -> k -> Type
@@ -1037,6 +1034,8 @@ criteria are met:
 
    See Note [VarBndrs, TyCoVarBinders, TyConBinders, and visibility]
    in TyCoRep.
+
+N.B. Until now (Aug 2018) we didn't check anything for coercion variables.
 -}
 
 -------------------

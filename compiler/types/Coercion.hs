@@ -1500,6 +1500,11 @@ mkPiCos r vs co = foldr (mkPiCo r) co vs
 mkPiCo  :: Role -> Var -> Coercion -> Coercion
 mkPiCo r v co | isTyVar v = mkHomoForAllCos [v] co
               | isCoVar v = ASSERT( not (v `elemVarSet` tyCoVarsOfCo co) )
+                  -- We didn't call mkForAllCo here because if v does not appear
+                  -- in co, the argement coercion will be nominal. But here we
+                  -- want it to be r. It is only called in 'mkPiCos', which is
+                  -- only used in SimplUtils, where we are sure for
+                  -- now (Aug 2018) v won't occur in co.
                             mkFunCo r (mkReflCo r (varType v)) co
               | otherwise = mkFunCo r (mkReflCo r (varType v)) co
 
