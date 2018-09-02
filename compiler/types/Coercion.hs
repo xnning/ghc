@@ -1880,7 +1880,7 @@ liftCoSubstVarBndr lc tv
 -- the callback must produce a nominal coercion
 liftCoSubstVarBndrUsing :: (LiftingContext -> Type -> (CoercionN, a))
                            -> LiftingContext -> TyCoVar
-                           -> (LiftingContext, TyCoVar, CoercionN, [a])
+                           -> (LiftingContext, TyCoVar, CoercionN, a)
 liftCoSubstVarBndrUsing fun lc old_var
   | isTyVar old_var
   = liftCoSubstTyVarBndrUsing fun lc old_var
@@ -1890,11 +1890,11 @@ liftCoSubstVarBndrUsing fun lc old_var
 -- Works for tyvar binder
 liftCoSubstTyVarBndrUsing :: (LiftingContext -> Type -> (CoercionN, a))
                            -> LiftingContext -> TyVar
-                           -> (LiftingContext, TyVar, CoercionN, [a])
+                           -> (LiftingContext, TyVar, CoercionN, a)
 liftCoSubstTyVarBndrUsing fun lc@(LC subst cenv) old_var
   = ASSERT( isTyVar old_var )
     ( LC (subst `extendTCvInScope` new_var) new_cenv
-    , new_var, eta, [stuff] )
+    , new_var, eta, stuff )
   where
     old_kind     = tyVarKind old_var
     (eta, stuff) = fun lc old_kind
@@ -1908,33 +1908,33 @@ liftCoSubstTyVarBndrUsing fun lc@(LC subst cenv) old_var
 -- Works for covar binder
 liftCoSubstCoVarBndrUsing :: (LiftingContext -> Type -> (CoercionN, a))
                            -> LiftingContext -> CoVar
-                           -> (LiftingContext, CoVar, CoercionN, [a])
+                           -> (LiftingContext, CoVar, CoercionN, a)
 liftCoSubstCoVarBndrUsing fun lc@(LC subst cenv) old_var
   = ASSERT( isCoVar old_var )
     ( LC (subst `extendTCvInScope` new_var) new_cenv
-    , new_var, kind_co, [stuff1, stuff2] )
+    , new_var, kind_co, stuff )
   where
-    (_, _, s1, s2, role) = coVarKindsTypesRole old_var
-    (eta1, stuff1) = fun lc s1
-    (eta2, stuff2) = fun lc s2
-    Pair s1' _     = coercionKind eta1
-    Pair s2' _     = coercionKind eta2
+    old_kind     = coVarKind old_var
+    (eta, stuff) = fun lc old_kind
+    Pair k1 _    = coercionKind eta
+    new_var      = uniqAway (getTCvInScope subst) (setVarType old_var k1)
 
     -- old_var :: s1  ~r s2
-    -- eta1    :: s1' ~N t1
-    -- eta2    :: s2' ~N t2
+    -- eta     :: (s1' ~r s2') ~N (t1 ~r t2)
+    -- eta1    :: s1' ~r t1
+    -- eta2    :: s2' ~r t2
     -- co1     :: s1' ~r s2'
     -- co2     :: t1  ~r t2
     -- kind_co :: (s1' ~r s2') ~N (t1 ~r t2)
     -- lifted  :: co1 ~N co2
 
-    new_var = uniqAway (getTCvInScope subst)
-                       (setVarType old_var (mkCoercionType role s1' s2'))
+    role   = coVarRole old_var
+    eta'   = downgradeRole role Nominal eta
+    eta1   = mkNthCo role 2 eta'
+    eta2   = mkNthCo role 3 eta'
 
     co1     = mkCoVarCo new_var
-    co2     = mkSymCo (downgradeRole role Nominal eta1)
-              `mkTransCo` co1
-              `mkTransCo` (downgradeRole role Nominal eta2)
+    co2     = mkSymCo eta1 `mkTransCo` co1 `mkTransCo` eta2
     kind_co = mkTyConAppCo Nominal (equalityTyCon role)
                            [ mkKindCo co1, mkKindCo co2
                            , co1         , co2          ]

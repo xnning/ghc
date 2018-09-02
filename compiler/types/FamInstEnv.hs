@@ -1402,26 +1402,11 @@ normalise_tyvar tv
 
 normalise_var_bndr :: TyCoVar -> NormM (LiftingContext, TyCoVar, Coercion, Kind)
 normalise_var_bndr tcvar
-  | isTyVar tcvar = normalise_tyvar_bndr tcvar
-  | otherwise     = normalise_covar_bndr tcvar
-
-normalise_tyvar_bndr :: TyVar -> NormM (LiftingContext, TyVar, Coercion, Kind)
-normalise_tyvar_bndr tv
-  = ASSERT( isTyVar tv)
-    do { lc1 <- getLC
+  -- works for both tvar and covar
+  = do { lc1 <- getLC
        ; env <- getEnv
        ; let callback lc ki = runNormM (normalise_type ki) env lc Nominal
-             (lc, nvar, nco, [ki]) = liftCoSubstVarBndrUsing callback lc1 tv
-       ; return $ (lc, nvar, nco, ki) }
-
-normalise_covar_bndr :: CoVar -> NormM (LiftingContext, CoVar, Coercion, Kind)
-normalise_covar_bndr cv
-  = ASSERT( isCoVar cv)
-    do { lc1 <- getLC
-       ; env <- getEnv
-       ; let callback lc ki = runNormM (normalise_type ki) env lc Nominal
-             (lc, nvar, nco, [k1, k2]) = liftCoSubstVarBndrUsing callback lc1 cv
-       ; return $ (lc, nvar, nco, mkCoercionType (coVarRole nvar) k1 k2) }
+       ; return $ liftCoSubstVarBndrUsing callback lc1 tcvar }
 
 -- | a monad for the normalisation functions, reading 'FamInstEnvs',
 -- a 'LiftingContext', and a 'Role'.
