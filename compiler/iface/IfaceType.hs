@@ -103,10 +103,6 @@ ifaceBndrName :: IfaceBndr -> IfLclName
 ifaceBndrName (IfaceTvBndr bndr) = ifaceTvBndrName bndr
 ifaceBndrName (IfaceIdBndr bndr) = ifaceIdBndrName bndr
 
-isIfaceIdBndr :: IfaceBndr -> Bool
-isIfaceIdBndr (IfaceIdBndr {}) = True
-isIfaceIdBndr _ = False
-
 type IfaceLamBndr = (IfaceBndr, IfaceOneShot)
 
 data IfaceOneShot    -- See Note [Preserve OneShotInfo] in CoreTicy
