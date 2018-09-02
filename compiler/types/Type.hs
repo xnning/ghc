@@ -1234,7 +1234,7 @@ inner : kind
 ------------------------------------
 ForAllTy (Bndr tyvar vis) inner : kind
 
-inner : kind
+inner : TYPE r
 ------------------------------------
 ForAllTy (Bndr covar vis) inner : TYPE
 

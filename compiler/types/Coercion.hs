@@ -1356,9 +1356,12 @@ promoteCoercion co = case co of
 
     InstCo g _
       | isForAllTy_ty ty1
-      -> promoteCoercion g
+      -> ASSERT( isForAllTy_ty ty2 )
+         promoteCoercion g
       | otherwise
-      -> mkKindCo co -- See Note [Weird typing rule for ForAllTy] in Type
+      -> ASSERT( False)
+         mkNomReflCo liftedTypeKind
+           -- See Note [Weird typing rule for ForAllTy] in Type
 
     KindCo _
       -> ASSERT( False )
