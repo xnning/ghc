@@ -17,7 +17,7 @@ module TyCon(
         RuntimeRepInfo(..), TyConFlavour(..),
 
         -- * TyConBinder
-        TyConBinder, TyConBndrVis(..),
+        TyConBinder, TyConBndrVis(..), TyConTyCoBinder,
         mkNamedTyConBinder, mkNamedTyConBinders,
         mkAnonTyConBinder, mkAnonTyConBinders,
         tyConBinderArgFlag, tyConBndrVisArgFlag, isNamedTyConBinder,
@@ -386,15 +386,16 @@ See also:
 
 ************************************************************************
 *                                                                      *
-                    TyConBinder
+                    TyConBinder, TyConTyCoBinder
 *                                                                      *
 ************************************************************************
 -}
 
--- We use TyCoVar here instead of TyVar.
+type TyConBinder = VarBndr TyVar TyConBndrVis
+
 -- In the whole definition of @data TyCon@, only @PromotedDataCon@ will really
 -- contain CoVar.
-type TyConBinder = VarBndr TyCoVar TyConBndrVis
+type TyConTyCoBinder = VarBndr TyCoVar TyConBndrVis
 
 data TyConBndrVis
   = NamedTCB ArgFlag
@@ -404,17 +405,19 @@ instance Outputable TyConBndrVis where
   ppr (NamedTCB flag) = text "NamedTCB" <+> ppr flag
   ppr AnonTCB         = text "AnonTCB"
 
-mkAnonTyConBinder :: TyCoVar -> TyConBinder
-mkAnonTyConBinder tv = Bndr tv AnonTCB
+mkAnonTyConBinder :: TyVar -> TyConBinder
+mkAnonTyConBinder tv = ASSERT( isTyVar tv)
+                       Bndr tv AnonTCB
 
-mkAnonTyConBinders :: [TyCoVar] -> [TyConBinder]
+mkAnonTyConBinders :: [TyVar] -> [TyConBinder]
 mkAnonTyConBinders tvs = map mkAnonTyConBinder tvs
 
-mkNamedTyConBinder :: ArgFlag -> TyCoVar -> TyConBinder
+mkNamedTyConBinder :: ArgFlag -> TyVar -> TyConBinder
 -- The odd argument order supports currying
-mkNamedTyConBinder vis tv = Bndr tv (NamedTCB vis)
+mkNamedTyConBinder vis tv = ASSERT( isTyVar tv )
+                            Bndr tv (NamedTCB vis)
 
-mkNamedTyConBinders :: ArgFlag -> [TyCoVar] -> [TyConBinder]
+mkNamedTyConBinders :: ArgFlag -> [TyVar] -> [TyConBinder]
 -- The odd argument order supports currying
 mkNamedTyConBinders vis tvs = map (mkNamedTyConBinder vis) tvs
 
@@ -526,10 +529,10 @@ in TyCoRep), so we change it to Specified when making MkT's TyCoBinders
 {- Note [The binders/kind/arity fields of a TyCon]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 All TyCons have this group of fields
-  tyConBinders   :: [TyConBinder]
+  tyConBinders   :: [TyConBinder/TyConTyCoBinder]
   tyConResKind   :: Kind
   tyConTyVars    :: [TyVar]   -- Cached = binderVars tyConBinders
-                              --   NB: Currently (July 18), TyCons that own this
+                              --   NB: Currently (Aug 2018), TyCons that own this
                               --   field really only contain TyVars. So it is
                               --   [TyVar] instead of [TyCoVar].
   tyConKind      :: Kind      -- Cached = mkTyConKind tyConBinders tyConResKind
@@ -552,8 +555,8 @@ They fit together like so:
 - See Note [VarBndrs, TyCoVarBinders, TyConBinders, and visibility] in TyCoRep
   for what the visibility flag means.
 
-* Each TyConBinder tyConBinders has a TyCoVar (sometimes it is just TyVar), and
-  that TyCoVar may scope over some other part of the TyCon's definition. Eg
+* Each TyConBinder tyConBinders has a TyVar (sometimes it is TyCoVar), and
+  that TyVar may scope over some other part of the TyCon's definition. Eg
       type T a = a -> a
   we have
       tyConBinders = [ Bndr (a:*) AnonTCB ]
@@ -628,7 +631,7 @@ data TyCon
         tyConName   :: Name,     -- ^ Name of the constructor
 
         -- See Note [The binders/kind/arity fields of a TyCon]
-        tyConBinders :: [TyConBinder], -- ^ Full binders with only TyVar
+        tyConBinders :: [TyConBinder], -- ^ Full binders
         tyConResKind :: Kind,             -- ^ Result kind
         tyConKind    :: Kind,             -- ^ Kind of this TyCon
         tyConArity   :: Arity,            -- ^ Arity
@@ -657,7 +660,7 @@ data TyCon
         tyConName    :: Name,    -- ^ Name of the constructor
 
         -- See Note [The binders/kind/arity fields of a TyCon]
-        tyConBinders :: [TyConBinder], -- ^ Full binders with only TyVar
+        tyConBinders :: [TyConBinder], -- ^ Full binders
         tyConTyVars  :: [TyVar],          -- ^ TyVar binders
         tyConResKind :: Kind,             -- ^ Result kind
         tyConKind    :: Kind,             -- ^ Kind of this TyCon
@@ -714,7 +717,7 @@ data TyCon
         tyConName    :: Name,    -- ^ Name of the constructor
 
         -- See Note [The binders/kind/arity fields of a TyCon]
-        tyConBinders :: [TyConBinder], -- ^ Full binders with only TyVar
+        tyConBinders :: [TyConBinder], -- ^ Full binders
         tyConTyVars  :: [TyVar],          -- ^ TyVar binders
         tyConResKind :: Kind,             -- ^ Result kind
         tyConKind    :: Kind,             -- ^ Kind of this TyCon
@@ -747,7 +750,7 @@ data TyCon
         tyConName    :: Name,    -- ^ Name of the constructor
 
         -- See Note [The binders/kind/arity fields of a TyCon]
-        tyConBinders :: [TyConBinder], -- ^ Full binders with only TyVar
+        tyConBinders :: [TyConBinder], -- ^ Full binders
         tyConTyVars  :: [TyVar],          -- ^ TyVar binders
         tyConResKind :: Kind,             -- ^ Result kind
         tyConKind    :: Kind,             -- ^ Kind of this TyCon
@@ -784,7 +787,7 @@ data TyCon
         tyConName     :: Name,   -- ^ Name of the constructor
 
         -- See Note [The binders/kind/arity fields of a TyCon]
-        tyConBinders :: [TyConBinder], -- ^ Full binders with only TyVar
+        tyConBinders :: [TyConBinder], -- ^ Full binders
         tyConResKind :: Kind,             -- ^ Result kind
         tyConKind    :: Kind,             -- ^ Kind of this TyCon
         tyConArity   :: Arity,            -- ^ Arity
@@ -808,7 +811,7 @@ data TyCon
         tyConName    :: Name,       -- ^ Same Name as the data constructor
 
         -- See Note [The binders/kind/arity fields of a TyCon]
-        tyConBinders :: [TyConBinder], -- ^ Full binders
+        tyConBinders :: [TyConTyCoBinder], -- ^ Full binders
         tyConResKind :: Kind,             -- ^ Result kind
         tyConKind    :: Kind,             -- ^ Kind of this TyCon
         tyConArity   :: Arity,            -- ^ Arity
@@ -826,7 +829,7 @@ data TyCon
         tyConName   :: Name,
 
         -- See Note [The binders/kind/arity fields of a TyCon]
-        tyConBinders :: [TyConBinder], -- ^ Full binders with only TyVar
+        tyConBinders :: [TyConBinder], -- ^ Full binders
         tyConTyVars  :: [TyVar],          -- ^ TyVar binders
         tyConResKind :: Kind,             -- ^ Result kind
         tyConKind    :: Kind,             -- ^ Kind of this TyCon
@@ -1654,7 +1657,7 @@ mkFamilyTyCon name binders res_kind resVar flav parent inj
 -- as the data constructor itself; when we pretty-print
 -- the TyCon we add a quote; see the Outputable TyCon instance
 mkPromotedDataCon :: DataCon -> Name -> TyConRepName
-                  -> [TyConBinder] -> Kind -> [Role]
+                  -> [TyConTyCoBinder] -> Kind -> [Role]
                   -> RuntimeRepInfo -> TyCon
 mkPromotedDataCon con name rep_name binders res_kind roles rep_info
   = PromotedDataCon {
