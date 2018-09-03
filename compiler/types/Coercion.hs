@@ -707,7 +707,7 @@ To lift the design choice to (ForAllCo cv kind_co body_co), we have two options:
 (1) In mkForAllCo, we check whether cv is a coercion variable
     and whether it is not used in body_co. If so we construct a FunCo.
 (2) We don't do this check in mkForAllCo.
-    In coercionKind, we use mkForAllTy to perform the check and construct
+    In coercionKind, we use mkTyCoForAllTy to perform the check and construct
     a FunTy when necessary.
 
 We chose (2) for two reasons:
@@ -728,7 +728,7 @@ mkForAllCo tv kind_co co
   | ASSERT( varType tv `eqType` (pFst $ coercionKind kind_co)) True
   , Just (ty, r) <- isReflCo_maybe co
   , isGReflCo kind_co
-  = mkReflCo r (mkInvForAllTy tv ty)
+  = mkReflCo r (mkTyCoInvForAllTy tv ty)
   | otherwise
   = ForAllCo tv kind_co co
 
@@ -751,7 +751,7 @@ mkForAllCos bndrs co
   | Just (ty, r ) <- isReflCo_maybe co
   = let (refls_rev'd, non_refls_rev'd) = span (isReflCo . snd) (reverse bndrs) in
     foldl' (flip $ uncurry mkForAllCo_NoRefl)
-           (mkReflCo r (mkInvForAllTys (reverse (map fst refls_rev'd)) ty))
+           (mkReflCo r (mkTyCoInvForAllTys (reverse (map fst refls_rev'd)) ty))
            non_refls_rev'd
   | otherwise
   = foldr (uncurry mkForAllCo_NoRefl) co bndrs
@@ -761,7 +761,7 @@ mkForAllCos bndrs co
 mkHomoForAllCos :: [TyCoVar] -> Coercion -> Coercion
 mkHomoForAllCos tvs co
   | Just (ty, r) <- isReflCo_maybe co
-  = mkReflCo r (mkInvForAllTys tvs ty)
+  = mkReflCo r (mkTyCoInvForAllTys tvs ty)
   | otherwise
   = mkHomoForAllCos_NoRefl tvs co
 
@@ -2075,7 +2075,7 @@ coercionKind co =
     go (TyConAppCo _ tc cos)= mkTyConApp tc <$> (sequenceA $ map go cos)
     go (AppCo co1 co2)      = mkAppTy <$> go co1 <*> go co2
     go co@(ForAllCo tv1 k_co co1) -- works for both tyvar and covar
-       | isGReflCo k_co           = mkInvForAllTy tv1 <$> go co1
+       | isGReflCo k_co           = mkTyCoInvForAllTy tv1 <$> go co1
          -- kind_co always has kind @Type@, thus @isGReflCo@
        | otherwise                = go_forall empty_subst co
        where
@@ -2131,7 +2131,7 @@ coercionKind co =
     go_forall subst (ForAllCo tv1 k_co co)
       -- See Note [Nested ForAllCos]
       | isTyVar tv1
-      = mkInvForAllTy_unchecked <$> Pair tv1 tv2 <*> go_forall subst' co
+      = mkInvForAllTy <$> Pair tv1 tv2 <*> go_forall subst' co
       where
         Pair _ k2 = go k_co
         tv2       = setTyVarKind tv1 (substTy subst k2)
@@ -2141,7 +2141,7 @@ coercionKind co =
                                   TyVarTy tv2 `mkCastTy` mkSymCo k_co
     go_forall subst (ForAllCo cv1 k_co co)
       | isCoVar cv1
-      = mkInvForAllTy <$> Pair cv1 cv2 <*> go_forall subst' co
+      = mkTyCoInvForAllTy <$> Pair cv1 cv2 <*> go_forall subst' co
       where
         Pair _ k2 = go k_co
         r         = coVarRole cv1

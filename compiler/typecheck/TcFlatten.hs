@@ -1246,7 +1246,7 @@ flatten_args_fast orig_binders orig_inner_ki orig_roles orig_tys
     finish :: ([Xi], [Coercion], [TyCoBinder]) -> ([Xi], [Coercion], CoercionN)
     finish (xis, cos, binders) = (xis, cos, kind_co)
       where
-        final_kind = mkPiTys_unchecked binders orig_inner_ki
+        final_kind = mkPiTys binders orig_inner_ki
         kind_co    = mkNomReflCo final_kind
 
 {-# INLINE flatten_args_slow #-}
@@ -1272,7 +1272,7 @@ flatten_args_slow orig_binders orig_inner_ki orig_fvs orig_roles orig_tys
     go acc_xis acc_cos lc binders inner_ki _ []
       = return (reverse acc_xis, reverse acc_cos, kind_co)
       where
-        final_kind = mkPiTys_unchecked binders inner_ki
+        final_kind = mkTyCoPiTys binders inner_ki
         kind_co = liftCoSubst Nominal lc final_kind
 
     go acc_xis acc_cos lc (binder:binders) inner_ki (role:roles) (ty:tys)

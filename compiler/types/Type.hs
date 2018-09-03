@@ -36,16 +36,15 @@ module Type (
         splitListTyConApp_maybe,
         repSplitTyConApp_maybe,
 
-        mkForAllTy, mkForAllTys, mkInvForAllTys, mkSpecForAllTys,
-        mkForAllTy_unchecked,
-        mkVisForAllTys, mkInvForAllTy,
-        mkInvForAllTy_unchecked, mkInvForAllTys_unchecked,
+        mkForAllTy, mkForAllTys, mkTyCoInvForAllTys, mkSpecForAllTys,
+        mkVisForAllTys, mkTyCoInvForAllTy,
+        mkInvForAllTy, mkInvForAllTys,
         splitForAllTys, splitForAllVarBndrs,
         splitForAllTy_maybe, splitForAllTy,
         splitForAllTy_ty_maybe, splitForAllTy_co_maybe,
         splitPiTy_maybe, splitPiTy, splitPiTys,
-        mkPiTy, mkPiTys, mkTyConBindersPreferAnon,
-        mkPiTys_unchecked,
+        mkTyCoPiTy, mkTyCoPiTys, mkTyConBindersPreferAnon,
+        mkPiTys,
         mkLamType, mkLamTypes,
         piResultTy, piResultTys,
         applyTysX, dropForAlls,
@@ -1333,26 +1332,27 @@ interfaces.  Notably this plays a role in tcTySigs in TcBinds.hs.
 
 -- | Make a dependent forall over an Inferred (as opposed to Specified)
 -- variable
-mkInvForAllTy :: TyCoVar -> Type -> Type
-mkInvForAllTy tv ty
+mkTyCoInvForAllTy :: TyCoVar -> Type -> Type
+mkTyCoInvForAllTy tv ty
   | isCoVar tv
   , not (tv `elemVarSet` tyCoVarsOfType ty)
   = mkFunTy (varType tv) ty
   | otherwise
   = ForAllTy (Bndr tv Inferred) ty
 
--- | Like mkInvForAllTy, but does not check the occurrence of the covar.
-mkInvForAllTy_unchecked :: TyCoVar -> Type -> Type
-mkInvForAllTy_unchecked tv ty = ForAllTy (Bndr tv Inferred) ty
+-- | Like mkTyCoInvForAllTy, but tv should be a tyvar
+mkInvForAllTy :: TyVar -> Type -> Type
+mkInvForAllTy tv ty = ASSERT( isTyVar tv )
+                      ForAllTy (Bndr tv Inferred) ty
 
 -- | Like mkForAllTys, but assumes all variables are dependent and Inferred,
 -- a common case
-mkInvForAllTys :: [TyCoVar] -> Type -> Type
-mkInvForAllTys tvs ty = foldr mkInvForAllTy ty tvs
+mkTyCoInvForAllTys :: [TyCoVar] -> Type -> Type
+mkTyCoInvForAllTys tvs ty = foldr mkTyCoInvForAllTy ty tvs
 
--- | Like 'mkInvForAllTys', but does not check the occurrence of the binder.
-mkInvForAllTys_unchecked :: [TyCoVar] -> Type -> Type
-mkInvForAllTys_unchecked tvs ty = foldr mkInvForAllTy_unchecked ty tvs
+-- | Like 'mkTyCoInvForAllTys', but tvs should be a list of tyvar
+mkInvForAllTys :: [TyVar] -> Type -> Type
+mkInvForAllTys tvs ty = foldr mkInvForAllTy ty tvs
 
 -- | Like mkForAllTys, but assumes all variables are dependent and specified,
 -- a common case
@@ -2851,7 +2851,7 @@ modifyJoinResTy orig_ar f orig_ty
   where
     go 0 ty = f ty
     go n ty | Just (arg_bndr, res_ty) <- splitPiTy_maybe ty
-            = mkPiTy arg_bndr (go (n-1) res_ty)
+            = mkTyCoPiTy arg_bndr (go (n-1) res_ty)
             | otherwise
             = pprPanic "modifyJoinResTy" (ppr orig_ar <+> ppr orig_ty)
 

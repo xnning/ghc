@@ -40,10 +40,10 @@ module TyCoRep (
         -- * Functions over types
         mkTyConTy, mkTyVarTy, mkTyVarTys,
         mkTyCoVarTy, mkTyCoVarTys,
-        mkFunTy, mkFunTys, mkForAllTy, mkForAllTys,
-        mkForAllTy_unchecked,
-        mkPiTy, mkPiTys,
-        mkPiTys_unchecked,
+        mkFunTy, mkFunTys, mkTyCoForAllTy, mkForAllTys,
+        mkForAllTy,
+        mkTyCoPiTy, mkTyCoPiTys,
+        mkPiTys,
         isTYPE,
         isLiftedTypeKind, isUnliftedTypeKind,
         isCoercionType, isRuntimeRepTy, isRuntimeRepVar,
@@ -494,13 +494,13 @@ True in any case.
 
 We decide to always construct (2) if co is not used in t.
 
-Thus in mkForAllty, we check whether the variable is a coercion
+Thus in mkTyCoForAllTy, we check whether the variable is a coercion
 variable and whether it is used in the body. If so, it returns a FunTy
 instead of a ForAllTy.
 
 There are cases we want to skip the check. For example, the check is unnecessary
 when it is known from the context that the input variable is a type variable.
-In those cases, we use mkForAllTy_unchecked.
+In those cases, we use mkForAllTy.
 -}
 
 -- | A type labeled 'KnotTied' might have knot-tied tycons in it. See
@@ -800,8 +800,8 @@ mkFunTys tys ty = foldr mkFunTy ty tys
 -- | If tv is a coercion variable and it is not used in the body, returns
 -- a FunTy, otherwise makes a forall type.
 -- See Note [Unused coercion variable in ForAllTy]
-mkForAllTy :: TyCoVar -> ArgFlag -> Type -> Type
-mkForAllTy tv vis ty
+mkTyCoForAllTy :: TyCoVar -> ArgFlag -> Type -> Type
+mkTyCoForAllTy tv vis ty
   | isCoVar tv
   , not (tv `elemVarSet` tyCoVarsOfType ty)
   = ASSERT( vis == Inferred )
@@ -809,30 +809,30 @@ mkForAllTy tv vis ty
   | otherwise
   = ForAllTy (Bndr tv vis) ty
 
--- | Like 'mkForAllTy', but does not check the occurrence of the binder
+-- | Like 'mkTyCoForAllTy', but does not check the occurrence of the binder
 -- See Note [Unused coercion variable in ForAllTy]
-mkForAllTy_unchecked :: TyCoVar -> ArgFlag -> Type -> Type
-mkForAllTy_unchecked tv vis ty = ForAllTy (Bndr tv vis) ty
+mkForAllTy :: TyCoVar -> ArgFlag -> Type -> Type
+mkForAllTy tv vis ty = ForAllTy (Bndr tv vis) ty
 
 -- | Wraps foralls over the type using the provided 'TyCoVar's from left to right
 mkForAllTys :: [TyCoVarBinder] -> Type -> Type
 mkForAllTys tyvars ty = foldr ForAllTy ty tyvars
 
-mkPiTy :: TyCoBinder -> Type -> Type
+mkTyCoPiTy :: TyCoBinder -> Type -> Type
+mkTyCoPiTy (Anon ty1) ty2           = FunTy ty1 ty2
+mkTyCoPiTy (Named (Bndr tv vis)) ty = mkTyCoForAllTy tv vis ty
+
+-- | Like 'mkTyCoPiTy', but does not check the occurrence of the binder
+mkPiTy:: TyCoBinder -> Type -> Type
 mkPiTy (Anon ty1) ty2           = FunTy ty1 ty2
 mkPiTy (Named (Bndr tv vis)) ty = mkForAllTy tv vis ty
 
--- | Like 'mkPiTy', but does not check the occurrence of the binder
-mkPiTy_unchecked :: TyCoBinder -> Type -> Type
-mkPiTy_unchecked (Anon ty1) ty2           = FunTy ty1 ty2
-mkPiTy_unchecked (Named (Bndr tv vis)) ty = mkForAllTy_unchecked tv vis ty
+mkTyCoPiTys :: [TyCoBinder] -> Type -> Type
+mkTyCoPiTys tbs ty = foldr mkTyCoPiTy ty tbs
 
+-- | Like 'mkTyCoPiTys', but does not check the occurrence of the binder
 mkPiTys :: [TyCoBinder] -> Type -> Type
 mkPiTys tbs ty = foldr mkPiTy ty tbs
-
--- | Like 'mkPiTys', but does not check the occurrence of the binder
-mkPiTys_unchecked :: [TyCoBinder] -> Type -> Type
-mkPiTys_unchecked tbs ty = foldr mkPiTy_unchecked ty tbs
 
 -- | Does this type classify a core (unlifted) Coercion?
 -- At either role nominal or representational

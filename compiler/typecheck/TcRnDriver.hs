@@ -2338,7 +2338,7 @@ tcRnExpr hsc_env mode rdr_expr
     _ <- perhaps_disable_default_warnings $
          simplifyInteractive lie_top ;
 
-    let { all_expr_ty = mkInvForAllTys_unchecked qtvs (mkLamTypes dicts res_ty) } ;
+    let { all_expr_ty = mkInvForAllTys qtvs (mkLamTypes dicts res_ty) } ;
     ty <- zonkTcType all_expr_ty ;
 
     -- We normalise type families, so that the type of an expression is the
@@ -2407,7 +2407,7 @@ tcRnType hsc_env normalise rdr_type
                         ; return ty' }
                 else return ty ;
 
-       ; return (ty', mkInvForAllTys_unchecked kvs (typeKind ty')) }
+       ; return (ty', mkInvForAllTys kvs (typeKind ty')) }
 
 {- Note [TcRnExprMode]
 ~~~~~~~~~~~~~~~~~~~~~~

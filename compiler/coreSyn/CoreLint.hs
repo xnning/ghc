@@ -1704,7 +1704,7 @@ lintCoercion (ForAllCo tv1 kind_co co)
     do {
        ; (k3, k4, t1, t2, r) <- lintCoercion co
        ; in_scope <- getInScope
-       ; let tyl = mkInvForAllTy_unchecked tv1 t1
+       ; let tyl = mkInvForAllTy tv1 t1
              subst = mkTvSubst in_scope $
                      -- We need both the free vars of the `t2` and the
                      -- free vars of the range of the substitution in
@@ -1713,7 +1713,7 @@ lintCoercion (ForAllCo tv1 kind_co co)
                      -- linted and `tv2` has the same unique as `tv1`.
                      -- See Note [The substitution invariant]
                      unitVarEnv tv1 (TyVarTy tv2 `mkCastTy` mkSymCo kind_co)
-             tyr = mkInvForAllTy_unchecked tv2 $
+             tyr = mkInvForAllTy tv2 $
                    substTy subst t2
        ; return (k3, k4, tyl, tyr, r) } }
 
@@ -1729,7 +1729,7 @@ lintCoercion (ForAllCo cv1 kind_co co)
        ; checkValueKind k4 (text "the body of a ForAllCo over covar:" <+> ppr co)
            -- See Note [Weird typing rule for ForAllTy] in Type
        ; in_scope <- getInScope
-       ; let tyl   = mkInvForAllTy cv1 t1
+       ; let tyl   = mkTyCoInvForAllTy cv1 t1
              r2    = coVarRole cv1
              kind_co' = downgradeRole r2 Nominal kind_co
              eta1  = mkNthCo r2 2 kind_co'
@@ -1743,7 +1743,7 @@ lintCoercion (ForAllCo cv1 kind_co co)
                      -- See Note [The substitution invariant]
                      unitVarEnv cv1 (eta1 `mkTransCo` (mkCoVarCo cv2)
                                           `mkTransCo` (mkSymCo eta2))
-             tyr = mkInvForAllTy cv2 $
+             tyr = mkTyCoInvForAllTy cv2 $
                    substTy subst t2
        ; return (liftedTypeKind, liftedTypeKind, tyl, tyr, r) } }
                    -- See Note [Weird typing rule for ForAllTy] in Type

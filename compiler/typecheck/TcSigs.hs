@@ -377,7 +377,7 @@ tcPatSynSig name sig_ty
     skol_info = SigTypeSkol ctxt
 
     build_patsyn_type kvs imp univ req ex prov body
-      = mkInvForAllTys_unchecked kvs $
+      = mkInvForAllTys kvs $
         mkSpecForAllTys (imp ++ univ) $
         mkFunTys req $
         mkSpecForAllTys ex $
