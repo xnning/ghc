@@ -1266,12 +1266,13 @@ mkCastTy (CastTy ty co1) co2
 mkCastTy (ForAllTy (Bndr tv vis) inner_ty) co
   -- (EQ4) from the Note
   | isTyVar tv
+  , let fvs = tyCoVarsOfCo co
   = -- have to make sure that pushing the co in doesn't capture the bound var!
-  let fvs = tyCoVarsOfCo co
-      empty_subst = mkEmptyTCvSubst (mkInScopeSet fvs)
-      (subst, tv') = substVarBndr empty_subst tv
-    in
-    ForAllTy (Bndr tv' vis) (substTy subst inner_ty `mkCastTy` co)
+    if tv `elemVarSet` fvs
+    then let empty_subst = mkEmptyTCvSubst (mkInScopeSet fvs)
+             (subst, tv') = substVarBndr empty_subst tv
+         in ForAllTy (Bndr tv' vis) (substTy subst inner_ty `mkCastTy` co)
+    else ForAllTy (Bndr tv vis) (inner_ty `mkCastTy` co)
 
 mkCastTy ty co = CastTy ty co
 
@@ -1393,25 +1394,21 @@ mkLamTypes vs ty = foldr mkLamType ty vs
 -- We want (k:*) Named, (b:k) Anon, (c:k) Anon
 --
 -- All non-coercion binders are /visible/.
-mkTyConBindersPreferAnon :: [TyCoVar] -> Type -> [TyConBinder]
-mkTyConBindersPreferAnon vars inner_ty = fst (go vars)
+mkTyConBindersPreferAnon :: [TyVar] -> Type -> [TyConBinder]
+mkTyConBindersPreferAnon vars inner_ty = ASSERT( all isTyVar vars)
+                                               fst (go vars)
   where
-    go :: [TyCoVar] -> ([TyConBinder], VarSet) -- also returns the free vars
+    go :: [TyVar] -> ([TyConBinder], VarSet) -- also returns the free vars
     go [] = ([], tyCoVarsOfType inner_ty)
-    go (v:vs) | isTyVar v
-              , v `elemVarSet` fvs
+    go (v:vs) | v `elemVarSet` fvs
               = ( Bndr v (NamedTCB Required) : binders
-                , fvs `delVarSet` v `unionVarSet` kind_vars )
-              | isCoVar v
-              , v `elemVarSet` fvs
-              = ( Bndr v (NamedTCB Inferred) : binders
                 , fvs `delVarSet` v `unionVarSet` kind_vars )
               | otherwise
               = ( Bndr v AnonTCB : binders
                 , fvs `unionVarSet` kind_vars )
       where
         (binders, fvs) = go vs
-        kind_vars      = tyCoVarsOfType $ varType v
+        kind_vars      = tyCoVarsOfType $ tyVarKind v
 
 -- | Take a ForAllTy apart, returning the list of tycovars and the result type.
 -- This always succeeds, even if it returns only an empty list. Note that the

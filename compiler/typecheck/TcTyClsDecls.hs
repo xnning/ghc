@@ -1943,7 +1943,7 @@ tcConDecl rep_tycon tag_map tmpl_bndrs res_tmpl
        -- Can't print univ_tvs, arg_tys etc, because we are inside the knot here
        ; traceTc "tcConDecl 2" (ppr name $$ ppr field_lbls)
        ; let
-           univ_tvbs = tyConTyCoVarBinders tmpl_bndrs
+           univ_tvbs = tyConTyVarBinders tmpl_bndrs
            univ_tvs  = binderVars univ_tvbs
            ex_tvbs   = mkTyCoVarBinders Inferred qkvs ++
                        mkTyCoVarBinders Specified user_qtvs

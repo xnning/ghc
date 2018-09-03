@@ -247,7 +247,7 @@ buildClass tycon_name binders roles fds Nothing
     do  { traceIf (text "buildClass")
 
         ; tc_rep_name  <- newTyConRepName tycon_name
-        ; let univ_bndrs = tyConTyCoVarBinders binders
+        ; let univ_bndrs = tyConTyVarBinders binders
               univ_tvs   = binderVars univ_bndrs
               tycon = mkClassTyCon tycon_name binders roles
                                    AbstractTyCon rec_clas tc_rep_name
@@ -296,7 +296,7 @@ buildClass tycon_name binders roles fds
               op_names   = [op | (op,_,_) <- sig_stuff]
               arg_tys    = sc_theta ++ op_tys
               rec_tycon  = classTyCon rec_clas
-              univ_bndrs = tyConTyCoVarBinders binders
+              univ_bndrs = tyConTyVarBinders binders
               univ_tvs   = binderVars univ_bndrs
 
         ; rep_nm   <- newTyConRepName datacon_name

@@ -96,7 +96,7 @@ module TyCon(
         newTyConDataCon_maybe,
         algTcFields,
         tyConRuntimeRepInfo,
-        tyConBinders, tyConResKind, tyConTyCoVarBinders,
+        tyConBinders, tyConResKind, tyConTyVarBinders,
         tcTyConScopedTyVars, tcTyConUserTyVars,
         mkTyConTagMap,
 
@@ -454,13 +454,13 @@ mkTyConKind bndrs res_kind = foldr mk res_kind bndrs
     mk (Bndr tv AnonTCB)        k = mkFunKind (varType tv) k
     mk (Bndr tv (NamedTCB vis)) k = mkForAllKind tv vis k
 
-tyConTyCoVarBinders :: [TyConBinder]     -- From the TyCon
-                    -> [TyCoVarBinder]   -- Suitable for the foralls of a term function
--- See Note [Building TyCoVarBinders from TyConBinders]
-tyConTyCoVarBinders tc_bndrs
+tyConTyVarBinders :: [TyConBinder]   -- From the TyCon
+                  -> [TyVarBinder]   -- Suitable for the foralls of a term function
+-- See Note [Building TyVarBinders from TyConBinders]
+tyConTyVarBinders tc_bndrs
  = map mk_binder tc_bndrs
  where
-   mk_binder (Bndr tv tc_vis) = mkTyCoVarBinder vis tv
+   mk_binder (Bndr tv tc_vis) = mkTyVarBinder vis tv
       where
         vis = case tc_vis of
                 AnonTCB           -> Specified
@@ -473,11 +473,11 @@ tyConVisibleTyVars tc
   = [ tv | Bndr tv vis <- tyConBinders tc
          , isVisibleTcbVis vis ]
 
-{- Note [Building TyCoVarBinders from TyConBinders]
+{- Note [Building TyVarBinders from TyConBinders]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 We sometimes need to build the quantified type of a value from
 the TyConBinders of a type or class.  For that we need not
-TyConBinders but TyVarCoBinders (used in forall-type)  E.g:
+TyConBinders but TyVarBinders (used in forall-type)  E.g:
 
  *  From   data T a = MkT (Maybe a)
     we are going to make a data constructor with type
@@ -514,7 +514,7 @@ That is, its TyCoVarBinders should be
                             , Bndr (a:k->*) Specified
                             , Bndr (b:k)    Specified ]
 
-So tyConTyCoVarBinders converts TyCon's TyConBinders into TyCoVarBinders:
+So tyConTyVarBinders converts TyCon's TyConBinders into TyVarBinders:
   - variable names from the TyConBinders
   - but changing Anon/Required to Specified
 
