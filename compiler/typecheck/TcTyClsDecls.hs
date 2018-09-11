@@ -1945,8 +1945,8 @@ tcConDecl rep_tycon tag_map tmpl_bndrs res_tmpl
        ; let
            univ_tvbs = tyConTyVarBinders tmpl_bndrs
            univ_tvs  = binderVars univ_tvbs
-           ex_tvbs   = mkTyCoVarBinders Inferred qkvs ++
-                       mkTyCoVarBinders Specified user_qtvs
+           ex_tvbs   = mkTyVarBinders Inferred qkvs ++
+                       mkTyVarBinders Specified user_qtvs
            ex_tvs    = qkvs ++ user_qtvs
            -- For H98 datatypes, the user-written tyvar binders are precisely
            -- the universals followed by the existentials.
@@ -2018,8 +2018,8 @@ tcConDecl rep_tycon tag_map tmpl_bndrs res_tmpl
              -- Compute the user-written tyvar binders. These have the same
              -- tyvars as univ_tvs/ex_tvs, but perhaps in a different order.
              -- See Note [DataCon user type variable binders] in DataCon.
-             tkv_bndrs      = mkTyCoVarBinders Inferred  tkvs'
-             user_tv_bndrs  = mkTyCoVarBinders Specified user_tvs'
+             tkv_bndrs      = mkTyVarBinders Inferred  tkvs'
+             user_tv_bndrs  = mkTyVarBinders Specified user_tvs'
              all_user_bndrs = tkv_bndrs ++ user_tv_bndrs
 
              ctxt'      = substTys arg_subst ctxt

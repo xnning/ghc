@@ -1038,14 +1038,13 @@ dataConUnivAndExTyCoVars (MkData { dcUnivTyVars = univ_tvs, dcExTyCoVars = ex_tv
   = univ_tvs ++ ex_tvs
 
 -- See Note [DataCon user type variable binders]
--- | The type/coercion variables of the constructor, in the order the user wrote
--- them
+-- | The type variables of the constructor, in the order the user wrote them
 dataConUserTyVars :: DataCon -> [TyVar]
 dataConUserTyVars (MkData { dcUserTyVarBinders = tvbs }) = binderVars tvbs
 
 -- See Note [DataCon user type variable binders]
--- | 'TyCoVarBinder's for the type/coercion variables of the constructor, in the
--- order the user wrote them
+-- | 'TyCoVarBinder's for the type variables of the constructor, in the order the
+-- user wrote them
 dataConUserTyVarBinders :: DataCon -> [TyVarBinder]
 dataConUserTyVarBinders = dcUserTyVarBinders
 
@@ -1078,8 +1077,8 @@ dataConEqSpec con@(MkData { dcEqSpec = eq_spec, dcOtherTheta = theta })
 -- See Note [Existential coercion variables]
 dataConKindEqSpec :: DataCon -> [EqSpec]
 dataConKindEqSpec (MkData {dcExTyCoVars = ex_tcvs})
-  -- It is used in 'dataConEqSpec' and 'dataConFullSig', which are frequently
-  -- used functions.
+  -- It is used in 'dataConEqSpec' (maybe also 'dataConFullSig' in the future),
+  -- which are frequently used functions.
   -- For now (Aug 2018) this function always return empty set as we don't really
   -- have coercion variables.
   -- In the future when we do, we might want to cache this information in DataCon

@@ -22,7 +22,7 @@ module TcType (
   -- Types
   TcType, TcSigmaType, TcRhoType, TcTauType, TcPredType, TcThetaType,
   TcTyVar, TcTyVarSet, TcDTyVarSet, TcTyCoVarSet, TcDTyCoVarSet,
-  TcKind, TcCoVar, TcTyCoVar, TcTyCoVarBinder, TcTyCon,
+  TcKind, TcCoVar, TcTyCoVar, TcTyVarBinder, TcTyCon,
   KnotTied,
 
   ExpType(..), InferResult(..), ExpSigmaType, ExpRhoType, mkCheckExpType,
@@ -339,7 +339,7 @@ type TcTyCoVar = Var    -- Either a TcTyVar or a CoVar
         -- a cannot occur inside a MutTyVar in T; that is,
         -- T is "flattened" before quantifying over a
 
-type TcTyCoVarBinder = TyCoVarBinder
+type TcTyVarBinder   = TyVarBinder
 type TcTyCon         = TyCon   -- these can be the TcTyCon constructor
 
 -- These types do not have boxy type variables in them
@@ -1500,26 +1500,32 @@ variables.  It's up to you to make sure this doesn't matter.
 
 -- | Splits a forall type into a list of 'TyBinder's and the inner type.
 -- Always succeeds, even if it returns an empty list.
-tcSplitPiTys :: Type -> ([TyCoBinder], Type)
-tcSplitPiTys = splitPiTys
+tcSplitPiTys :: Type -> ([TyBinder], Type)
+tcSplitPiTys ty = ASSERT( all isTyBinder (fst sty) ) sty
+  where sty = splitPiTys ty
 
 -- | Splits a type into a TyBinder and a body, if possible. Panics otherwise
-tcSplitPiTy_maybe :: Type -> Maybe (TyCoBinder, Type)
-tcSplitPiTy_maybe = splitPiTy_maybe
+tcSplitPiTy_maybe :: Type -> Maybe (TyBinder, Type)
+tcSplitPiTy_maybe ty = ASSERT( isMaybeTyBinder sty ) sty
+  where sty = splitPiTy_maybe ty
+        isMaybeTyBinder (Just (t,_)) = isTyBinder t
+        isMaybeTyBinder _ = True
 
-tcSplitForAllTy_maybe :: Type -> Maybe (TyCoVarBinder, Type)
+tcSplitForAllTy_maybe :: Type -> Maybe (TyVarBinder, Type)
 tcSplitForAllTy_maybe ty | Just ty' <- tcView ty = tcSplitForAllTy_maybe ty'
-tcSplitForAllTy_maybe (ForAllTy tv ty) = Just (tv, ty)
+tcSplitForAllTy_maybe (ForAllTy tv ty) = ASSERT( isTyVarBinder tv ) Just (tv, ty)
 tcSplitForAllTy_maybe _                = Nothing
 
 -- | Like 'tcSplitPiTys', but splits off only named binders, returning
 -- just the tycovars.
-tcSplitForAllTys :: Type -> ([TyCoVar], Type)
-tcSplitForAllTys = splitForAllTys
+tcSplitForAllTys :: Type -> ([TyVar], Type)
+tcSplitForAllTys ty = ASSERT( all isTyVar (fst sty) ) sty
+  where sty = splitForAllTys ty
 
 -- | Like 'tcSplitForAllTys', but splits off only named binders.
-tcSplitForAllVarBndrs :: Type -> ([TyCoVarBinder], Type)
-tcSplitForAllVarBndrs = splitForAllVarBndrs
+tcSplitForAllVarBndrs :: Type -> ([TyVarBinder], Type)
+tcSplitForAllVarBndrs ty = ASSERT( all isTyVarBinder (fst sty)) sty
+  where sty = splitForAllVarBndrs ty
 
 -- | Is this a ForAllTy with a named binder?
 tcIsForAllTy :: Type -> Bool
@@ -1546,7 +1552,7 @@ tcSplitPhiTy ty
           Nothing         -> (reverse ts, ty)
 
 -- | Split a sigma type into its parts.
-tcSplitSigmaTy :: Type -> ([TyCoVar], ThetaType, Type)
+tcSplitSigmaTy :: Type -> ([TyVar], ThetaType, Type)
 tcSplitSigmaTy ty = case tcSplitForAllTys ty of
                         (tvs, rho) -> case tcSplitPhiTy rho of
                                         (theta, tau) -> (tvs, theta, tau)
@@ -1567,7 +1573,7 @@ tcSplitSigmaTy ty = case tcSplitForAllTys ty of
 -- then it would return @([s,t,a,b], [Each s t a b], Traversal s t a b)@. But
 -- if you instead called @tcSplitNestedSigmaTys@ on the type, it would return
 -- @([s,t,a,b,f], [Each s t a b, Applicative f], (a -> f b) -> s -> f t)@.
-tcSplitNestedSigmaTys :: Type -> ([TyCoVar], ThetaType, Type)
+tcSplitNestedSigmaTys :: Type -> ([TyVar], ThetaType, Type)
 -- NB: This is basically a pure version of deeplyInstantiate (from Inst) that
 -- doesn't compute an HsWrapper.
 tcSplitNestedSigmaTys ty
@@ -1581,7 +1587,7 @@ tcSplitNestedSigmaTys ty
 
 -----------------------
 tcDeepSplitSigmaTy_maybe
-  :: TcSigmaType -> Maybe ([TcType], [TyCoVar], ThetaType, TcSigmaType)
+  :: TcSigmaType -> Maybe ([TcType], [TyVar], ThetaType, TcSigmaType)
 -- Looks for a *non-trivial* quantified type, under zero or more function arrows
 -- By "non-trivial" we mean either tyvars or constraints are non-empty
 
@@ -1754,7 +1760,7 @@ tcIsTyVarTy (TyVarTy _)   = True
 tcIsTyVarTy _             = False
 
 -----------------------
-tcSplitDFunTy :: Type -> ([TyCoVar], [Type], Class, [Type])
+tcSplitDFunTy :: Type -> ([TyVar], [Type], Class, [Type])
 -- Split the type of a dictionary function
 -- We don't use tcSplitSigmaTy,  because a DFun may (with NDP)
 -- have non-Pred arguments, such as

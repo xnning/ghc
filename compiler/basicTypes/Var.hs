@@ -66,6 +66,7 @@ module Var (
         isVisibleArgFlag, isInvisibleArgFlag, sameVis,
         mkTyCoVarBinder, mkTyCoVarBinders,
         mkTyVarBinder, mkTyVarBinders,
+        isTyVarBinder,
 
         -- ** Constructing TyVar's
         mkTyVar, mkTcTyVar,
@@ -464,6 +465,9 @@ mkTyCoVarBinders vis = map (mkTyCoVarBinder vis)
 -- Input vars should be type variables
 mkTyVarBinders :: ArgFlag -> [TyVar] -> [TyVarBinder]
 mkTyVarBinders vis = map (mkTyVarBinder vis)
+
+isTyVarBinder :: TyCoVarBinder -> Bool
+isTyVarBinder (Bndr v _) = isTyVar v
 
 {-
 ************************************************************************

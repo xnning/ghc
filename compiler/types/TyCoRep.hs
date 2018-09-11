@@ -55,6 +55,7 @@ module TyCoRep (
         delBinderVar,
         isInvisibleArgFlag, isVisibleArgFlag,
         isInvisibleBinder, isVisibleBinder,
+        isTyBinder,
 
         -- * Functions over coercions
         pickLR,
@@ -541,6 +542,11 @@ isInvisibleBinder (Anon ty)            = isPredTy ty
 isVisibleBinder :: TyCoBinder -> Bool
 isVisibleBinder = not . isInvisibleBinder
 
+-- | If its a named binder, is the binder a tyvar?
+-- Returns True for nondependent binder.
+isTyBinder :: TyCoBinder -> Bool
+isTyBinder (Named bnd) = isTyVarBinder bnd
+isTyBinder _ = True
 
 {- Note [TyCoBinders]
 ~~~~~~~~~~~~~~~~~~~

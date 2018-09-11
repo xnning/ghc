@@ -1275,7 +1275,7 @@ dropCasts (TyConApp tc tys) = mkTyConApp tc (map dropCasts tys)
 dropCasts (ForAllTy b ty)   = ForAllTy (dropCastsB b) (dropCasts ty)
 dropCasts ty                = ty  -- LitTy, TyVarTy, CoercionTy
 
-dropCastsB :: TyCoVarBinder -> TyCoVarBinder
+dropCastsB :: TyVarBinder -> TyVarBinder
 dropCastsB b = b   -- Don't bother in the kind of a forall
 
 instTypeErr :: Class -> [Type] -> SDoc -> SDoc
