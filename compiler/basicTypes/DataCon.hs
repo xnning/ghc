@@ -474,7 +474,7 @@ we can in Core. Consider having:
   dcOrigArgTys       = []
   dcRepTyCon         = T
 
-  Function call 'dataConKindEqSpec' returns [k'~k] with 't' fresh generated
+  Function call 'dataConKindEqSpec' returns [k'~k]
 
 Note [DataCon arities]
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -549,6 +549,7 @@ consists precisely of:
 * The set of tyvars in dcUnivTyVars whose type variables do not appear in
   dcEqSpec, unioned with:
 * The set of tyvars (*not* covars) in dcExTyCoVars
+  No covars here because because they're not user-written
 
 The word "set" is used above because the order in which the tyvars appear in
 dcUserTyVarBinders can be completely different from the order in dcUnivTyVars or

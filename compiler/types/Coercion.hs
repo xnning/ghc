@@ -1669,7 +1669,7 @@ Then we store a new mapping into the lifting context
    lc2 = a |-> (t1 ~ t1 |> g2), lc
 
 So later when we can correctly deal with the argument type P
-   liftCoSubst lc2 P :: P [k|->k1][t1/a] ~ P[k|>k2][t1|>g2/a]
+   liftCoSubst lc2 P :: P [k|->k1][a|->t1] ~ P[k|->k2][a |-> (t1|>g2)]
 
 This is exactly what extendLiftingContextEx does.
 * For each (tyvar:k, ty) pair, we product the mapping
@@ -1677,6 +1677,9 @@ This is exactly what extendLiftingContextEx does.
 * For each (covar:s1~s2, ty) pair, we produce the mapping
     covar |-> (co ~ co')
     co' = Sym (liftCoSubst lc s1) ;; covar ;; liftCoSubst lc s2 :: s1'~s2'
+
+This follows the lifting context extension definition in the
+"FC with Explicit Kind Equality" paper.
 -}
 
 -- ----------------------------------------------------
@@ -1753,8 +1756,6 @@ extendLiftingContextAndInScope (LC subst env) tv co
   = extendLiftingContext (LC (extendTCvInScopeSet subst (tyCoVarsOfCo co)) env) tv co
 
 -- | Extend a lifting context with existential-variable bindings.
--- This follows the lifting context extension definition in the
--- "FC with Explicit Kind Equality" paper.
 -- See Note [extendLiftingContextEx]
 extendLiftingContextEx :: LiftingContext    -- ^ original lifting context
                        -> [(TyCoVar,Type)]  -- ^ ex. var / value pairs
