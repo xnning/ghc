@@ -153,7 +153,7 @@ module TcType (
   mkTvSubstPrs, notElemTCvSubst, unionTCvSubst,
   getTvSubstEnv, setTvSubstEnv, getTCvInScope, extendTCvInScope,
   extendTCvInScopeList, extendTCvInScopeSet, extendTvSubstAndInScope,
-  Type.lookupTyVar, Type.extendTCvSubst, Type.substVarBndr,
+  Type.lookupTyVar, Type.extendTCvSubst, Type.substTyVarBndr,
   Type.extendTvSubst,
   isInScope, mkTCvSubst, mkTvSubst, zipTyEnv, zipCoEnv,
   Type.substTy, substTys, substTyWith, substTyWithCoVars,
@@ -1499,7 +1499,7 @@ nakedSubstMapper
                , tcm_tyvar      = \subst tv -> return (substTyVar subst tv)
                , tcm_covar      = \subst cv -> return (substCoVar subst cv)
                , tcm_hole       = \_ hole   -> return (HoleCo hole)
-               , tcm_tycobinder = \subst tv _ -> return (substVarBndr subst tv) }
+               , tcm_tycobinder = \subst tv _ -> return (substTyVarBndr subst tv) }
 
 {-
 ************************************************************************

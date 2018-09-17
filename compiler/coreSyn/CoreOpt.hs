@@ -38,7 +38,7 @@ import VarEnv
 import DataCon
 import OptCoercion ( optCoercion )
 import Type     hiding ( substTy, extendTvSubst, extendCvSubst, extendTvSubstList
-                       , isInScope, cloneTyVarBndr )
+                       , isInScope, substTyVarBndr, cloneTyVarBndr )
 import Coercion hiding ( substCo, substCoVarBndr )
 import TyCon        ( tyConArity )
 import TysWiredIn
@@ -1150,16 +1150,6 @@ collectBindersPushingCo e
         isForAllTy_ty tyR
       , isReflCo (mkNthCo Nominal 0 co)  -- See Note [collectBindersPushingCo]
       = go_c (b:bs) e (mkInstCo co (mkNomReflCo (mkTyVarTy b)))
-
-      | isCoVar b
-      , let Pair tyL tyR = coercionKind co
-      , ASSERT( isForAllTy_co tyL )
-        isForAllTy_co tyR
-      , isReflCo (mkNthCo Nominal 0 co)  -- See Note [collectBindersPushingCo]
-      , let cov = mkCoVarCo b
-      = go_c (b:bs) e (mkInstCo co (mkProofIrrelCo Nominal
-                                                   (mkNomReflCo (varType b))
-                                                   cov cov))
 
       | isId b
       , let Pair tyL tyR = coercionKind co

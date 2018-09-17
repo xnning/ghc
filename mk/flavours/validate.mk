@@ -7,7 +7,7 @@ BUILD_PROF_LIBS    = NO
 SplitObjs          = NO
 SplitSections      = NO
 HADDOCK_DOCS       = YES
-BUILD_SPHINX_HTML  = YES
+BUILD_SPHINX_HTML  = NO
 BUILD_SPHINX_PDF   = NO
 
 ifeq "$(ValidateHpc)" "YES"

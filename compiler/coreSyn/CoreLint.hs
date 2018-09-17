@@ -1199,14 +1199,14 @@ lintBinder site var linterF
 lintTyBndr :: InTyVar -> (OutTyVar -> LintM a) -> LintM a
 lintTyBndr tv thing_inside
   = do { subst <- getTCvSubst
-       ; let (subst', tv') = substVarBndr subst tv
+       ; let (subst', tv') = substTyVarBndr subst tv
        ; lintKind (varType tv')
        ; updateTCvSubst subst' (thing_inside tv') }
 
 lintCoBndr :: InCoVar -> (OutCoVar -> LintM a) -> LintM a
 lintCoBndr cv thing_inside
   = do { subst <- getTCvSubst
-       ; let (subst', cv') = substVarBndr subst cv
+       ; let (subst', cv') = substCoVarBndr subst cv
        ; lintKind (varType cv')
        ; lintL (isCoercionType (varType cv'))
                (text "CoVar with non-coercion type:" <+> pprTyVar cv)
@@ -1501,10 +1501,10 @@ lint_app doc kfn kas
            ; return kfb }
 
     go_app in_scope (ForAllTy (Bndr kv _vis) kfn) tka@(ta,ka)
-      = do { let kv_kind = varType kv
+      = do { let kv_kind = tyVarKind kv
            ; unless (ka `eqType` kv_kind) $
              addErrL (fail_msg (text "Forall:" <+> (ppr kv $$ ppr kv_kind $$ ppr tka)))
-           ; return $ substTy (extendTCvSubst (mkEmptyTCvSubst in_scope) kv ta) kfn }
+           ; return (substTyWithInScope in_scope [kv] [ta] kfn) }
 
     go_app _ kfn ka
        = failWithL (fail_msg (text "Not a fun:" <+> (ppr kfn $$ ppr ka)))
@@ -1841,7 +1841,7 @@ lintCoercion co@(TransCo co1 co2)
 
 lintCoercion the_co@(NthCo r0 n co)
   = do { (_, _, s, t, r) <- lintCoercion co
-       ; case (splitForAllTy_ty_maybe s, splitForAllTy_ty_maybe t) of
+       ; case (splitForAllTy_maybe s, splitForAllTy_maybe t) of
          { (Just (tv_s, _ty_s), Just (tv_t, _ty_t))
              |  n == 0
              -> do { lintRole the_co Nominal r0
@@ -1911,21 +1911,7 @@ lintCoercion (InstCo co arg)
                        substTyWithInScope in_scope [tv2] [s2] t2, r)
             | otherwise
             -> failWithL (text "Kind mis-match in inst coercion")
-          _ -> case (splitForAllTy_co_maybe t1', splitForAllTy_co_maybe t2') of
-                 (Just (cv1, t1), Just (cv2, t2))
-                   | k1' `eqType` varType cv1
-                   , k2' `eqType` varType cv2
-                   -- k3/k4 *?
-                   , let CoercionTy s1' = s1
-                   , let CoercionTy s2' = s2
-                   , let subst1 = mkCvSubst in_scope $ unitVarEnv cv1 s1'
-                   , let subst2 = mkCvSubst in_scope $ unitVarEnv cv2 s2'
-                   -> return (k3, k4, -- TODO
-                             substTy subst1 t1, substTy subst2 t2, r)
-                     -- See Note [Weird typing rule for ForAllTy] in Type
-                   | otherwise
-                   -> failWithL (text "Kind mis-match in inst coercion")
-                 _ -> failWithL (text "Bad argument of inst") }
+          _ -> failWithL (text "Bad argument of inst") }
 
 lintCoercion co@(AxiomInstCo con ind cos)
   = do { unless (0 <= ind && ind < numBranches (coAxiomBranches con))

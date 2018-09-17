@@ -184,7 +184,8 @@ module Type (
         substTyUnchecked, substTysUnchecked, substThetaUnchecked,
         substTyWithUnchecked,
         substCoUnchecked, substCoWithUnchecked,
-        substVarBndr, substVarBndrs, substTyVar, substTyVars,
+        substTyVarBndr, substTyVarBndrs,
+        substTyVar, substTyVars,
         cloneTyVarBndr, cloneTyVarBndrs, lookupTyVar,
 
         -- * Pretty-printing
@@ -409,7 +410,7 @@ expandTypeSynonyms ty
     go subst (FunTy arg res)
       = mkFunTy (go subst arg) (go subst res)
     go subst (ForAllTy (Bndr tv vis) t)
-      = let (subst', tv') = substVarBndrUsing go subst tv in
+      = let (subst', tv') = substTyVarBndrUsing go subst tv in
         ForAllTy (Bndr tv' vis) (go subst' t)
     go subst (CastTy ty co)  = mkCastTy (go subst ty) (go_co subst co)
     go subst (CoercionTy co) = mkCoercionTy (go_co subst co)
@@ -1237,15 +1238,15 @@ mkCastTy (CastTy ty co1) co2
   = mkCastTy ty (co1 `mkTransCo` co2)
       -- call mkCastTy again for the reflexivity check
 
-mkCastTy (ForAllTy (Bndr tv vis) inner_ty) co
-  -- (EQ4) from the Note
-  | isTyVar tv
-  = -- have to make sure that pushing the co in doesn't capture the bound var!
-  let fvs = tyCoVarsOfCo co
-      empty_subst = mkEmptyTCvSubst (mkInScopeSet fvs)
-      (subst, tv') = substVarBndr empty_subst tv
-    in
-    ForAllTy (Bndr tv' vis) (substTy subst inner_ty `mkCastTy` co)
+-- mkCastTy (ForAllTy (Bndr tv vis) inner_ty) co
+--   -- (EQ4) from the Note
+--   | isTyVar tv
+--   = -- have to make sure that pushing the co in doesn't capture the bound var!
+--   let fvs = tyCoVarsOfCo co
+--       empty_subst = mkEmptyTCvSubst (mkInScopeSet fvs)
+--       (subst, tv') = substVarBndr empty_subst tv
+--     in
+--     ForAllTy (Bndr tv' vis) (substTy subst inner_ty `mkCastTy` co)
 
 mkCastTy ty co = CastTy ty co
 
@@ -1308,10 +1309,6 @@ interfaces.  Notably this plays a role in tcTySigs in TcBinds.hs.
 -- variable
 mkInvForAllTy :: TyCoVar -> Type -> Type
 mkInvForAllTy tv ty
-  | isCoVar tv
-  , not (tv `elemVarSet` tyCoVarsOfType ty)
-  = mkFunTy (varType tv) ty
-  | otherwise
   = ForAllTy (Bndr tv Inferred) ty
 
 -- | Like mkInvForAllTy, but does not check the occurrence of the covar.
@@ -1345,9 +1342,6 @@ mkLamTypes :: [Var] -> Type -> Type
 -- ^ 'mkLamType' for multiple type or value arguments
 
 mkLamType v ty
-   | isCoVar v
-   , v `elemVarSet` tyCoVarsOfType ty
-   = ForAllTy (Bndr v Inferred) ty
    | isTyVar v
    = ForAllTy (Bndr v Inferred) ty
    | otherwise
@@ -1370,10 +1364,6 @@ mkTyConBindersPreferAnon vars inner_ty = fst (go vars)
     go (v:vs) | isTyVar v
               , v `elemVarSet` fvs
               = ( Bndr v (NamedTCB Required) : binders
-                , fvs `delVarSet` v `unionVarSet` kind_vars )
-              | isCoVar v
-              , v `elemVarSet` fvs
-              = ( Bndr v (NamedTCB Inferred) : binders
                 , fvs `delVarSet` v `unionVarSet` kind_vars )
               | otherwise
               = ( Bndr v AnonTCB : binders
@@ -2498,8 +2488,7 @@ typeKind (FunTy {})        = liftedTypeKind
 typeKind (TyVarTy tyvar)   = tyVarKind tyvar
 typeKind (CastTy _ty co)   = pSnd $ coercionKind co
 typeKind (CoercionTy co)   = coercionType co
-typeKind ty@(ForAllTy (Bndr tv _) _)
-  | isTyVar tv                     -- See Note [Weired typing rule for ForAllTy].
+typeKind ty@(ForAllTy (Bndr _ _) _)
   = case occCheckExpand tvs k of   -- We must make sure tv does not occur in kind
       Just k' -> k'                -- As it is already out of scope!
       Nothing -> pprPanic "typeKind"
@@ -2507,7 +2496,7 @@ typeKind ty@(ForAllTy (Bndr tv _) _)
   where
     (tvs, body) = splitTyVarForAllTys ty
     k           = typeKind body
-typeKind (ForAllTy {})     = liftedTypeKind
+-- typeKind (ForAllTy {})     = liftedTypeKind
 
 typeKind_apps :: HasDebugCallStack => Type -> [Type] -> Kind
 -- The sole purpose of the function is to accumulate
@@ -2663,11 +2652,9 @@ occCheckExpand vs_to_avoid ty
     go_co cxt (FunCo r co1 co2)         = do { co1' <- go_co cxt co1
                                              ; co2' <- go_co cxt co2
                                              ; return (mkFunCo r co1' co2') }
-    go_co cxt@(as,env) (CoVarCo c)
-      | c `elemVarSet` as               = Nothing
-      | Just c' <- lookupVarEnv env c   = return (mkCoVarCo c')
-      | otherwise                       = do { c' <- go_var cxt c
-                                             ; return (mkCoVarCo c') }
+    go_co cxt (CoVarCo c)
+      = do { c' <- go_var cxt c
+           ; return (mkCoVarCo c') }
     go_co cxt (HoleCo h)                = do { c' <- go_var cxt (ch_co_var h)
                                              ; return (HoleCo (h { ch_co_var = c' })) }
     go_co cxt (AxiomInstCo ax ind args) = do { args' <- mapM (go_co cxt) args
